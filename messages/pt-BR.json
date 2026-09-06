@@ -1,0 +1,115 @@
+{
+  "LoginPage": {
+    "titleAccept": "Entre para aceitar",
+    "titleWelcome": "Bem-vindo de volta",
+    "descAccept": "Entre e você será direcionado para o convite.",
+    "descWelcome": "Entre na sua conta",
+    "emailLabel": "E-mail",
+    "emailPlaceholder": "voce@exemplo.com",
+    "passwordLabel": "Senha",
+    "forgotPassword": "Esqueceu a senha?",
+    "passwordPlaceholder": "Digite sua senha",
+    "signingIn": "Entrando...",
+    "signIn": "Entrar",
+    "noAccount": "Ainda não tem uma conta?",
+    "createAccount": "Criar conta"
+  },
+  "Sidebar": {
+    "title": "CRM para WhatsApp",
+    "dashboard": "Dashboard",
+    "inbox": "Caixa de entrada",
+    "notifications": "Notificações",
+    "contacts": "Contatos",
+    "pipelines": "Funis",
+    "broadcasts": "Disparos",
+    "automations": "Automações",
+    "flows": "Fluxos",
+    "aiAgents": "Agentes de IA",
+    "settings": "Configurações",
+    "beta": "Beta",
+    "unreadConversations": "{count} conversa {count, plural, =1 {não lida} other {não lidas}}",
+    "unreadNotifications": "{count} notificação {count, plural, =1 {não lida} other {não lidas}}",
+    "roleOwner": "Proprietário",
+    "roleAdmin": "Administrador",
+    "roleAgent": "Atendente",
+    "roleViewer": "Visualizador",
+    "closeMenu": "Fechar menu",
+    "defaultUser": "Usuário",
+    "defaultAvatar": "Avatar",
+    "menuProfile": "Perfil",
+    "menuSettings": "Configurações",
+    "menuSignOut": "Sair"
+  },
+  "Header": {
+    "dashboard": "Dashboard",
+    "inbox": "Caixa de entrada",
+    "notifications": "Notificações",
+    "contacts": "Contatos",
+    "pipelines": "Funis",
+    "broadcasts": "Disparos",
+    "automations": "Automações",
+    "settings": "Configurações",
+    "openMenu": "Abrir menu",
+    "openAccountMenu": "Abrir menu da conta",
+    "defaultUser": "Usuário",
+    "defaultAvatar": "Avatar",
+    "menuProfile": "Perfil",
+    "menuSettings": "Configurações",
+    "menuSignOut": "Sair"
+  },
+  "ModeToggle": {
+    "switchMode": "Mudar para o modo {mode}"
+  },
+  "Dashboard": {
+    "page": {
+      "title": "Dashboard",
+      "description": "Análises em tempo real de conversas, contatos, negócios, disparos e automações.",
+      "activeConversations": "Conversas ativas",
+      "newContactsToday": "Novos contatos hoje",
+      "openDealsValue": "Valor dos negócios abertos",
+      "messagesSentToday": "Mensagens enviadas hoje",
+      "newTodayVsYesterday": "novos hoje em relação a ontem",
+      "vsYesterday": "em relação a ontem",
+      "openDeals": "{count} negócio {count, plural, =1 {aberto} other {abertos}}",
+      "noChange": "Sem alteração {suffix}"
+    },
+    "quickActions": {
+      "newContact": "Novo contato",
+      "newDeal": "Novo negócio",
+      "newBroadcast": "Novo disparo",
+      "newAutomation": "Nova automação"
+    },
+    "activityFeed": {
+      "title": "Atividade recente",
+      "viewAll": "Ver tudo →",
+      "noActivity": "Nenhuma atividade ainda",
+      "noActivityHint": "As atividades de mensagens, negócios, disparos e automações aparecerão aqui.",
+      "showingOf": "Exibindo {visible} de {totalLoaded}{plus}",
+      "show": "Exibir",
+      "timeS": "há {sec}s",
+      "timeM": "há {min}min",
+      "timeH": "há {hr}h",
+      "timeD": "há {day}d"
+    }
+  },
+  "Inbox": {
+    "page": {
+      "whatsappNotConnected": "O WhatsApp® não está conectado. Acesse Configurações para conectar sua conta."
+    },
+    "conversationList": {
+      "searchPlaceholder": "Buscar conversas...",
+      "filterAll": "Todas",
+      "filterUnread": "Não lidas",
+      "filterOpen": "Abertas",
+      "filterPending": "Pendentes",
+      "filterClosed": "Fechadas",
+      "tags": "Etiquetas",
+      "company": "Empresa",
+      "allCompanies": "Todas as empresas",
+      "clearAll": "Limpar tudo",
+      "noConversations": "Nenhuma conversa encontrada",
+      "noMessagesYet": "Nenhuma mensagem ainda",
+      "unknown": "Desconhecido"
+    }
+  }
+}
