@@ -238,7 +238,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     href={item.href}
                     className={cn(
                       // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                       collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
                       isActive
                         ? "crm-sidebar-item-active"
@@ -288,7 +288,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                       collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
                       isActive
                         ? "crm-sidebar-item-active"

@@ -45,21 +45,21 @@ html[data-mode="dark"] .crm-sidebar-item-active {
 .crm-sidebar-item-active::before {
   top: -16px;
   border-bottom-right-radius: 16px;
-  box-shadow: 6px 6px 0 #ffffff;
+  box-shadow: 6px 6px 0 6px #ffffff;
 }
 
 .crm-sidebar-item-active::after {
   bottom: -16px;
   border-top-right-radius: 16px;
-  box-shadow: 6px -6px 0 #ffffff;
+  box-shadow: 6px -6px 0 6px #ffffff;
 }
 
 html[data-mode="dark"] .crm-sidebar-item-active::before {
-  box-shadow: 6px 6px 0 var(--background);
+  box-shadow: 6px 6px 0 6px var(--background);
 }
 
 html[data-mode="dark"] .crm-sidebar-item-active::after {
-  box-shadow: 6px -6px 0 var(--background);
+  box-shadow: 6px -6px 0 6px var(--background);
 }
 
 @theme inline {
