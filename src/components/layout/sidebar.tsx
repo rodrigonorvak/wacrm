@@ -176,7 +176,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       <aside
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
-          "fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-border bg-card",
+          "crm-sidebar fixed inset-y-0 left-0 z-40 flex h-full w-64 flex-col border-r border-rose-950/20 text-white",
           "transition-transform duration-200 ease-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
@@ -186,9 +186,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
       >
         {/* Logo row. On mobile we put a close button here; on desktop the
             close button is hidden since the sidebar is always-visible. */}
-        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
+        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 text-white">
               <MessageSquare className="h-4 w-4" />
             </div>
             <span className="text-sm font-semibold text-foreground">
@@ -199,7 +199,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             type="button"
             onClick={onClose}
             aria-label={t("closeMenu")}
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -229,10 +229,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     href={item.href}
                     className={cn(
                       // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 rounded-r-none px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        ? "crm-sidebar-item-active"
+                        : "text-white/70 hover:bg-white/10 hover:text-white",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -268,7 +268,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             })}
           </ul>
 
-          <div className="my-4 border-t border-border" />
+          <div className="my-4 border-t border-white/10" />
 
           <ul className="flex flex-col gap-1">
             {bottomNavItems.map((item) => {
@@ -278,10 +278,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 rounded-r-none px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        ? "crm-sidebar-item-active"
+                        : "text-white/70 hover:bg-white/10 hover:text-white",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -294,7 +294,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </nav>
 
         {/* User section */}
-        <div className="shrink-0 border-t border-border p-3">
+        <div className="shrink-0 border-t border-white/10 p-3">
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
               `showAccountStrip`). For a default solo account the two
@@ -302,7 +302,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               below; for renamed or shared accounts it tells the user
               which account they're acting in. */}
           {showAccountStrip && account?.name ? (
-            <div className="mb-2 flex items-center gap-2 px-3 text-xs text-muted-foreground">
+            <div className="mb-2 flex items-center gap-2 px-3 text-xs text-white/70">
               <UsersRound className="size-3.5 shrink-0" />
               {/* `title=` exposes the full name on hover when it
                   gets truncated (long account names + narrow
@@ -331,7 +331,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             </div>
           ) : null}
           <DropdownMenu>
-            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted/60 focus:bg-muted/60 focus:outline-none data-popup-open:bg-muted/60">
+            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-white/10 focus:bg-white/10 focus:outline-none data-popup-open:bg-white/10">
               <Avatar className="size-8 shrink-0">
                 {profile?.avatar_url ? (
                   <AvatarImage
@@ -339,17 +339,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     alt={profile.full_name ?? t("defaultAvatar")}
                   />
                 ) : null}
-                <AvatarFallback className="bg-primary/10 text-sm font-medium text-primary">
+                <AvatarFallback className="bg-white/15 text-sm font-medium text-white">
                   {profile?.full_name?.charAt(0)?.toUpperCase() ??
                     profile?.email?.charAt(0)?.toUpperCase() ??
                     "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
+                <p className="truncate text-sm font-medium text-white">
                   {profile?.full_name ?? t("defaultUser")}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-xs text-white/60">
                   {profile?.email ?? ""}
                 </p>
               </div>

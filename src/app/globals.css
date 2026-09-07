@@ -4,6 +4,46 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.crm-sidebar {
+  background: linear-gradient(to bottom, #e11d48, #881337);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.crm-sidebar-item {
+  position: relative;
+  min-height: 44px;
+}
+
+.crm-sidebar-item-active {
+  background: #e1e2e4;
+  color: #e11d48;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 25%), 0 0 15px rgb(225 29 72 / 30%);
+}
+
+.crm-sidebar-item-active::before,
+.crm-sidebar-item-active::after {
+  position: absolute;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  content: "";
+}
+
+.crm-sidebar-item-active::before {
+  top: -16px;
+  border-bottom-right-radius: 16px;
+  box-shadow: 6px 6px 0 #e1e2e4;
+}
+
+.crm-sidebar-item-active::after {
+  bottom: -16px;
+  border-top-right-radius: 16px;
+  box-shadow: 6px -6px 0 #e1e2e4;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
