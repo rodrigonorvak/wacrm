@@ -16,7 +16,7 @@
   },
   "Sidebar": {
     "title": "CRM para WhatsApp",
-    "dashboard": "Dashboard",
+    "dashboard": "Painel",
     "inbox": "Caixa de entrada",
     "notifications": "Notificações",
     "contacts": "Contatos",
@@ -41,7 +41,7 @@
     "menuSignOut": "Sair"
   },
   "Header": {
-    "dashboard": "Dashboard",
+    "dashboard": "Painel",
     "inbox": "Caixa de entrada",
     "notifications": "Notificações",
     "contacts": "Contatos",
@@ -62,7 +62,7 @@
   },
   "Dashboard": {
     "page": {
-      "title": "Dashboard",
+      "title": "Painel",
       "description": "Análises em tempo real de conversas, contatos, negócios, disparos e automações.",
       "activeConversations": "Conversas ativas",
       "newContactsToday": "Novos contatos hoje",
