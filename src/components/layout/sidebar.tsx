@@ -206,7 +206,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         </div>
 
         {/* Main navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto py-4">
           <ul className="flex flex-col gap-1">
             {navItems.map((item) => {
               const isActive =
@@ -229,7 +229,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                     href={item.href}
                     className={cn(
                       // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "crm-sidebar-item flex items-center gap-3 rounded-r-none px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
                         ? "crm-sidebar-item-active"
                         : "text-white/70 hover:bg-white/10 hover:text-white",
@@ -278,7 +278,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "crm-sidebar-item flex items-center gap-3 rounded-r-none px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
+                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors lg:py-2",
                       isActive
                         ? "crm-sidebar-item-active"
                         : "text-white/70 hover:bg-white/10 hover:text-white",
