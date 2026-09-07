@@ -352,6 +352,7 @@ export interface Pipeline {
   id: string;
   user_id: string;
   name: string;
+  pipeline_type?: 'standard' | 'integrated';
   created_at: string;
 }
 
