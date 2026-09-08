@@ -59,11 +59,11 @@ const INTEGRATED_DEFAULT_STAGES = [
 ];
 
 const DEFAULT_ELEMENTOR_MAPPINGS = [
-  { sourceId: "name", label: "Nome", targetType: "contact", targetKey: "name", required: true },
-  { sourceId: "phone", label: "Telefone", targetType: "contact", targetKey: "phone", required: true },
-  { sourceId: "email", label: "E-mail", targetType: "contact", targetKey: "email", required: false },
-  { sourceId: "company", label: "Empresa", targetType: "contact", targetKey: "company", required: false },
-  { sourceId: "message", label: "Mensagem", targetType: "deal", targetKey: "notes", required: false },
+  { sourceId: "name", label: "Nome", targetType: "contact", targetKey: "name", customFieldName: "", required: true },
+  { sourceId: "phone", label: "Telefone", targetType: "contact", targetKey: "phone", customFieldName: "", required: true },
+  { sourceId: "email", label: "E-mail", targetType: "contact", targetKey: "email", customFieldName: "", required: false },
+  { sourceId: "company", label: "Empresa", targetType: "contact", targetKey: "company", customFieldName: "", required: false },
+  { sourceId: "message", label: "Mensagem", targetType: "deal", targetKey: "notes", customFieldName: "", required: false },
 ];
 
 export default function PipelinesPage() {
@@ -312,10 +312,10 @@ export default function PipelinesPage() {
     }
     if (
       newPipelineType === "integrated" &&
-      elementorMappings.some(
-        (mapping) =>
-          mapping.targetType === "contact_custom_field" &&
-          (!mapping.targetKey.trim() || mapping.targetKey === "custom"),
+        elementorMappings.some(
+          (mapping) =>
+            mapping.targetType === "contact_custom_field" &&
+            !mapping.customFieldName.trim(),
       )
     ) {
       toast.error("Informe um nome para cada campo personalizado.");
@@ -350,6 +350,7 @@ export default function PipelinesPage() {
       .single();
 
     if (error || !pipeline) {
+      console.error("Failed to create pipeline:", error);
       toast.error(t("toastFailedCreatePipeline"));
       setCreating(false);
       return;
@@ -368,8 +369,9 @@ export default function PipelinesPage() {
       .from("pipeline_stages")
       .insert(stagesPayload);
     if (stagesError) {
+      console.error("Failed to create integrated pipeline stages:", stagesError);
       await supabase.from("pipelines").delete().eq("id", pipeline.id);
-      toast.error(t("toastFailedCreatePipeline"));
+      toast.error(stagesError.message || t("toastFailedCreatePipeline"));
       setCreating(false);
       return;
     }
@@ -389,8 +391,9 @@ export default function PipelinesPage() {
           created_by: user.id,
         });
       if (integrationError || !integration) {
+        console.error("Failed to create lead integration:", integrationError);
         await supabase.from("pipelines").delete().eq("id", pipeline.id);
-        toast.error(t("toastFailedCreatePipeline"));
+        toast.error(integrationError?.message || t("toastFailedCreatePipeline"));
         setCreating(false);
         return;
       }
@@ -403,15 +406,18 @@ export default function PipelinesPage() {
           source_field_id: mapping.sourceId.trim(),
           source_label: mapping.label.trim() || mapping.sourceId.trim(),
           target_type: mapping.targetType,
-          target_key: mapping.targetKey.trim(),
+          target_key: mapping.targetType === "contact_custom_field"
+            ? mapping.customFieldName.trim()
+            : mapping.targetKey.trim(),
           is_required: mapping.required,
         }));
       const { error: mappingsError } = await supabase
         .from("lead_integration_mappings")
         .insert(mappingRows);
       if (mappingsError) {
+        console.error("Failed to create lead mappings:", mappingsError);
         await supabase.from("pipelines").delete().eq("id", pipeline.id);
-        toast.error(t("toastFailedCreatePipeline"));
+        toast.error(mappingsError.message || t("toastFailedCreatePipeline"));
         setCreating(false);
         return;
       }
@@ -623,18 +629,18 @@ export default function PipelinesPage() {
                   </p>
                 </div>
                 {elementorMappings.map((mapping, index) => (
-                  <div key={`${mapping.targetKey}-${index}`} className="space-y-2 rounded border border-border bg-background p-2">
+                  <div key={`${mapping.sourceId}-${index}`} className="space-y-2 rounded border border-border bg-background p-2">
                     <div className="grid grid-cols-[1fr_1.2fr] items-center gap-3">
                       <Input
                         value={mapping.sourceId}
                         onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sourceId: event.target.value } : item))}
-                        placeholder="Field ID do Elementor"
+                        placeholder="ID do Elementor (ex.: whatsapp)"
                         className="h-8 border-border bg-muted text-foreground"
                       />
                       <Input
                         value={mapping.label}
                         onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item))}
-                        placeholder="Nome do campo"
+                        placeholder="Rótulo visual (opcional)"
                         className="h-8 border-border bg-muted text-foreground"
                       />
                     </div>
@@ -643,7 +649,12 @@ export default function PipelinesPage() {
                         value={`${mapping.targetType}:${mapping.targetKey}`}
                         onChange={(event) => {
                           const [targetType, targetKey] = event.target.value.split(":");
-                          setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, targetType, targetKey } : item));
+                          setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? {
+                            ...item,
+                            targetType,
+                            targetKey,
+                            customFieldName: targetType === "contact_custom_field" ? item.customFieldName : "",
+                          } : item));
                         }}
                         className="h-8 rounded border border-border bg-muted px-2 text-xs text-foreground"
                       >
@@ -655,9 +666,12 @@ export default function PipelinesPage() {
                         <option value="contact_custom_field:custom">Campo personalizado</option>
                       </select>
                       <Input
-                        value={mapping.targetType === "contact_custom_field" && mapping.targetKey === "custom" ? "" : mapping.targetKey}
-                        onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, targetKey: item.targetType === "contact_custom_field" ? event.target.value : item.targetKey } : item))}
-                        placeholder={mapping.targetType === "contact_custom_field" ? "Nome do campo personalizado" : "Destino"}
+                        value={mapping.targetType === "contact_custom_field" ? mapping.customFieldName : mapping.targetKey}
+                        onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? {
+                          ...item,
+                          customFieldName: item.targetType === "contact_custom_field" ? event.target.value : item.customFieldName,
+                        } : item))}
+                        placeholder={mapping.targetType === "contact_custom_field" ? "Nome no CRM (ex.: faturamento)" : "Destino"}
                         disabled={mapping.targetType !== "contact_custom_field"}
                         className="h-8 border-border bg-muted text-foreground"
                       />
@@ -673,7 +687,7 @@ export default function PipelinesPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setElementorMappings((current) => [...current, { sourceId: "", label: "", targetType: "contact_custom_field", targetKey: "custom", required: false }])}
+                  onClick={() => setElementorMappings((current) => [...current, { sourceId: "", label: "", targetType: "contact_custom_field", targetKey: "custom", customFieldName: "", required: false }])}
                 >
                   <Plus className="mr-1 h-3 w-3" /> Adicionar campo
                 </Button>
