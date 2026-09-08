@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/auth/account';
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { readElementorField, type JsonObject } from '@/lib/integrations/elementor';
 
-type Mapping = { source_field_id: string; target_key: string; is_required: boolean };
+type Mapping = { source_field_id: string; target_key: string; target_type: string; is_required: boolean };
 
 export async function POST(
   _request: Request,
@@ -46,7 +46,7 @@ export async function POST(
 
   const { data: mappings } = await supabase
     .from('lead_integration_mappings')
-    .select('source_field_id, target_key, is_required')
+    .select('source_field_id, target_key, target_type, is_required')
     .eq('integration_id', integration.id);
   const payload = event.payload as JsonObject;
   const values = new Map(
@@ -72,6 +72,31 @@ export async function POST(
       email: values.get('email'),
       company: values.get('company'),
     });
+    for (const mapping of (mappings ?? []) as unknown as Mapping[]) {
+      if (mapping.target_type !== 'contact_custom_field') continue;
+      const value = values.get(mapping.target_key);
+      if (!value) continue;
+      const { data: existingField } = await supabase
+        .from('custom_fields')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('field_name', mapping.target_key)
+        .maybeSingle();
+      let customFieldId = existingField?.id as string | undefined;
+      if (!customFieldId) {
+        const { data: createdField, error: fieldError } = await supabase
+          .from('custom_fields')
+          .insert({ account_id: accountId, user_id: auditUserId, field_name: mapping.target_key, field_type: 'text' })
+          .select('id')
+          .single();
+        if (fieldError || !createdField) throw new Error('Failed to create custom field');
+        customFieldId = createdField.id as string;
+      }
+      await supabase.from('contact_custom_values').upsert(
+        { contact_id: contactId, custom_field_id: customFieldId, value },
+        { onConflict: 'contact_id,custom_field_id' },
+      );
+    }
     const { data: stage } = await supabase
       .from('pipeline_stages')
       .select('id')

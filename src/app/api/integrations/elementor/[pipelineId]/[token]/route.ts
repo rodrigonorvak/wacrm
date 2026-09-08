@@ -101,6 +101,37 @@ export async function POST(
       company: values.get('company'),
     });
 
+    for (const mapping of mappingRows) {
+      if (mapping.target_type !== 'contact_custom_field') continue;
+      const value = values.get(mapping.target_key);
+      if (!value) continue;
+      const { data: existingField } = await db
+        .from('custom_fields')
+        .select('id')
+        .eq('account_id', integrationRow.account_id)
+        .eq('field_name', mapping.target_key)
+        .maybeSingle();
+      let customFieldId = existingField?.id as string | undefined;
+      if (!customFieldId) {
+        const { data: createdField, error: fieldError } = await db
+          .from('custom_fields')
+          .insert({
+            account_id: integrationRow.account_id,
+            user_id: auditUserId,
+            field_name: mapping.target_key,
+            field_type: 'text',
+          })
+          .select('id')
+          .single();
+        if (fieldError || !createdField) throw new Error('Failed to create custom field');
+        customFieldId = createdField.id as string;
+      }
+      const { error: valueError } = await db
+        .from('contact_custom_values')
+        .upsert({ contact_id: contactId, custom_field_id: customFieldId, value }, { onConflict: 'contact_id,custom_field_id' });
+      if (valueError) throw new Error('Failed to save custom field value');
+    }
+
     const { data: firstStage, error: stageError } = await db
       .from('pipeline_stages')
       .select('id')

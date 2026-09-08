@@ -58,13 +58,13 @@ const INTEGRATED_DEFAULT_STAGES = [
   { name: "Contrato pago", color: "#22c55e", position: 4 },
 ];
 
-const ELEMENTOR_MAPPING_FIELDS = [
-  { key: "name", label: "Nome", targetType: "contact", targetKey: "name", required: true },
-  { key: "phone", label: "Telefone", targetType: "contact", targetKey: "phone", required: true },
-  { key: "email", label: "E-mail", targetType: "contact", targetKey: "email", required: false },
-  { key: "company", label: "Empresa", targetType: "contact", targetKey: "company", required: false },
-  { key: "message", label: "Mensagem", targetType: "deal", targetKey: "notes", required: false },
-] as const;
+const DEFAULT_ELEMENTOR_MAPPINGS = [
+  { sourceId: "name", label: "Nome", targetType: "contact", targetKey: "name", required: true },
+  { sourceId: "phone", label: "Telefone", targetType: "contact", targetKey: "phone", required: true },
+  { sourceId: "email", label: "E-mail", targetType: "contact", targetKey: "email", required: false },
+  { sourceId: "company", label: "Empresa", targetType: "contact", targetKey: "company", required: false },
+  { sourceId: "message", label: "Mensagem", targetType: "deal", targetKey: "notes", required: false },
+];
 
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
@@ -85,13 +85,7 @@ export default function PipelinesPage() {
   const [newPipelineType, setNewPipelineType] = useState<"standard" | "integrated">("standard");
   const [creating, setCreating] = useState(false);
   const [createdWebhookUrl, setCreatedWebhookUrl] = useState<string | null>(null);
-  const [elementorFieldIds, setElementorFieldIds] = useState<Record<string, string>>({
-    name: "name",
-    phone: "phone",
-    email: "email",
-    company: "company",
-    message: "message",
-  });
+  const [elementorMappings, setElementorMappings] = useState(DEFAULT_ELEMENTOR_MAPPINGS);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Deal form state is lifted here so both the top-bar "Add Deal" and
@@ -310,9 +304,21 @@ export default function PipelinesPage() {
     if (!name) return;
     if (
       newPipelineType === "integrated" &&
-      (!elementorFieldIds.name.trim() || !elementorFieldIds.phone.trim())
+      (!elementorMappings.some((mapping) => mapping.targetKey === "name" && mapping.sourceId.trim()) ||
+        !elementorMappings.some((mapping) => mapping.targetKey === "phone" && mapping.sourceId.trim()))
     ) {
       toast.error("Informe os IDs dos campos de nome e telefone do Elementor.");
+      return;
+    }
+    if (
+      newPipelineType === "integrated" &&
+      elementorMappings.some(
+        (mapping) =>
+          mapping.targetType === "contact_custom_field" &&
+          (!mapping.targetKey.trim() || mapping.targetKey === "custom"),
+      )
+    ) {
+      toast.error("Informe um nome para cada campo personalizado.");
       return;
     }
     setCreating(true);
@@ -390,15 +396,15 @@ export default function PipelinesPage() {
       }
       const integrationId = (integration as unknown as { id: string }).id;
 
-      const mappingRows = ELEMENTOR_MAPPING_FIELDS
-        .filter((field) => elementorFieldIds[field.key]?.trim())
-        .map((field) => ({
+      const mappingRows = elementorMappings
+        .filter((mapping) => mapping.sourceId.trim() && mapping.targetKey.trim())
+        .map((mapping) => ({
           integration_id: integrationId,
-          source_field_id: elementorFieldIds[field.key].trim(),
-          source_label: field.label,
-          target_type: field.targetType,
-          target_key: field.targetKey,
-          is_required: field.required,
+          source_field_id: mapping.sourceId.trim(),
+          source_label: mapping.label.trim() || mapping.sourceId.trim(),
+          target_type: mapping.targetType,
+          target_key: mapping.targetKey.trim(),
+          is_required: mapping.required,
         }));
       const { error: mappingsError } = await supabase
         .from("lead_integration_mappings")
@@ -616,24 +622,61 @@ export default function PipelinesPage() {
                     Use o Field ID configurado em cada campo do formulário. Esses valores podem ser alterados depois.
                   </p>
                 </div>
-                {ELEMENTOR_MAPPING_FIELDS.map((field) => (
-                  <div key={field.key} className="grid grid-cols-[1fr_1.2fr] items-center gap-3">
-                    <Label className="text-xs text-muted-foreground">
-                      {field.label}{field.required ? " *" : ""}
-                    </Label>
-                    <Input
-                      value={elementorFieldIds[field.key] ?? ""}
-                      onChange={(event) =>
-                        setElementorFieldIds((current) => ({
-                          ...current,
-                          [field.key]: event.target.value,
-                        }))
-                      }
-                      placeholder={field.key}
-                      className="h-8 bg-background border-border text-foreground"
-                    />
+                {elementorMappings.map((mapping, index) => (
+                  <div key={`${mapping.targetKey}-${index}`} className="space-y-2 rounded border border-border bg-background p-2">
+                    <div className="grid grid-cols-[1fr_1.2fr] items-center gap-3">
+                      <Input
+                        value={mapping.sourceId}
+                        onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, sourceId: event.target.value } : item))}
+                        placeholder="Field ID do Elementor"
+                        className="h-8 border-border bg-muted text-foreground"
+                      />
+                      <Input
+                        value={mapping.label}
+                        onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, label: event.target.value } : item))}
+                        placeholder="Nome do campo"
+                        className="h-8 border-border bg-muted text-foreground"
+                      />
+                    </div>
+                    <div className="grid grid-cols-[1fr_1.2fr_auto] items-center gap-2">
+                      <select
+                        value={`${mapping.targetType}:${mapping.targetKey}`}
+                        onChange={(event) => {
+                          const [targetType, targetKey] = event.target.value.split(":");
+                          setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, targetType, targetKey } : item));
+                        }}
+                        className="h-8 rounded border border-border bg-muted px-2 text-xs text-foreground"
+                      >
+                        <option value="contact:name">Nome do contato</option>
+                        <option value="contact:phone">Telefone do contato</option>
+                        <option value="contact:email">E-mail do contato</option>
+                        <option value="contact:company">Empresa do contato</option>
+                        <option value="deal:notes">Observação do negócio</option>
+                        <option value="contact_custom_field:custom">Campo personalizado</option>
+                      </select>
+                      <Input
+                        value={mapping.targetType === "contact_custom_field" && mapping.targetKey === "custom" ? "" : mapping.targetKey}
+                        onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, targetKey: item.targetType === "contact_custom_field" ? event.target.value : item.targetKey } : item))}
+                        placeholder={mapping.targetType === "contact_custom_field" ? "Nome do campo personalizado" : "Destino"}
+                        disabled={mapping.targetType !== "contact_custom_field"}
+                        className="h-8 border-border bg-muted text-foreground"
+                      />
+                      <Button type="button" variant="ghost" size="icon-xs" onClick={() => setElementorMappings((current) => current.filter((_, itemIndex) => itemIndex !== index))}>×</Button>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input type="checkbox" checked={mapping.required} onChange={(event) => setElementorMappings((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, required: event.target.checked } : item))} />
+                      Obrigatório
+                    </label>
                   </div>
                 ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setElementorMappings((current) => [...current, { sourceId: "", label: "", targetType: "contact_custom_field", targetKey: "custom", required: false }])}
+                >
+                  <Plus className="mr-1 h-3 w-3" /> Adicionar campo
+                </Button>
               </div>
             )}
           </div>
