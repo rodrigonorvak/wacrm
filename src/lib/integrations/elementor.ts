@@ -1,6 +1,6 @@
 export type JsonObject = Record<string, unknown>;
 
-function asObject(value: unknown): JsonObject | null {
+export function asObject(value: unknown): JsonObject | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonObject)
     : null;

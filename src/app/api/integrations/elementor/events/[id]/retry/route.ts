@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/account';
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
+import { readElementorField, type JsonObject } from '@/lib/integrations/elementor';
 
-type JsonObject = Record<string, unknown>;
 type Mapping = { source_field_id: string; target_key: string; is_required: boolean };
-
-function valueAt(payload: JsonObject, fieldId: string): string | null {
-  const fields = payload.fields as JsonObject | undefined;
-  const raw = payload[fieldId] ?? fields?.[fieldId];
-  if (typeof raw === 'string' && raw.trim()) return raw.trim();
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    const value = (raw as JsonObject).value;
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
 
 export async function POST(
   _request: Request,
@@ -63,7 +52,7 @@ export async function POST(
   const values = new Map(
     ((mappings ?? []) as unknown as Mapping[]).map((mapping) => [
       mapping.target_key,
-      valueAt(payload, mapping.source_field_id),
+      readElementorField(payload, mapping.source_field_id),
     ]),
   );
   const missing = ((mappings ?? []) as unknown as Mapping[])

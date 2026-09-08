@@ -3,40 +3,14 @@ import { NextResponse } from 'next/server';
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import { hashLeadIntegrationToken } from '@/lib/integrations/lead-token';
+import { asObject, getElementorEventId, readElementorField } from '@/lib/integrations/elementor';
 
-type JsonObject = Record<string, unknown>;
 type Mapping = {
   source_field_id: string;
   target_type: string;
   target_key: string;
   is_required: boolean;
 };
-
-function asObject(value: unknown): JsonObject | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as JsonObject)
-    : null;
-}
-
-function readField(payload: JsonObject, fieldId: string): string | null {
-  const candidates = [payload[fieldId], asObject(payload.fields)?.[fieldId], asObject(payload.data)?.[fieldId]];
-  for (const candidate of candidates) {
-    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-    const field = asObject(candidate);
-    const value = field?.value ?? field?.raw_value;
-    if (typeof value === 'string' && value.trim()) return value.trim();
-    if (Array.isArray(value) && value.length > 0) return value.join(', ').trim();
-  }
-  return null;
-}
-
-function externalEventId(payload: JsonObject): string | null {
-  for (const key of ['event_id', 'submission_id', 'id']) {
-    const value = payload[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
 
 export async function POST(
   request: Request,
@@ -72,7 +46,7 @@ export async function POST(
     pipeline_id: string;
     is_active: boolean;
   };
-  const eventId = externalEventId(payload);
+  const eventId = getElementorEventId(payload);
   const { data: event, error: eventError } = await db
     .from('lead_integration_events')
     .insert({
@@ -103,7 +77,7 @@ export async function POST(
     return NextResponse.json({ error: 'No field mapping configured' }, { status: 422 });
   }
 
-  const values = new Map(mappingRows.map((mapping) => [mapping.target_key, readField(payload, mapping.source_field_id)]));
+  const values = new Map(mappingRows.map((mapping) => [mapping.target_key, readElementorField(payload, mapping.source_field_id)]));
   const missing = mappingRows
     .filter((mapping) => mapping.is_required && !values.get(mapping.target_key))
     .map((mapping) => mapping.target_key);
