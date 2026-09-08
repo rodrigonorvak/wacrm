@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import type { Deal } from "@/types";
+import type { Deal, MessageTemplate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { MessageCircle, History, StickyNote, Send } from "lucide-react";
 import { toast } from "sonner";
+import { TemplatePicker, type TemplateSendValues } from "@/components/inbox/template-picker";
+import { renderTemplateBody } from "@/lib/whatsapp/template-body";
 
 type LeadEvent = {
   payload: Record<string, unknown>;
@@ -58,6 +60,8 @@ export function IntegratedLeadDetail({
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [sendingTemplate, setSendingTemplate] = useState(false);
 
   useEffect(() => {
     if (!open || !deal?.id || !deal.contact_id) return;
@@ -120,6 +124,37 @@ export function IntegratedLeadDetail({
     toast.success("Nota adicionada");
   }
 
+  async function sendTemplate(template: MessageTemplate, values: TemplateSendValues) {
+    if (!deal?.contact_id) return;
+    setSendingTemplate(true);
+    const response = await fetch("/api/whatsapp/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contact_id: deal.contact_id,
+        message_type: "template",
+        template_name: template.name,
+        template_language: template.language,
+        template_message_params: {
+          body: values.body,
+          headerText: values.headerText,
+          buttonParams: values.buttonParams,
+        },
+        template_params: values.body,
+        content_text: renderTemplateBody(template.body_text, values.body),
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setSendingTemplate(false);
+    if (!response.ok) {
+      toast.error(result?.error || "Não foi possível enviar o template");
+      return;
+    }
+    setTemplatePickerOpen(false);
+    setConversation({ id: result.conversation_id });
+    toast.success("Template enviado");
+  }
+
   const contact = deal?.contact;
   const payloadEntries = Object.entries(event?.payload ?? {});
 
@@ -179,6 +214,16 @@ export function IntegratedLeadDetail({
                       <Button className="gap-2"><MessageCircle className="h-4 w-4" />Abrir conversa</Button>
                     </Link>
                   )}
+                  {!conversation && (
+                    <Button
+                      className="gap-2"
+                      disabled={sendingTemplate}
+                      onClick={() => setTemplatePickerOpen(true)}
+                    >
+                      <Send className="h-4 w-4" />
+                      {sendingTemplate ? "Enviando..." : "Iniciar com template"}
+                    </Button>
+                  )}
                 </div>
               ) : tab === "notes" ? (
                 <div className="space-y-4 p-6">
@@ -214,6 +259,11 @@ export function IntegratedLeadDetail({
           </div>
         )}
       </DialogContent>
+      <TemplatePicker
+        open={templatePickerOpen}
+        onOpenChange={setTemplatePickerOpen}
+        onSelect={sendTemplate}
+      />
     </Dialog>
   );
 }
