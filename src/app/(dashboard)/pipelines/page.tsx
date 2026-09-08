@@ -7,6 +7,7 @@ import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
+import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
@@ -97,6 +98,7 @@ export default function PipelinesPage() {
   // the per-column "+" trigger the same Sheet.
   const [dealFormOpen, setDealFormOpen] = useState(false);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
+  const [leadDetailDeal, setLeadDetailDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
 
   // Guard against double-seeding (React StrictMode double-effect in dev).
@@ -206,7 +208,6 @@ export default function PipelinesPage() {
     if (!selectedPipelineId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStages([]);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDeals([]);
       return;
     }
@@ -271,10 +272,15 @@ export default function PipelinesPage() {
   );
 
   const handleEditDeal = useCallback((deal: Deal) => {
+    const pipeline = pipelines.find((item) => item.id === deal.pipeline_id);
+    if (pipeline?.pipeline_type === "integrated") {
+      setLeadDetailDeal(deal);
+      return;
+    }
     setEditingDeal(deal);
     setDefaultStageId(deal.stage_id);
     setDealFormOpen(true);
-  }, []);
+  }, [pipelines]);
 
   async function handleCreatePipeline() {
     const name = newPipelineName.trim();
@@ -687,6 +693,14 @@ export default function PipelinesPage() {
         stages={stages}
         defaultStageId={defaultStageId}
         onSaved={refreshDeals}
+      />
+
+      <IntegratedLeadDetail
+        open={leadDetailDeal !== null}
+        onOpenChange={(open) => {
+          if (!open) setLeadDetailDeal(null);
+        }}
+        deal={leadDetailDeal}
       />
     </div>
   );

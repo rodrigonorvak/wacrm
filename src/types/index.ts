@@ -393,6 +393,8 @@ export interface LeadIntegrationEvent {
   integration_id: string;
   external_event_id?: string | null;
   payload: Record<string, unknown>;
+  contact_id?: string | null;
+  deal_id?: string | null;
   status: LeadIntegrationEventStatus;
   error_message?: string | null;
   received_at: string;

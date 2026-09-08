@@ -154,7 +154,12 @@ export async function POST(
       .single();
     if (dealError || !deal) throw new Error('Failed to create lead deal');
 
-    await db.from('lead_integration_events').update({ status: 'processed', processed_at: new Date().toISOString() }).eq('id', event.id);
+    await db.from('lead_integration_events').update({
+      status: 'processed',
+      processed_at: new Date().toISOString(),
+      contact_id: contactId,
+      deal_id: deal.id,
+    }).eq('id', event.id);
     await db.from('lead_integrations').update({ last_received_at: new Date().toISOString() }).eq('id', integrationRow.id);
 
     return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 201 });
