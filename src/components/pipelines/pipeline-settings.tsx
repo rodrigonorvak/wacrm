@@ -290,6 +290,25 @@ export function PipelineSettings({
     toast.success("Webhook regenerado");
   }
 
+  async function handleRetryEvent(eventId: string) {
+    const response = await fetch(`/api/integrations/elementor/events/${eventId}/retry`, {
+      method: "POST",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      toast.error(result?.error || "Não foi possível reprocessar o evento.");
+      return;
+    }
+    setIntegrationEvents((current) =>
+      current.map((event) =>
+        event.id === eventId
+          ? { ...event, status: "processed", error_message: null }
+          : event,
+      ),
+    );
+    toast.success("Evento reprocessado");
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-popover border-border max-h-[85vh] overflow-y-auto">
@@ -356,6 +375,36 @@ export function PipelineSettings({
                       >
                         Regenerar URL
                       </Button>
+                    </div>
+                  )}
+                  {integrationEvents.length > 0 && (
+                    <div className="mt-3 space-y-2 border-t border-border pt-3">
+                      <p className="text-xs font-medium text-muted-foreground">Últimos recebimentos</p>
+                      {integrationEvents.map((event) => (
+                        <div key={event.id} className="rounded border border-border bg-background p-2 text-xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-foreground">{event.status}</span>
+                            <span className="text-muted-foreground">{new Date(event.received_at).toLocaleString()}</span>
+                          </div>
+                          {event.external_event_id && (
+                            <p className="mt-1 truncate text-muted-foreground">ID: {event.external_event_id}</p>
+                          )}
+                          {event.error_message && (
+                            <p className="mt-1 text-red-400">{event.error_message}</p>
+                          )}
+                          {event.status === "failed" && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRetryEvent(event.id)}
+                              className="mt-2 h-7 border-border bg-transparent text-xs text-muted-foreground hover:bg-muted"
+                            >
+                              Reprocessar
+                            </Button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
