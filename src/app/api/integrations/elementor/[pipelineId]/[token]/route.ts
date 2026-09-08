@@ -23,7 +23,25 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid webhook token' }, { status: 401 });
   }
 
-  const payload = asObject(await request.json().catch(() => null));
+  const rawBody = await request.text();
+  let parsedBody: unknown = null;
+  const contentType = request.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      parsedBody = null;
+    }
+  } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    parsedBody = Object.fromEntries(new URLSearchParams(rawBody).entries());
+  } else {
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      parsedBody = Object.fromEntries(new URLSearchParams(rawBody).entries());
+    }
+  }
+  const payload = asObject(parsedBody);
   if (!payload) {
     return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 });
   }
@@ -167,7 +185,7 @@ export async function POST(
     }).eq('id', event.id);
     await db.from('lead_integrations').update({ last_received_at: new Date().toISOString() }).eq('id', integrationRow.id);
 
-    return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 201 });
+    return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to process lead';
     await db.from('lead_integration_events').update({ status: 'failed', error_message: message }).eq('id', event.id);
