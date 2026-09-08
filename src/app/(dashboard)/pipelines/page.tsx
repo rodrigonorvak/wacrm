@@ -282,6 +282,29 @@ export default function PipelinesPage() {
     setDealFormOpen(true);
   }, [pipelines]);
 
+  const handleIntegratedTemplateSent = useCallback(
+    async (dealId: string) => {
+      const prospectingStage = stages.find(
+        (stage) => stage.name === "Prospecção iniciada",
+      );
+      if (!prospectingStage) return;
+
+      setDeals((current) =>
+        current.map((deal) =>
+          deal.id === dealId
+            ? { ...deal, stage_id: prospectingStage.id, stage: prospectingStage }
+            : deal,
+        ),
+      );
+      const { error } = await supabase
+        .from("deals")
+        .update({ stage_id: prospectingStage.id })
+        .eq("id", dealId);
+      if (error) refreshDeals();
+    },
+    [stages, supabase, refreshDeals],
+  );
+
   async function handleCreatePipeline() {
     const name = newPipelineName.trim();
     if (!name) return;
@@ -701,6 +724,7 @@ export default function PipelinesPage() {
           if (!open) setLeadDetailDeal(null);
         }}
         deal={leadDetailDeal}
+        onTemplateSent={handleIntegratedTemplateSent}
       />
     </div>
   );

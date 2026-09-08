@@ -79,6 +79,11 @@ export function PipelineSettings({
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [leadIntegration, setLeadIntegration] = useState<{
+    id: string;
+    is_active: boolean;
+  } | null>(null);
+  const [updatingIntegration, setUpdatingIntegration] = useState(false);
 
   // Reset form state when the dialog opens or its prop inputs change
   // — legitimate prop-driven sync.
@@ -88,7 +93,18 @@ export function PipelineSettings({
     setName(pipeline.name);
     setLocalStages([...stages].sort((a, b) => a.position - b.position));
     setShowDeleteConfirm(false);
-  }, [open, pipeline, stages]);
+    setLeadIntegration(null);
+    if (pipeline.pipeline_type === "integrated") {
+      void supabase
+        .from("lead_integrations")
+        .select("id, is_active")
+        .eq("pipeline_id", pipeline.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          setLeadIntegration((data as unknown as { id: string; is_active: boolean } | null) ?? null);
+        });
+    }
+  }, [open, pipeline, stages, supabase]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const sensors = useSensors(
@@ -101,6 +117,10 @@ export function PipelineSettings({
     const oldIndex = localStages.findIndex((s) => s.id === active.id);
     const newIndex = localStages.findIndex((s) => s.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
+    if (
+      pipeline.pipeline_type === "integrated" &&
+      (localStages[oldIndex].name === "Novo Lead" || localStages[newIndex].name === "Novo Lead")
+    ) return;
     setLocalStages(arrayMove(localStages, oldIndex, newIndex));
   }
 
@@ -162,6 +182,13 @@ export function PipelineSettings({
   }
 
   async function handleRemoveStage(stageId: string) {
+    if (
+      pipeline.pipeline_type === "integrated" &&
+      localStages.some((stage) => stage.id === stageId && stage.name === "Novo Lead")
+    ) {
+      toast.error("O estágio Novo Lead é obrigatório nesta pipeline integrada.");
+      return;
+    }
     // Refuse to delete if deals still reference the stage (FK would fail).
     const { count } = await supabase
       .from("deals")
@@ -183,6 +210,10 @@ export function PipelineSettings({
   }
 
   async function handleDeletePipeline() {
+    if (leadIntegration?.is_active) {
+      toast.error("Desative o webhook antes de excluir esta pipeline.");
+      return;
+    }
     setDeleting(true);
     // ON DELETE CASCADE handles deals + stages.
     const { error } = await supabase
@@ -197,6 +228,22 @@ export function PipelineSettings({
     onOpenChange(false);
     onPipelinesChanged();
     toast.success(t("toastDeleted"));
+  }
+
+  async function handleDeactivateIntegration() {
+    if (!leadIntegration) return;
+    setUpdatingIntegration(true);
+    const { error } = await supabase
+      .from("lead_integrations")
+      .update({ is_active: false })
+      .eq("id", leadIntegration.id);
+    setUpdatingIntegration(false);
+    if (error) {
+      toast.error("Não foi possível desativar o webhook.");
+      return;
+    }
+    setLeadIntegration({ ...leadIntegration, is_active: false });
+    toast.success("Webhook desativado");
   }
 
   return (
@@ -239,6 +286,25 @@ export function PipelineSettings({
         ) : (
           <>
             <div className="grid gap-4 py-2">
+              {leadIntegration && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <p className="text-sm font-medium text-foreground">Integração Elementor</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Webhook: {leadIntegration.is_active ? "ativo" : "desativado"}
+                  </p>
+                  {leadIntegration.is_active && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeactivateIntegration}
+                      disabled={updatingIntegration}
+                      className="mt-3 border-border bg-transparent text-muted-foreground hover:bg-muted"
+                    >
+                      {updatingIntegration ? "Desativando..." : "Desativar webhook"}
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label className="text-muted-foreground">{t("pipelineName")}</Label>
                 <Input
@@ -275,6 +341,7 @@ export function PipelineSettings({
                             setLocalStages(updated);
                           }}
                           onRemove={() => handleRemoveStage(stage.id)}
+                          locked={pipeline.pipeline_type === "integrated" && stage.name === "Novo Lead"}
                           colors={STAGE_COLORS}
                           t={t}
                         />
@@ -338,6 +405,7 @@ export function PipelineSettings({
             <DialogFooter className="border-border bg-popover/50">
               <Button
                 onClick={() => setShowDeleteConfirm(true)}
+                disabled={leadIntegration?.is_active === true}
                 className="mr-auto bg-red-600 text-white hover:bg-red-700"
               >
                 {t("deletePipeline")}
@@ -369,6 +437,7 @@ function SortableStageRow({
   onNameChange,
   onColorChange,
   onRemove,
+  locked,
   colors,
   t,
 }: {
@@ -376,12 +445,13 @@ function SortableStageRow({
   onNameChange: (v: string) => void;
   onColorChange: (v: string) => void;
   onRemove: () => void;
+  locked: boolean;
   colors: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: stage.id });
+    useSortable({ id: stage.id, disabled: locked });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -399,21 +469,24 @@ function SortableStageRow({
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        disabled={locked}
+        className={`touch-none text-muted-foreground ${locked ? "cursor-not-allowed opacity-40" : "cursor-grab hover:text-foreground active:cursor-grabbing"}`}
         aria-label={t("dragToReorder")}
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <ColorSwatch value={stage.color} onChange={onColorChange} colors={colors} t={t} />
+      <ColorSwatch value={stage.color} onChange={onColorChange} colors={colors} t={t} disabled={locked} />
       <Input
         value={stage.name}
         onChange={(e) => onNameChange(e.target.value)}
+        disabled={locked}
         className="h-7 flex-1 border-transparent bg-transparent text-sm text-foreground focus:border-border"
       />
       <Button
         variant="ghost"
         size="icon-xs"
         onClick={onRemove}
+        disabled={locked}
         className="text-muted-foreground hover:text-red-400"
       >
         <Trash2 className="h-3 w-3" />
@@ -426,11 +499,13 @@ function ColorSwatch({
   value,
   onChange,
   colors,
+  disabled,
   t,
 }: {
   value: string;
   onChange: (v: string) => void;
   colors: string[];
+  disabled: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
@@ -439,8 +514,9 @@ function ColorSwatch({
     <div className="relative">
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="h-4 w-4 rounded-full border border-border"
+        className="h-4 w-4 rounded-full border border-border disabled:cursor-not-allowed disabled:opacity-40"
         style={{ backgroundColor: value }}
         aria-label={t("changeColor")}
       />
@@ -448,7 +524,7 @@ function ColorSwatch({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-6 z-20 flex flex-wrap gap-1 rounded-lg border border-border bg-popover p-2 shadow-lg w-36">
-            {colors.map((c) => (
+            {!disabled && colors.map((c) => (
               <button
                 key={c}
                 type="button"

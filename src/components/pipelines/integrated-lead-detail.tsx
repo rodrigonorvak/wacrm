@@ -31,6 +31,12 @@ type ContactNote = {
 };
 
 type Conversation = { id: string };
+type ConversationMessage = {
+  id: string;
+  content_text: string | null;
+  sender_type: string;
+  created_at: string;
+};
 
 type Tab = "whatsapp" | "notes" | "history";
 
@@ -38,6 +44,7 @@ interface IntegratedLeadDetailProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   deal: Deal | null;
+  onTemplateSent: (dealId: string) => void;
 }
 
 function displayValue(value: unknown): string {
@@ -50,6 +57,7 @@ export function IntegratedLeadDetail({
   open,
   onOpenChange,
   deal,
+  onTemplateSent,
 }: IntegratedLeadDetailProps) {
   const supabase = createClient();
   const { accountId, user } = useAuth();
@@ -57,6 +65,7 @@ export function IntegratedLeadDetail({
   const [event, setEvent] = useState<LeadEvent | null>(null);
   const [notes, setNotes] = useState<ContactNote[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [newNote, setNewNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
@@ -66,7 +75,7 @@ export function IntegratedLeadDetail({
   useEffect(() => {
     if (!open || !deal?.id || !deal.contact_id) return;
     let cancelled = false;
-    // The loading flag mirrors the lifecycle of the async panel fetch.
+    // The loading flag mirrors the lifecycle of this async panel fetch.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     void Promise.all([
@@ -89,17 +98,54 @@ export function IntegratedLeadDetail({
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle(),
-    ]).then(([eventResult, notesResult, conversationResult]) => {
+    ]).then(async ([eventResult, notesResult, conversationResult]) => {
       if (cancelled) return;
       setEvent((eventResult.data as unknown as LeadEvent | null) ?? null);
       setNotes((notesResult.data as unknown as ContactNote[]) ?? []);
       setConversation((conversationResult.data as unknown as Conversation | null) ?? null);
+      const conversationRow = conversationResult.data as unknown as Conversation | null;
+      if (conversationRow) {
+        const { data: messageRows } = await supabase
+          .from("messages")
+          .select("id, content_text, sender_type, created_at")
+          .eq("conversation_id", conversationRow.id)
+          .order("created_at", { ascending: false })
+          .limit(6);
+        if (!cancelled) {
+          setMessages((messageRows as unknown as ConversationMessage[] ?? []).reverse());
+        }
+      } else {
+        setMessages([]);
+      }
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
   }, [open, deal, supabase]);
+
+  useEffect(() => {
+    if (!open || !conversation?.id) return;
+    const channel = supabase
+      .channel(`integrated-lead-${conversation.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          const message = payload.new as ConversationMessage;
+          setMessages((current) => [...current, message].slice(-6));
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [open, conversation, supabase]);
 
   async function addNote() {
     if (!newNote.trim() || !deal?.contact_id || !accountId || !user) return;
@@ -152,6 +198,7 @@ export function IntegratedLeadDetail({
     }
     setTemplatePickerOpen(false);
     setConversation({ id: result.conversation_id });
+    onTemplateSent(deal.id);
     toast.success("Template enviado");
   }
 
@@ -223,6 +270,19 @@ export function IntegratedLeadDetail({
                       <Send className="h-4 w-4" />
                       {sendingTemplate ? "Enviando..." : "Iniciar com template"}
                     </Button>
+                  )}
+                  {messages.length > 0 && (
+                    <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                      <p className="text-xs font-medium text-muted-foreground">Mensagens recentes</p>
+                      {messages.map((message) => (
+                        <div key={message.id} className="rounded-md bg-background p-2 text-sm">
+                          <p className="text-foreground">{message.content_text || "(mídia)"}</p>
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {message.sender_type === "contact" ? "Lead" : "Equipe"} · {new Date(message.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ) : tab === "notes" ? (
