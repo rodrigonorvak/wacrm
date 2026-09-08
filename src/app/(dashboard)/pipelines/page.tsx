@@ -7,6 +7,10 @@ import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
+import {
+  generateLeadIntegrationToken,
+  hashLeadIntegrationToken,
+} from "@/lib/integrations/lead-token";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GitBranch, Plus, ChevronDown, Settings } from "lucide-react";
+import { GitBranch, Plus, ChevronDown, Settings, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
@@ -45,6 +49,22 @@ const SPEC_DEFAULT_STAGES = [
   { name: "Won", color: "#22c55e", position: 4 }, // green
 ];
 
+const INTEGRATED_DEFAULT_STAGES = [
+  { name: "Novo Lead", color: "#3b82f6", position: 0 },
+  { name: "Prospecção iniciada", color: "#eab308", position: 1 },
+  { name: "Reunião", color: "#f97316", position: 2 },
+  { name: "Contrato a ser assinado", color: "#8b5cf6", position: 3 },
+  { name: "Contrato pago", color: "#22c55e", position: 4 },
+];
+
+const ELEMENTOR_MAPPING_FIELDS = [
+  { key: "name", label: "Nome", targetType: "contact", targetKey: "name", required: true },
+  { key: "phone", label: "Telefone", targetType: "contact", targetKey: "phone", required: true },
+  { key: "email", label: "E-mail", targetType: "contact", targetKey: "email", required: false },
+  { key: "company", label: "Empresa", targetType: "contact", targetKey: "company", required: false },
+  { key: "message", label: "Mensagem", targetType: "deal", targetKey: "notes", required: false },
+] as const;
+
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
   const supabase = createClient();
@@ -61,7 +81,16 @@ export default function PipelinesPage() {
   // Dialog / sheet state
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
+  const [newPipelineType, setNewPipelineType] = useState<"standard" | "integrated">("standard");
   const [creating, setCreating] = useState(false);
+  const [createdWebhookUrl, setCreatedWebhookUrl] = useState<string | null>(null);
+  const [elementorFieldIds, setElementorFieldIds] = useState<Record<string, string>>({
+    name: "name",
+    phone: "phone",
+    email: "email",
+    company: "company",
+    message: "message",
+  });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Deal form state is lifted here so both the top-bar "Add Deal" and
@@ -250,6 +279,13 @@ export default function PipelinesPage() {
   async function handleCreatePipeline() {
     const name = newPipelineName.trim();
     if (!name) return;
+    if (
+      newPipelineType === "integrated" &&
+      (!elementorFieldIds.name.trim() || !elementorFieldIds.phone.trim())
+    ) {
+      toast.error("Informe os IDs dos campos de nome e telefone do Elementor.");
+      return;
+    }
     setCreating(true);
 
     const {
@@ -269,7 +305,12 @@ export default function PipelinesPage() {
 
     const { data: pipeline, error } = await supabase
       .from("pipelines")
-      .insert({ user_id: user.id, account_id: accountId, name })
+      .insert({
+        user_id: user.id,
+        account_id: accountId,
+        name,
+        pipeline_type: newPipelineType,
+      })
       .select()
       .single();
 
@@ -279,15 +320,73 @@ export default function PipelinesPage() {
       return;
     }
 
-    const stagesPayload = SPEC_DEFAULT_STAGES.map((s) => ({
+    const defaultStages = newPipelineType === "integrated"
+      ? INTEGRATED_DEFAULT_STAGES
+      : SPEC_DEFAULT_STAGES;
+    const stagesPayload = defaultStages.map((s) => ({
       pipeline_id: pipeline.id,
       name: s.name,
       color: s.color,
       position: s.position,
     }));
-    await supabase.from("pipeline_stages").insert(stagesPayload);
+    const { error: stagesError } = await supabase
+      .from("pipeline_stages")
+      .insert(stagesPayload);
+    if (stagesError) {
+      await supabase.from("pipelines").delete().eq("id", pipeline.id);
+      toast.error(t("toastFailedCreatePipeline"));
+      setCreating(false);
+      return;
+    }
+
+    if (newPipelineType === "integrated") {
+      const token = generateLeadIntegrationToken();
+      const tokenHash = await hashLeadIntegrationToken(token);
+      const { data: integration, error: integrationError } = await supabase
+        .from("lead_integrations")
+        .insert({
+          account_id: accountId,
+          pipeline_id: pipeline.id,
+          provider: "elementor",
+          name: `${name} - Elementor`,
+          token_hash: tokenHash,
+          token_prefix: token.slice(0, 11),
+          created_by: user.id,
+        });
+      if (integrationError || !integration) {
+        await supabase.from("pipelines").delete().eq("id", pipeline.id);
+        toast.error(t("toastFailedCreatePipeline"));
+        setCreating(false);
+        return;
+      }
+      const integrationId = (integration as unknown as { id: string }).id;
+
+      const mappingRows = ELEMENTOR_MAPPING_FIELDS
+        .filter((field) => elementorFieldIds[field.key]?.trim())
+        .map((field) => ({
+          integration_id: integrationId,
+          source_field_id: elementorFieldIds[field.key].trim(),
+          source_label: field.label,
+          target_type: field.targetType,
+          target_key: field.targetKey,
+          is_required: field.required,
+        }));
+      const { error: mappingsError } = await supabase
+        .from("lead_integration_mappings")
+        .insert(mappingRows);
+      if (mappingsError) {
+        await supabase.from("pipelines").delete().eq("id", pipeline.id);
+        toast.error(t("toastFailedCreatePipeline"));
+        setCreating(false);
+        return;
+      }
+      setCreatedWebhookUrl(
+        `${window.location.origin}/api/integrations/elementor/${pipeline.id}/${token}`,
+      );
+    }
 
     setNewPipelineName("");
+    setNewPipelineType("standard");
     setNewPipelineOpen(false);
     setSelectedPipelineId(pipeline.id);
     await refreshPipelines();
@@ -371,11 +470,27 @@ export default function PipelinesPage() {
             variant="outline"
             canAct={canEditSettings}
             gateReason="create pipelines"
-            onClick={() => setNewPipelineOpen(true)}
+            onClick={() => {
+              setNewPipelineType("standard");
+              setNewPipelineOpen(true);
+            }}
             className="border-border bg-card text-foreground hover:bg-muted"
           >
             <Plus className="mr-1 h-4 w-4" />
             {t("addPipeline")}
+          </GatedButton>
+          <GatedButton
+            variant="outline"
+            canAct={canEditSettings}
+            gateReason="create integrated pipelines"
+            onClick={() => {
+              setNewPipelineType("integrated");
+              setNewPipelineOpen(true);
+            }}
+            className="border-primary/40 bg-card text-primary hover:bg-primary/10"
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Pipeline integrada
           </GatedButton>
           <GatedButton
             canAct={canCreateDeals}
@@ -403,7 +518,10 @@ export default function PipelinesPage() {
           <GatedButton
             canAct={canEditSettings}
             gateReason="create pipelines"
-            onClick={() => setNewPipelineOpen(true)}
+            onClick={() => {
+              setNewPipelineType("standard");
+              setNewPipelineOpen(true);
+            }}
             className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="mr-1 h-4 w-4" />
@@ -430,6 +548,22 @@ export default function PipelinesPage() {
             <DialogTitle className="text-popover-foreground">{t("newPipeline")}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
+            <div className="mb-4 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={newPipelineType === "standard" ? "default" : "outline"}
+                onClick={() => setNewPipelineType("standard")}
+              >
+                Pipeline padrão
+              </Button>
+              <Button
+                type="button"
+                variant={newPipelineType === "integrated" ? "default" : "outline"}
+                onClick={() => setNewPipelineType("integrated")}
+              >
+                Pipeline integrada
+              </Button>
+            </div>
             <Label className="text-muted-foreground">{t("pipelineName")}</Label>
             <Input
               value={newPipelineName}
@@ -441,8 +575,38 @@ export default function PipelinesPage() {
               }}
             />
             <p className="mt-2 text-xs text-muted-foreground">
-              {t("defaultStagesDesc")}
+              {newPipelineType === "integrated"
+                ? "Cria Novo Lead, Prospecção iniciada, Reunião, Contrato a ser assinado e Contrato pago."
+                : t("defaultStagesDesc")}
             </p>
+            {newPipelineType === "integrated" && (
+              <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/40 p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">IDs dos campos do Elementor</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Use o Field ID configurado em cada campo do formulário. Esses valores podem ser alterados depois.
+                  </p>
+                </div>
+                {ELEMENTOR_MAPPING_FIELDS.map((field) => (
+                  <div key={field.key} className="grid grid-cols-[1fr_1.2fr] items-center gap-3">
+                    <Label className="text-xs text-muted-foreground">
+                      {field.label}{field.required ? " *" : ""}
+                    </Label>
+                    <Input
+                      value={elementorFieldIds[field.key] ?? ""}
+                      onChange={(event) =>
+                        setElementorFieldIds((current) => ({
+                          ...current,
+                          [field.key]: event.target.value,
+                        }))
+                      }
+                      placeholder={field.key}
+                      className="h-8 bg-background border-border text-foreground"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <DialogFooter className="bg-popover/50 border-border">
             <Button
@@ -460,6 +624,41 @@ export default function PipelinesPage() {
               {creating ? t("creating") : t("createPipelineBtn")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={createdWebhookUrl !== null}
+        onOpenChange={(open) => {
+          if (!open) setCreatedWebhookUrl(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">
+              Pipeline integrada criada
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Copie esta URL e use-a na ação Webhook do formulário do Elementor. Ela não será exibida novamente.
+          </p>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3">
+            <code className="min-w-0 flex-1 break-all text-xs text-foreground">
+              {createdWebhookUrl}
+            </code>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              title="Copiar webhook"
+              onClick={() => {
+                if (createdWebhookUrl) navigator.clipboard.writeText(createdWebhookUrl);
+                toast.success("Webhook copiado");
+              }}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -356,6 +356,49 @@ export interface Pipeline {
   created_at: string;
 }
 
+export type LeadIntegrationProvider = 'elementor';
+export type LeadIntegrationEventStatus = 'received' | 'processed' | 'failed';
+export type LeadIntegrationMappingTarget =
+  | 'contact'
+  | 'contact_custom_field'
+  | 'deal'
+  | 'source_metadata';
+
+export interface LeadIntegration {
+  id: string;
+  account_id: string;
+  pipeline_id: string;
+  provider: LeadIntegrationProvider;
+  name: string;
+  token_prefix: string;
+  is_active: boolean;
+  last_received_at?: string | null;
+  created_by?: string | null;
+  created_at: string;
+}
+
+export interface LeadIntegrationMapping {
+  id: string;
+  integration_id: string;
+  source_field_id: string;
+  source_label?: string | null;
+  target_type: LeadIntegrationMappingTarget;
+  target_key: string;
+  is_required: boolean;
+  created_at: string;
+}
+
+export interface LeadIntegrationEvent {
+  id: string;
+  integration_id: string;
+  external_event_id?: string | null;
+  payload: Record<string, unknown>;
+  status: LeadIntegrationEventStatus;
+  error_message?: string | null;
+  received_at: string;
+  processed_at?: string | null;
+}
+
 export interface PipelineStage {
   id: string;
   pipeline_id: string;
