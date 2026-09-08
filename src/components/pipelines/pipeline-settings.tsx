@@ -36,6 +36,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import {
+  generateLeadIntegrationToken,
+  hashLeadIntegrationToken,
+} from "@/lib/integrations/lead-token";
 
 const STAGE_COLORS = [
   "#3b82f6",
@@ -84,6 +88,14 @@ export function PipelineSettings({
     is_active: boolean;
   } | null>(null);
   const [updatingIntegration, setUpdatingIntegration] = useState(false);
+  const [regeneratedWebhookUrl, setRegeneratedWebhookUrl] = useState<string | null>(null);
+  const [integrationEvents, setIntegrationEvents] = useState<Array<{
+    id: string;
+    status: string;
+    external_event_id: string | null;
+    error_message: string | null;
+    received_at: string;
+  }>>([]);
 
   // Reset form state when the dialog opens or its prop inputs change
   // — legitimate prop-driven sync.
@@ -94,6 +106,7 @@ export function PipelineSettings({
     setLocalStages([...stages].sort((a, b) => a.position - b.position));
     setShowDeleteConfirm(false);
     setLeadIntegration(null);
+    setIntegrationEvents([]);
     if (pipeline.pipeline_type === "integrated") {
       void supabase
         .from("lead_integrations")
@@ -101,7 +114,18 @@ export function PipelineSettings({
         .eq("pipeline_id", pipeline.id)
         .maybeSingle()
         .then(({ data }) => {
-          setLeadIntegration((data as unknown as { id: string; is_active: boolean } | null) ?? null);
+          const integration = (data as unknown as { id: string; is_active: boolean } | null) ?? null;
+          setLeadIntegration(integration);
+          if (!integration) return;
+          void supabase
+            .from("lead_integration_events")
+            .select("id, status, external_event_id, error_message, received_at")
+            .eq("integration_id", integration.id)
+            .order("received_at", { ascending: false })
+            .limit(8)
+            .then(({ data: events }) => {
+              setIntegrationEvents((events as unknown as typeof integrationEvents) ?? []);
+            });
         });
     }
   }, [open, pipeline, stages, supabase]);
@@ -246,6 +270,26 @@ export function PipelineSettings({
     toast.success("Webhook desativado");
   }
 
+  async function handleRegenerateWebhook() {
+    if (!leadIntegration) return;
+    setUpdatingIntegration(true);
+    const token = generateLeadIntegrationToken();
+    const tokenHash = await hashLeadIntegrationToken(token);
+    const { error } = await supabase
+      .from("lead_integrations")
+      .update({ token_hash: tokenHash, token_prefix: token.slice(0, 11) })
+      .eq("id", leadIntegration.id);
+    setUpdatingIntegration(false);
+    if (error) {
+      toast.error("Não foi possível regenerar o webhook.");
+      return;
+    }
+    setRegeneratedWebhookUrl(
+      `${window.location.origin}/api/integrations/elementor/${pipeline.id}/${token}`,
+    );
+    toast.success("Webhook regenerado");
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-popover border-border max-h-[85vh] overflow-y-auto">
@@ -293,15 +337,26 @@ export function PipelineSettings({
                     Webhook: {leadIntegration.is_active ? "ativo" : "desativado"}
                   </p>
                   {leadIntegration.is_active && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDeactivateIntegration}
-                      disabled={updatingIntegration}
-                      className="mt-3 border-border bg-transparent text-muted-foreground hover:bg-muted"
-                    >
-                      {updatingIntegration ? "Desativando..." : "Desativar webhook"}
-                    </Button>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeactivateIntegration}
+                        disabled={updatingIntegration}
+                        className="border-border bg-transparent text-muted-foreground hover:bg-muted"
+                      >
+                        {updatingIntegration ? "Desativando..." : "Desativar webhook"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRegenerateWebhook}
+                        disabled={updatingIntegration}
+                        className="border-border bg-transparent text-muted-foreground hover:bg-muted"
+                      >
+                        Regenerar URL
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -428,6 +483,34 @@ export function PipelineSettings({
           </>
         )}
       </DialogContent>
+      <Dialog
+        open={regeneratedWebhookUrl !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setRegeneratedWebhookUrl(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg border-border bg-popover">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">Novo webhook gerado</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            A URL anterior foi invalidada. Copie esta URL agora; ela não será exibida novamente.
+          </p>
+          <div className="rounded-lg border border-border bg-muted p-3">
+            <code className="break-all text-xs text-foreground">{regeneratedWebhookUrl}</code>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (regeneratedWebhookUrl) navigator.clipboard.writeText(regeneratedWebhookUrl);
+                toast.success("Webhook copiado");
+              }}
+            >
+              Copiar URL
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
