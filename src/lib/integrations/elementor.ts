@@ -11,10 +11,12 @@ export function readElementorField(
   payload: JsonObject,
   fieldId: string,
 ): string | null {
+  const fieldList = Array.isArray(payload.fields) ? payload.fields : [];
   const candidates = [
     payload[fieldId],
     asObject(payload.fields)?.[fieldId],
     asObject(payload.data)?.[fieldId],
+    ...fieldList.filter((field) => asObject(field)?.id === fieldId),
   ];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.trim()) return candidate.trim();

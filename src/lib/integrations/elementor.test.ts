@@ -20,6 +20,15 @@ describe("Elementor payload helpers", () => {
     expect(readElementorField({ tags: { value: ["A", "B"] } }, "tags")).toBe("A, B");
   });
 
+  it("reads an Elementor field list", () => {
+    expect(
+      readElementorField(
+        { fields: [{ id: "field_phone", value: "+5511999999999" }] },
+        "field_phone",
+      ),
+    ).toBe("+5511999999999");
+  });
+
   it("returns null for empty or missing fields", () => {
     expect(readElementorField({ nome: "   " }, "nome")).toBeNull();
     expect(readElementorField({}, "nome")).toBeNull();
