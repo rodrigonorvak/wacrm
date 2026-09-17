@@ -40,4 +40,19 @@ describe("Elementor payload helpers", () => {
     expect(getElementorEventId({ id: "row-1" })).toBe("row-1");
     expect(getElementorEventId({})).toBeNull();
   });
+
+  it("reads Elementor label keys when field IDs are not sent", () => {
+    const payload = {
+      Nome: "Rodrigo de Lima",
+      WhatsApp: "24999877699",
+      "No Label empresa": "Trade Cursos",
+      "Selecionar segmento": "Escola",
+      "Selecionar faturamento": "R$ 10.000 a R$ 50.000",
+    };
+    expect(readElementorField(payload, "name")).toBe("Rodrigo de Lima");
+    expect(readElementorField(payload, "phone")).toBe("24999877699");
+    expect(readElementorField(payload, "empresa")).toBe("Trade Cursos");
+    expect(readElementorField(payload, "segmento")).toBe("Escola");
+    expect(readElementorField(payload, "faturamento")).toBe("R$ 10.000 a R$ 50.000");
+  });
 });
