@@ -26,6 +26,10 @@ function databaseError(error: { code?: string; message?: string }) {
   return null;
 }
 
+function hasValidEncryptionKey() {
+  return /^[0-9a-fA-F]{64}$/.test(process.env.ENCRYPTION_KEY ?? '');
+}
+
 export async function GET() {
   try {
     const { supabase, accountId } = await requireRole('admin');
@@ -71,6 +75,12 @@ export async function POST(request: Request) {
     }
     if (sourceType === 'meta_instant_form' && !pageId) {
       return bad('meta_page_id is required for Meta Instant Forms');
+    }
+    if ((accessToken || pageAccessToken) && !hasValidEncryptionKey()) {
+      return NextResponse.json(
+        { error: 'A ENCRYPTION_KEY do ambiente de produção está ausente ou inválida. Configure uma chave hexadecimal de 64 caracteres antes de salvar credenciais.' },
+        { status: 500 },
+      );
     }
 
     const { data: pipeline } = await supabase
