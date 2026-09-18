@@ -10,6 +10,22 @@ function bad(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
+function databaseError(error: { code?: string; message?: string }) {
+  if (error.code === '42P01' || error.code === '42703' || error.code === 'PGRST204') {
+    return NextResponse.json(
+      { error: 'A estrutura do banco está desatualizada. Aplique as migrations 043_meta_integrations.sql e 044_meta_instant_form_connection.sql no Supabase.' },
+      { status: 500 },
+    );
+  }
+  if (error.code === '42P10') {
+    return NextResponse.json(
+      { error: 'A migration 043_meta_integrations.sql ainda não foi aplicada no Supabase.' },
+      { status: 500 },
+    );
+  }
+  return null;
+}
+
 export async function GET() {
   try {
     const { supabase, accountId } = await requireRole('admin');
@@ -73,12 +89,17 @@ export async function POST(request: Request) {
     if (!stages || stages.length !== 2) return bad('Selected stages must belong to the selected pipeline');
     if (scheduleStageId === purchaseStageId) return bad('Schedule and Purchase stages must be different');
 
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from('meta_integrations')
       .select('id, access_token_encrypted, page_access_token_encrypted')
       .eq('account_id', accountId)
       .eq('source_type', sourceType)
       .maybeSingle();
+    if (existingError) {
+      const response = databaseError(existingError);
+      if (response) return response;
+      throw existingError;
+    }
 
     const encryptedToken = accessToken
       ? encrypt(accessToken)
@@ -117,7 +138,12 @@ export async function POST(request: Request) {
       )
       .single();
 
-    if (error || !data) throw error ?? new Error('Failed to save Meta integration');
+    if (error) {
+      const response = databaseError(error);
+      if (response) return response;
+      throw error;
+    }
+    if (!data) throw new Error('Failed to save Meta integration');
     return NextResponse.json({ integration: data });
   } catch (error) {
     return toErrorResponse(error);

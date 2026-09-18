@@ -246,7 +246,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
               <p className="text-xs text-muted-foreground">Novo Lead envia o evento Lead automaticamente e não pode ser escolhido nesta configuração.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2"><Label>Dataset ID</Label><Input value={datasetId} onChange={(event) => setDatasetId(event.target.value)} disabled={!canEditSettings} autoComplete="off" placeholder="ID do conjunto de dados" /></div>
-                <div className="grid gap-2"><Label>Access Token</Label><Input type="password" value={accessToken} onChange={(event) => setAccessToken(event.target.value)} disabled={!canEditSettings} placeholder={selectedIntegration ? "Token salvo; informe apenas para substituir" : "Cole o token da Meta"} /></div>
+                  <div className="grid gap-2"><Label>Access Token</Label><Input type="password" autoComplete="new-password" value={accessToken} onChange={(event) => setAccessToken(event.target.value)} disabled={!canEditSettings} placeholder={selectedIntegration ? "Token salvo; informe apenas para substituir" : "Cole o token da Meta"} /></div>
               </div>
               {canEditSettings ? (
                 <div className="flex flex-wrap gap-2">
