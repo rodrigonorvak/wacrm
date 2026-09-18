@@ -40,7 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { AUTOMATION_TEMPLATES, type TemplateSlug } from "@/lib/automations/templates"
+import type { TemplateSlug } from "@/lib/automations/templates"
 import { triggerMeta, formatRelative } from "@/lib/automations/trigger-meta"
 import { cn } from "@/lib/utils"
 
@@ -56,6 +56,25 @@ const TEMPLATE_ICON: Record<TemplateSlug, typeof Zap> = {
   out_of_office: Clock,
   lead_qualifier: Users,
   follow_up_reminder: PhoneCall,
+}
+
+const TEMPLATE_COPY: Record<TemplateSlug, { name: string; description: string }> = {
+  welcome_message: {
+    name: 'Mensagem de boas-vindas',
+    description: 'Responde automaticamente aos primeiros contatos com uma saudação.',
+  },
+  out_of_office: {
+    name: 'Fora do expediente',
+    description: 'Responde automaticamente fora do horário para ninguém ficar esperando.',
+  },
+  lead_qualifier: {
+    name: 'Qualificação de leads',
+    description: 'Faz perguntas de qualificação para filtrar os leads recebidos.',
+  },
+  follow_up_reminder: {
+    name: 'Lembrete de acompanhamento',
+    description: 'Envia um lembrete se o contato não responder em até 24 horas.',
+  },
 }
 
 export default function AutomationsPage() {
@@ -183,7 +202,7 @@ export default function AutomationsPage() {
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground">{t("templatesTitle")}</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             {TEMPLATE_ORDER.map((slug) => {
-              const t = AUTOMATION_TEMPLATES[slug]
+              const copy = TEMPLATE_COPY[slug]
               const Icon = TEMPLATE_ICON[slug]
               return (
                 <button
@@ -194,8 +213,8 @@ export default function AutomationsPage() {
                   <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <div className="text-sm font-semibold text-foreground">{t.name}</div>
-                  <p className="mt-1 text-xs text-muted-foreground">{t.description}</p>
+                  <div className="text-sm font-semibold text-foreground">{copy.name}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{copy.description}</p>
                 </button>
               )
             })}
