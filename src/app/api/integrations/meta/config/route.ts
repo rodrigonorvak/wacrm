@@ -30,6 +30,10 @@ function hasValidEncryptionKey() {
   return /^[0-9a-fA-F]{64}$/.test(process.env.ENCRYPTION_KEY ?? '');
 }
 
+function encryptionKeyLength() {
+  return (process.env.ENCRYPTION_KEY ?? '').length;
+}
+
 export async function GET() {
   try {
     const { supabase, accountId } = await requireRole('admin');
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
     }
     if ((accessToken || pageAccessToken) && !hasValidEncryptionKey()) {
       return NextResponse.json(
-        { error: 'A ENCRYPTION_KEY do ambiente de produção está ausente ou inválida. Configure uma chave hexadecimal de 64 caracteres antes de salvar credenciais.' },
+        { error: `A ENCRYPTION_KEY do ambiente de produção está ausente ou inválida (o servidor detectou ${encryptionKeyLength()} caracteres). Configure uma chave hexadecimal de 64 caracteres antes de salvar credenciais.` },
         { status: 500 },
       );
     }
