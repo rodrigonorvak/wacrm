@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,17 @@ function MetaBrandIcon() {
 }
 
 export function IntegrationsOverview({ onOpenMeta }: { onOpenMeta: () => void }) {
+  const [metaConnected, setMetaConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch('/api/integrations/meta/config', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((result: { integrations?: Array<{ is_active?: boolean }> }) => {
+        setMetaConnected(result.integrations?.some((integration) => integration.is_active === true) ?? false);
+      })
+      .catch(() => setMetaConnected(false));
+  }, []);
+
   return (
     <section className="max-w-3xl animate-in fade-in-50 duration-200">
       <SettingsPanelHead
@@ -33,6 +45,10 @@ export function IntegrationsOverview({ onOpenMeta }: { onOpenMeta: () => void })
             <span className="min-w-0 flex-1">
               <span className="block font-medium text-foreground">Meta</span>
               <span className="mt-1 block text-sm text-muted-foreground">Conversões, Elementor e Meta Instant Forms</span>
+              <span className={metaConnected ? 'mt-1 flex items-center gap-1.5 text-xs text-emerald-600' : 'mt-1 flex items-center gap-1.5 text-xs text-muted-foreground'}>
+                <span className={metaConnected ? 'size-1.5 rounded-full bg-emerald-500' : 'size-1.5 rounded-full bg-muted-foreground'} aria-hidden="true" />
+                {metaConnected === null ? 'Verificando...' : metaConnected ? 'Connected' : 'Precisa ser reconectado'}
+              </span>
             </span>
             <span className="flex size-8 items-center justify-center rounded-lg text-muted-foreground" aria-hidden="true">
               <ArrowRight className="size-4" />
