@@ -31,6 +31,11 @@ interface WhatsAppStatus {
   connected: boolean;
 }
 
+interface MetaStatus {
+  configured: boolean;
+  connected: boolean;
+}
+
 export function SettingsOverview({
   onSelect,
 }: {
@@ -51,9 +56,11 @@ export function SettingsOverview({
   // from blanking the rest of the landing.
   const [whatsapp, setWhatsapp] = useState<WhatsAppStatus | null>(null);
   const [whatsappLoading, setWhatsappLoading] = useState(true);
+  const [meta, setMeta] = useState<MetaStatus | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !accountId) return;
+    if (!user?.id || !accountId) return;
     let cancelled = false;
     const supabase = createClient();
     const userId = user.id;
@@ -136,6 +143,25 @@ export function SettingsOverview({
       setWhatsappLoading(false);
     })();
 
+    // Meta configuration status — account-scoped and read through the
+    // same member-visible Supabase policy as the other settings tiles.
+    (async () => {
+      setMetaLoading(true);
+      const result = await supabase
+        .from('meta_integrations')
+        .select('is_active')
+        .eq('account_id', acctId)
+        .limit(10);
+      if (cancelled) return;
+      const rows = result.data ?? [];
+      const configured = rows.length > 0;
+      setMeta({
+        configured,
+        connected: rows.some((row) => row.is_active === true),
+      });
+      setMetaLoading(false);
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -164,6 +190,21 @@ export function SettingsOverview({
       subtitle: !whatsapp?.configured ? (
         t('notSetup')
       ) : whatsapp.connected ? (
+        <>
+          <StatusDot tone="ok" /> {t('connected')}
+        </>
+      ) : (
+        <>
+          <StatusDot tone="muted" /> {t('needsReconnecting')}
+        </>
+      ),
+    },
+    {
+      section: 'meta-integrations',
+      loading: metaLoading,
+      subtitle: !meta?.configured ? (
+        t('notSetup')
+      ) : meta.connected ? (
         <>
           <StatusDot tone="ok" /> {t('connected')}
         </>

@@ -4,6 +4,7 @@ import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import { hashLeadIntegrationToken } from '@/lib/integrations/lead-token';
 import { asObject, getElementorEventId, readElementorField } from '@/lib/integrations/elementor';
+import { sendMetaEvent } from '@/lib/integrations/meta-events';
 
 type Mapping = {
   source_field_id: string;
@@ -184,6 +185,16 @@ export async function POST(
       deal_id: deal.id,
     }).eq('id', event.id);
     await db.from('lead_integrations').update({ last_received_at: new Date().toISOString() }).eq('id', integrationRow.id);
+
+    await sendMetaEvent({
+      accountId: integrationRow.account_id,
+      pipelineId: integrationRow.pipeline_id,
+      dealId: deal.id,
+      contactId,
+      stageId: deal.stage_id,
+      eventName: 'Lead',
+      value: 0,
+    });
 
     return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 200 });
   } catch (error) {

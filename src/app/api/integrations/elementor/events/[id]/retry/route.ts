@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/account';
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { readElementorField, type JsonObject } from '@/lib/integrations/elementor';
+import { sendMetaEvent } from '@/lib/integrations/meta-events';
 
 type Mapping = { source_field_id: string; target_key: string; target_type: string; is_required: boolean };
 
@@ -130,6 +131,15 @@ export async function POST(
       contact_id: contactId,
       deal_id: deal.id,
     }).eq('id', id);
+    await sendMetaEvent({
+      accountId,
+      pipelineId: integration.pipeline_id,
+      dealId: deal.id,
+      contactId,
+      stageId: deal.stage_id,
+      eventName: 'Lead',
+      value: 0,
+    });
     return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to retry event';

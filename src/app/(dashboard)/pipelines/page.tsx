@@ -8,6 +8,7 @@ import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
 import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
+import { sendMetaEventForStage } from "@/lib/integrations/meta-events";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
@@ -275,9 +276,22 @@ export default function PipelinesPage() {
       if (error) {
         toast.error(t("toastFailedMoveDeal"));
         refreshDeals();
+        return;
+      }
+      const movedDeal = deals.find((deal) => deal.id === dealId);
+      if (movedDeal && accountId && movedDeal.contact_id) {
+        void sendMetaEventForStage({
+          accountId,
+          pipelineId: movedDeal.pipeline_id,
+          dealId: movedDeal.id,
+          contactId: movedDeal.contact_id,
+          stageId: newStageId,
+          value: Number(movedDeal.value ?? 0),
+          currency: movedDeal.currency,
+        });
       }
     },
-    [supabase, refreshDeals, t],
+    [supabase, refreshDeals, t, deals, accountId],
   );
 
   const handleAddDeal = useCallback(

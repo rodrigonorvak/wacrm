@@ -87,6 +87,12 @@ export function PipelineSettings({
     id: string;
     is_active: boolean;
   } | null>(null);
+  const [metaIntegration, setMetaIntegration] = useState<{
+    id: string;
+    is_active: boolean;
+    schedule_stage_id: string | null;
+    purchase_stage_id: string | null;
+  } | null>(null);
   const [updatingIntegration, setUpdatingIntegration] = useState(false);
   const [regeneratedWebhookUrl, setRegeneratedWebhookUrl] = useState<string | null>(null);
   const [integrationEvents, setIntegrationEvents] = useState<Array<{
@@ -106,6 +112,7 @@ export function PipelineSettings({
     setLocalStages([...stages].sort((a, b) => a.position - b.position));
     setShowDeleteConfirm(false);
     setLeadIntegration(null);
+    setMetaIntegration(null);
     setIntegrationEvents([]);
     if (pipeline.pipeline_type === "integrated") {
       void supabase
@@ -128,6 +135,16 @@ export function PipelineSettings({
             });
         });
     }
+    void supabase
+      .from("meta_integrations")
+      .select("id, is_active, schedule_stage_id, purchase_stage_id")
+      .eq("pipeline_id", pipeline.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setMetaIntegration(
+          (data as typeof metaIntegration) ?? null,
+        );
+      });
   }, [open, pipeline, stages, supabase]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -213,6 +230,14 @@ export function PipelineSettings({
       toast.error("O estágio Novo Lead é obrigatório nesta pipeline integrada.");
       return;
     }
+    if (
+      metaIntegration?.is_active &&
+      (metaIntegration.schedule_stage_id === stageId ||
+        metaIntegration.purchase_stage_id === stageId)
+    ) {
+      toast.error("Esta coluna está vinculada a um evento da Meta. Desfaça a integração antes de excluí-la.");
+      return;
+    }
     // Refuse to delete if deals still reference the stage (FK would fail).
     const { count } = await supabase
       .from("deals")
@@ -234,8 +259,8 @@ export function PipelineSettings({
   }
 
   async function handleDeletePipeline() {
-    if (leadIntegration?.is_active) {
-      toast.error("Desative o webhook antes de excluir esta pipeline.");
+    if (leadIntegration?.is_active || metaIntegration?.is_active) {
+      toast.error("Desfaça a integração antes de excluir esta pipeline.");
       return;
     }
     setDeleting(true);

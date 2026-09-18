@@ -401,6 +401,47 @@ export interface LeadIntegrationEvent {
   processed_at?: string | null;
 }
 
+export type MetaIntegrationSource = 'elementor' | 'meta_instant_form';
+export type MetaConversionEventStatus = 'pending' | 'sent' | 'failed';
+
+export interface MetaIntegration {
+  id: string;
+  account_id: string;
+  pipeline_id: string;
+  source_type: MetaIntegrationSource;
+  dataset_id: string;
+  meta_page_id?: string | null;
+  api_version: string;
+  schedule_stage_id?: string | null;
+  purchase_stage_id?: string | null;
+  is_active: boolean;
+  last_tested_at?: string | null;
+  last_event_at?: string | null;
+  last_error?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MetaConversionEvent {
+  id: string;
+  integration_id: string;
+  account_id: string;
+  pipeline_id: string;
+  deal_id?: string | null;
+  contact_id?: string | null;
+  stage_id?: string | null;
+  event_name: string;
+  event_id: string;
+  payload: Record<string, unknown>;
+  status: MetaConversionEventStatus;
+  meta_response?: Record<string, unknown> | null;
+  error_message?: string | null;
+  attempts: number;
+  sent_at?: string | null;
+  created_at: string;
+}
+
 export interface PipelineStage {
   id: string;
   pipeline_id: string;
