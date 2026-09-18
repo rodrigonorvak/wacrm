@@ -74,6 +74,7 @@ const PORTUGUESE_PHRASES: Record<string, string> = {
   'Needs reconnecting': 'Precisa ser reconectado',
   'member': 'membro',
   'Appearance': 'Aparência',
+  'Integrations': 'Integrações',
   'currency': 'moeda',
   'How you show up across the app. Your avatar and name appear in the header, sidebar, and anywhere your teammates see you.': 'Como você aparece no aplicativo. Seu avatar e seu nome aparecem no cabeçalho, na barra lateral e em todos os lugares onde seus colegas de equipe veem você.',
   'Account details': 'Detalhes da conta',

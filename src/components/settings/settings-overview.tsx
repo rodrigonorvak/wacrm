@@ -200,7 +200,7 @@ export function SettingsOverview({
       ),
     },
     {
-      section: 'meta-integrations',
+      section: 'integrations',
       loading: metaLoading,
       subtitle: !meta?.configured ? (
         t('notSetup')

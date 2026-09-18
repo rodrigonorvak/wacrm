@@ -13,6 +13,7 @@ import { SecurityPanel } from '@/components/settings/security-panel';
 import { AppearancePanel } from '@/components/settings/appearance-panel';
 import { WhatsAppConfig } from '@/components/settings/whatsapp-config';
 import { MetaIntegrations } from '@/components/settings/meta-integrations';
+import { IntegrationsOverview } from '@/components/settings/integrations-overview';
 import { TemplateManager } from '@/components/settings/template-manager';
 import { QuickRepliesManager } from '@/components/settings/quick-replies-manager';
 import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel';
@@ -52,10 +53,19 @@ function SettingsPageInner() {
   // app sidebar/header working. Legacy tab values (tags, custom-fields)
   // resolve onto their new home; unknown/empty → the Overview landing.
   const section = resolveSection(searchParams.get('tab'));
+  const integration = searchParams.get('integration');
 
   const go = (next: SettingsSection) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', next);
+    params.delete('integration');
+    router.replace(`/settings?${params.toString()}`, { scroll: false });
+  };
+
+  const openMetaIntegration = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'integrations');
+    params.set('integration', 'meta');
     router.replace(`/settings?${params.toString()}`, { scroll: false });
   };
 
@@ -76,7 +86,11 @@ function SettingsPageInner() {
     security: <SecurityPanel />,
     appearance: <AppearancePanel />,
     whatsapp: <WhatsAppConfig />,
-    'meta-integrations': <MetaIntegrations />,
+    integrations: integration === 'meta' ? (
+      <MetaIntegrations onBack={() => go('integrations')} />
+    ) : (
+      <IntegrationsOverview onOpenMeta={openMetaIntegration} />
+    ),
     templates: <TemplateManager />,
     'quick-replies': <QuickRepliesManager />,
     fields: <FieldsAndTagsPanel />,

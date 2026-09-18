@@ -28,7 +28,7 @@ export const SETTINGS_SECTIONS = [
   'security',
   'appearance',
   'whatsapp',
-  'meta-integrations',
+  'integrations',
   'templates',
   'quick-replies',
   'fields',
@@ -55,7 +55,7 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   security: { id: 'security', label: 'Login & security', icon: Shield, group: 'account' },
   appearance: { id: 'appearance', label: 'Appearance', icon: Palette, group: 'account' },
   whatsapp: { id: 'whatsapp', label: 'WhatsApp', icon: PlugZap, group: 'workspace' },
-  'meta-integrations': { id: 'meta-integrations', label: 'Meta', icon: Radio, group: 'workspace' },
+  integrations: { id: 'integrations', label: 'Integrações', icon: Radio, group: 'workspace' },
   templates: { id: 'templates', label: 'Templates', icon: FileText, group: 'workspace' },
   'quick-replies': { id: 'quick-replies', label: 'Quick replies', icon: Zap, group: 'workspace' },
   fields: { id: 'fields', label: 'Fields & tags', icon: Tags, group: 'workspace' },
@@ -82,6 +82,7 @@ function isSection(value: string | null): value is SettingsSection {
  */
 export function resolveSection(raw: string | null): SettingsSection {
   if (raw === 'tags' || raw === 'custom-fields') return 'fields';
+  if (raw === 'meta-integrations') return 'integrations';
   if (isSection(raw)) return raw;
   return DEFAULT_SECTION;
 }
