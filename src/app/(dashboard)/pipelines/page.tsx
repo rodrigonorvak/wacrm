@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GitBranch, Plus, ChevronDown, Settings, Copy, Filter, X } from "lucide-react";
+import { GitBranch, Plus, ChevronDown, Settings, Copy, Filter, X, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,6 +69,15 @@ const DEFAULT_ELEMENTOR_MAPPINGS = [
 ];
 
 type DateFilter = "today" | "7" | "14" | "30" | "max" | "custom";
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  today: "Hoje",
+  "7": "Últimos 7 dias",
+  "14": "Últimos 14 dias",
+  "30": "Últimos 30 dias",
+  max: "Máximo",
+  custom: "Personalizado",
+};
 
 function mappingTarget(fieldName: string): {
   targetType: "contact" | "deal" | "contact_custom_field";
@@ -645,21 +655,16 @@ export default function PipelinesPage() {
               <Filter className="size-4 text-primary" />
               Filtros do funil
             </div>
-            <label className="grid gap-1 text-xs text-muted-foreground">
-              Período
-              <select
-                value={dateFilter}
-                onChange={(event) => setDateFilter(event.target.value as DateFilter)}
-                className="h-8 min-w-36 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
-              >
-                <option value="today">Hoje</option>
-                <option value="7">Últimos 7 dias</option>
-                <option value="14">Últimos 14 dias</option>
-                <option value="30">Últimos 30 dias</option>
-                <option value="max">Máximo</option>
-                <option value="custom">Personalizado</option>
-              </select>
-            </label>
+            <PipelineDateFilter
+              value={dateFilter}
+              startDate={customStartDate}
+              endDate={customEndDate}
+              onApply={(nextFilter, nextStart, nextEnd) => {
+                setDateFilter(nextFilter);
+                setCustomStartDate(nextStart);
+                setCustomEndDate(nextEnd);
+              }}
+            />
             <label className="grid gap-1 text-xs text-muted-foreground">
               Estágio
               <select
@@ -673,18 +678,6 @@ export default function PipelinesPage() {
                 ))}
               </select>
             </label>
-            {dateFilter === "custom" ? (
-              <>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  De
-                  <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
-                </label>
-                <label className="grid gap-1 text-xs text-muted-foreground">
-                  Até
-                  <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
-                </label>
-              </>
-            ) : null}
             {(dateFilter !== "max" || stageFilter !== "all") ? (
               <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
                 <X className="size-4" />
@@ -869,6 +862,172 @@ export default function PipelinesPage() {
         deal={leadDetailDeal}
         onTemplateSent={handleIntegratedTemplateSent}
       />
+    </div>
+  );
+}
+
+function toDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function fromDateKey(value: string): Date | null {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function dateLabel(value: string): string {
+  const date = fromDateKey(value);
+  return date
+    ? date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    : "Selecionar data";
+}
+
+function monthDays(month: Date): Date[] {
+  const first = new Date(month.getFullYear(), month.getMonth(), 1);
+  const start = new Date(first);
+  start.setDate(1 - ((first.getDay() + 6) % 7));
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(start);
+    day.setDate(start.getDate() + index);
+    return day;
+  });
+}
+
+function PipelineDateFilter({
+  value,
+  startDate,
+  endDate,
+  onApply,
+}: {
+  value: DateFilter;
+  startDate: string;
+  endDate: string;
+  onApply: (filter: DateFilter, start: string, end: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draftFilter, setDraftFilter] = useState<DateFilter>(value);
+  const [draftStart, setDraftStart] = useState(startDate);
+  const [draftEnd, setDraftEnd] = useState(endDate);
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date());
+
+  function openPicker(nextOpen: boolean) {
+    if (nextOpen) {
+      setDraftFilter(value);
+      setDraftStart(startDate);
+      setDraftEnd(endDate);
+      const selected = fromDateKey(startDate) ?? new Date();
+      setVisibleMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    }
+    setOpen(nextOpen);
+  }
+
+  function chooseShortcut(next: DateFilter) {
+    setDraftFilter(next);
+    if (next !== "custom") {
+      setDraftStart("");
+      setDraftEnd("");
+    }
+  }
+
+  function chooseDay(day: Date) {
+    const key = toDateKey(day);
+    if (!draftStart || (draftStart && draftEnd)) {
+      setDraftStart(key);
+      setDraftEnd("");
+      setDraftFilter("custom");
+      return;
+    }
+    if (key < draftStart) {
+      setDraftEnd(draftStart);
+      setDraftStart(key);
+    } else {
+      setDraftEnd(key);
+    }
+    setDraftFilter("custom");
+  }
+
+  const nextMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+  const apply = () => {
+    onApply(draftFilter, draftStart, draftEnd);
+    setOpen(false);
+  };
+
+  return (
+    <div className="grid gap-1 text-xs text-muted-foreground">
+      Período
+      <Popover open={open} onOpenChange={openPicker}>
+        <PopoverTrigger
+          className="inline-flex h-8 min-w-44 items-center justify-between gap-2 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground hover:bg-muted"
+        >
+          <span className="flex items-center gap-2">
+            <CalendarDays className="size-4 text-muted-foreground" />
+            {draftFilter === "custom" && draftStart
+              ? `${dateLabel(draftStart)}${draftEnd ? ` - ${dateLabel(draftEnd)}` : ""}`
+              : DATE_FILTER_LABELS[draftFilter]}
+          </span>
+          <ChevronDown className="size-4 text-muted-foreground" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(94vw,680px)] overflow-hidden border-border bg-popover p-0 text-popover-foreground">
+          <div className="flex max-h-[min(80vh,560px)] flex-col sm:flex-row">
+            <div className="w-full shrink-0 border-b border-border p-3 sm:w-44 sm:border-r sm:border-b-0">
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">Usados recentemente</p>
+              {(["today", "7", "max"] as DateFilter[]).map((shortcut) => (
+                <button key={shortcut} type="button" onClick={() => chooseShortcut(shortcut)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+                  <span className={`size-5 rounded-full border ${draftFilter === shortcut ? "border-primary bg-primary/15" : "border-border"}`} />
+                  {DATE_FILTER_LABELS[shortcut]}
+                </button>
+              ))}
+              <div className="my-2 border-t border-border" />
+              {(["today", "7", "14", "30"] as DateFilter[]).map((shortcut) => (
+                <button key={`recent-${shortcut}`} type="button" onClick={() => chooseShortcut(shortcut)} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted">
+                  <span className={`size-5 rounded-full border ${draftFilter === shortcut ? "border-primary bg-primary/15" : "border-border"}`} />
+                  {DATE_FILTER_LABELS[shortcut]}
+                </button>
+              ))}
+            </div>
+            <div className="min-w-0 flex-1 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <button type="button" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))} className="rounded-md p-1.5 hover:bg-muted" aria-label="Mês anterior"><ChevronLeft className="size-4" /></button>
+                <div className="flex gap-8 text-sm font-medium">
+                  <span>{visibleMonth.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}</span>
+                  <span>{nextMonth.toLocaleDateString("pt-BR", { month: "short", year: "numeric" })}</span>
+                </div>
+                <button type="button" onClick={() => setVisibleMonth(nextMonth)} className="rounded-md p-1.5 hover:bg-muted" aria-label="Próximo mês"><ChevronRight className="size-4" /></button>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                {[visibleMonth, nextMonth].map((month) => (
+                  <div key={month.toISOString()}>
+                    <div className="mb-1 grid grid-cols-7 text-center text-[11px] text-muted-foreground">
+                      {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((day) => <span key={day}>{day}</span>)}
+                    </div>
+                    <div className="grid grid-cols-7 gap-y-1">
+                      {monthDays(month).map((day) => {
+                        const key = toDateKey(day);
+                        const inMonth = day.getMonth() === month.getMonth();
+                        const selected = key === draftStart || key === draftEnd;
+                        const inRange = Boolean(draftStart && draftEnd && key > draftStart && key < draftEnd);
+                        return <button key={key} type="button" disabled={!inMonth} onClick={() => chooseDay(day)} className={`h-8 rounded-md text-xs ${!inMonth ? "text-muted-foreground/30" : "hover:bg-primary/15"} ${inRange ? "bg-primary/10" : ""} ${selected ? "bg-primary text-primary-foreground" : ""}`}>{day.getDate()}</button>;
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center gap-2 border-t border-border pt-3 text-sm">
+                <input type="checkbox" disabled className="size-4" />
+                Comparar
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted">Cancelar</button>
+                <button type="button" onClick={apply} className="rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90">Atualizar</button>
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
