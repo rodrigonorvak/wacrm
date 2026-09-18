@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GitBranch, Plus, ChevronDown, Settings, Copy } from "lucide-react";
+import { GitBranch, Plus, ChevronDown, Settings, Copy, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
@@ -66,6 +66,8 @@ const DEFAULT_ELEMENTOR_MAPPINGS = [
   { sourceId: "company", fieldName: "Empresa" },
   { sourceId: "message", fieldName: "Mensagem" },
 ];
+
+type DateFilter = "today" | "7" | "14" | "30" | "max" | "custom";
 
 function mappingTarget(fieldName: string): {
   targetType: "contact" | "deal" | "contact_custom_field";
@@ -103,6 +105,10 @@ export default function PipelinesPage() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("max");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [stageFilter, setStageFilter] = useState("all");
 
   // Dialog / sheet state
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
@@ -256,6 +262,7 @@ export default function PipelinesPage() {
   const refreshStages = useCallback(async () => {
     if (!selectedPipelineId) return;
     setStages(await loadStages(selectedPipelineId));
+    setStageFilter("all");
   }, [loadStages, selectedPipelineId]);
 
   const refreshDeals = useCallback(async () => {
@@ -467,6 +474,38 @@ export default function PipelinesPage() {
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
+  const filteredDeals = deals.filter((deal) => {
+    if (stageFilter !== "all" && deal.stage_id !== stageFilter) return false;
+    if (dateFilter === "max") return true;
+
+    const createdAt = new Date(deal.created_at);
+    if (Number.isNaN(createdAt.getTime())) return false;
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+
+    if (dateFilter === "today") return createdAt >= dayStart;
+    if (dateFilter === "7" || dateFilter === "14" || dateFilter === "30") {
+      const start = new Date(dayStart);
+      start.setDate(start.getDate() - Number(dateFilter) + 1);
+      return createdAt >= start;
+    }
+
+    const start = customStartDate ? new Date(`${customStartDate}T00:00:00`) : null;
+    const end = customEndDate ? new Date(`${customEndDate}T23:59:59.999`) : null;
+    return (!start || createdAt >= start) && (!end || createdAt <= end);
+  });
+
+  const filteredStages = stageFilter === "all"
+    ? stages
+    : stages.filter((stage) => stage.id === stageFilter);
+
+  function clearFilters() {
+    setDateFilter("max");
+    setCustomStartDate("");
+    setCustomEndDate("");
+    setStageFilter("all");
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -601,10 +640,65 @@ export default function PipelinesPage() {
         </div>
       ) : (
         <>
-          <PipelineAnalytics stages={stages} deals={deals} />
+          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card/60 p-4">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Filter className="size-4 text-primary" />
+              Filtros do funil
+            </div>
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              Período
+              <select
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value as DateFilter)}
+                className="h-8 min-w-36 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
+              >
+                <option value="today">Hoje</option>
+                <option value="7">Últimos 7 dias</option>
+                <option value="14">Últimos 14 dias</option>
+                <option value="30">Últimos 30 dias</option>
+                <option value="max">Máximo</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs text-muted-foreground">
+              Estágio
+              <select
+                value={stageFilter}
+                onChange={(event) => setStageFilter(event.target.value)}
+                className="h-8 min-w-44 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
+              >
+                <option value="all">Todos os estágios</option>
+                {stages.slice().sort((a, b) => a.position - b.position).map((stage) => (
+                  <option key={stage.id} value={stage.id}>{stage.name}</option>
+                ))}
+              </select>
+            </label>
+            {dateFilter === "custom" ? (
+              <>
+                <label className="grid gap-1 text-xs text-muted-foreground">
+                  De
+                  <input type="date" value={customStartDate} onChange={(event) => setCustomStartDate(event.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                </label>
+                <label className="grid gap-1 text-xs text-muted-foreground">
+                  Até
+                  <input type="date" value={customEndDate} onChange={(event) => setCustomEndDate(event.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-sm text-foreground" />
+                </label>
+              </>
+            ) : null}
+            {(dateFilter !== "max" || stageFilter !== "all") ? (
+              <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="size-4" />
+                Limpar filtros
+              </Button>
+            ) : null}
+            <span className="ml-auto text-xs text-muted-foreground">
+              {filteredDeals.length} negócio(s) exibido(s)
+            </span>
+          </div>
+          <PipelineAnalytics stages={filteredStages} deals={filteredDeals} />
           <PipelineBoard
-            stages={stages}
-            deals={deals}
+            stages={filteredStages}
+            deals={filteredDeals}
             onDealMoved={handleDealMoved}
             onAddDeal={handleAddDeal}
             onEditDeal={handleEditDeal}
