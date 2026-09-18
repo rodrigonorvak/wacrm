@@ -47,7 +47,7 @@ export function IntegrationsOverview({ onOpenMeta }: { onOpenMeta: () => void })
               <span className="mt-1 block text-sm text-muted-foreground">Conversões, Elementor e Meta Instant Forms</span>
               <span className={metaConnected ? 'mt-1 flex items-center gap-1.5 text-xs text-emerald-600' : 'mt-1 flex items-center gap-1.5 text-xs text-muted-foreground'}>
                 <span className={metaConnected ? 'size-1.5 rounded-full bg-emerald-500' : 'size-1.5 rounded-full bg-muted-foreground'} aria-hidden="true" />
-                {metaConnected === null ? 'Verificando...' : metaConnected ? 'Connected' : 'Precisa ser reconectado'}
+                {metaConnected === null ? 'Verificando...' : metaConnected ? 'Conectado' : 'Precisa ser reconectado'}
               </span>
             </span>
             <span className="flex size-8 items-center justify-center rounded-lg text-muted-foreground" aria-hidden="true">
