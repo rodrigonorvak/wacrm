@@ -158,7 +158,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
       toast.error(result.error ?? "A conexão Meta falhou.");
       return;
     }
-    toast.success("Conexão Meta validada.");
+    toast.success("Credenciais Meta verificadas. O envio será confirmado no primeiro evento.");
     setIntegrations((current) => current.map((item) => item.source_type === sourceType ? { ...item, is_active: true } : item));
   }
 
@@ -251,7 +251,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
               {canEditSettings ? (
                 <div className="flex flex-wrap gap-2">
                   <Button onClick={handleSave} disabled={saving || loading}>{saving ? <><Loader2 className="size-4 animate-spin" /> Salvando...</> : "Salvar integração"}</Button>
-                  {selectedIntegration ? <Button variant="outline" onClick={handleTest} disabled={testing}>{testing ? <><Loader2 className="size-4 animate-spin" /> Testando...</> : "Testar conexão"}</Button> : null}
+                  {selectedIntegration ? <Button variant="outline" onClick={handleTest} disabled={testing}>{testing ? <><Loader2 className="size-4 animate-spin" /> Verificando...</> : "Verificar credenciais"}</Button> : null}
                 </div>
               ) : <p className="text-xs text-muted-foreground">Somente administradores podem alterar integrações.</p>}
               <div className="border-t border-border pt-4">

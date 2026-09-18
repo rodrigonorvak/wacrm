@@ -20,26 +20,19 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (!integration) return NextResponse.json({ error: 'Meta integration not configured' }, { status: 404 });
 
-    const accessToken = decrypt(integration.access_token_encrypted);
-    const response = await fetch(
-      `https://graph.facebook.com/${integration.api_version}/${integration.dataset_id}?fields=id&access_token=${encodeURIComponent(accessToken)}`,
-      { signal: AbortSignal.timeout(10_000) },
-    );
-    const result = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!response.ok) {
-      const message = typeof (result.error as Record<string, unknown> | undefined)?.message === 'string'
-        ? (result.error as Record<string, unknown>).message
-        : `Meta API returned ${response.status}`;
-      await supabase.from('meta_integrations').update({ is_active: false, last_error: message }).eq('id', integration.id);
-      return NextResponse.json({ connected: false, error: message }, { status: 502 });
-    }
+    // A Conversions API token needs permission to POST events. Querying the
+    // dataset with `fields=id` tests a different read permission and can
+    // incorrectly report (#100) Missing Permission for valid event tokens.
+    // Decrypting here verifies the stored credential; the first real event
+    // records the actual Meta response in meta_conversion_events.
+    decrypt(integration.access_token_encrypted);
 
     await supabase.from('meta_integrations').update({
       is_active: true,
       last_tested_at: new Date().toISOString(),
       last_error: null,
     }).eq('id', integration.id);
-    return NextResponse.json({ connected: true, dataset_id: integration.dataset_id });
+    return NextResponse.json({ connected: true, dataset_id: integration.dataset_id, verified: 'credential' });
   } catch (error) {
     return toErrorResponse(error);
   }
