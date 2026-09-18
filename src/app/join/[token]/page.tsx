@@ -66,27 +66,27 @@ interface PeekFail {
 type PeekResult = PeekOk | PeekFail;
 
 const ROLE_LABEL: Record<PeekOk['role'], string> = {
-  admin: 'Admin',
-  agent: 'Agent',
-  viewer: 'Viewer',
+  admin: 'Administrador',
+  agent: 'Atendente',
+  viewer: 'Visualizador',
 };
 
 const FAIL_COPY: Record<PeekFail['reason'], { title: string; body: string }> = {
   not_found: {
-    title: 'Invite not found',
-    body: 'This link doesn’t match a valid invitation. Double-check the URL or ask the person who invited you to send a new one.',
+    title: 'Convite não encontrado',
+    body: 'Este link não corresponde a um convite válido. Confira a URL ou peça para a pessoa que convidou você enviar um novo link.',
   },
   used: {
-    title: 'Invite already used',
-    body: 'This invitation has already been accepted. If that wasn’t you, ask the account admin to send a fresh link.',
+    title: 'Convite já utilizado',
+    body: 'Este convite já foi aceito. Se não foi você, peça ao administrador da conta para enviar um novo link.',
   },
   expired: {
-    title: 'Invite expired',
-    body: 'This invitation has expired. Ask the account admin to send a new one — they take a few seconds to generate.',
+    title: 'Convite expirado',
+    body: 'Este convite expirou. Peça ao administrador da conta para gerar um novo, o que leva apenas alguns segundos.',
   },
   server_error: {
-    title: 'Something went wrong',
-    body: 'We couldn’t verify this invitation right now. Try refreshing the page in a moment.',
+    title: 'Algo deu errado',
+    body: 'Não foi possível verificar este convite agora. Tente atualizar a página em alguns instantes.',
   },
 };
 
@@ -183,21 +183,21 @@ export default function JoinPage() {
         if (res.status === 409) {
           setConflictMessage(
             payload.error ||
-              'You are already in another account. Sign in with a different email to join this one.',
+              'Você já está em outra conta. Entre com um e-mail diferente para participar desta.',
           );
         } else {
-          toast.error(payload.error || 'Failed to accept invitation');
+          toast.error(payload.error || 'Não foi possível aceitar o convite');
         }
         setAccepting(false);
         return;
       }
-      toast.success('Welcome to the team');
+      toast.success('Boas-vindas à equipe');
       // Full reload (not router.push) so AuthProvider re-fetches
       // the profile with the new account_id and account_role.
       window.location.href = '/dashboard';
     } catch (err) {
       console.error('[join] redeem error:', err);
-      toast.error('Could not reach the server');
+      toast.error('Não foi possível acessar o servidor');
       setAccepting(false);
     }
   }, [token]);
@@ -212,7 +212,7 @@ export default function JoinPage() {
       window.location.reload();
     } catch (err) {
       console.error('[join] sign-out error:', err);
-      toast.error('Could not sign out. Try refreshing the page.');
+      toast.error('Não foi possível sair. Tente atualizar a página.');
       setSigningOut(false);
     }
   }, []);
