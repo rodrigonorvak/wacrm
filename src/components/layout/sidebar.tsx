@@ -191,7 +191,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         <div className={cn("relative flex h-14 shrink-0 items-center border-b border-white/10", collapsed ? "justify-center" : "justify-between px-4")}>
           <Link href="/dashboard" className="flex min-w-0 items-center justify-center">
             <img
-              src="https://agencia.malybo.com.br/wp-content/uploads/2026/09/LOGO-CRM.png"
+              src={collapsed ? "https://agencia.malybo.com.br/wp-content/uploads/2026/09/Design-sem-nome-4.png" : "https://agencia.malybo.com.br/wp-content/uploads/2026/09/LOGO-CRM.png"}
               alt={t("title")}
               className={collapsed ? "h-8 w-8 object-contain" : "h-8 max-w-[150px] object-contain"}
             />
