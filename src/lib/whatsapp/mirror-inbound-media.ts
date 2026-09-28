@@ -3,7 +3,7 @@ import { extensionForMime } from "@/lib/media/filename";
 import { buildMediaPath, MEDIA_MAX_BYTES } from "@/lib/storage/upload-media";
 
 /**
- * Copies inbound WhatsApp media into the `chat-media` bucket so it
+ * Copies inbound WhatsApp media into the private `chat-inbound` bucket so it
  * outlives Meta's retention window (issue #466).
  *
  * Meta deletes media roughly 30 days after receipt. Before this, the
@@ -11,8 +11,8 @@ import { buildMediaPath, MEDIA_MAX_BYTES } from "@/lib/storage/upload-media";
  * the proxy route behind it re-fetched from Meta on every single view,
  * so an attachment quietly became unviewable a month after it arrived.
  * Outbound media never had the problem: the composer uploads to
- * `chat-media` (migration 023) and stores a durable public URL. This
- * puts inbound on the same footing.
+ * `chat-media` (migration 023) and stores a public URL. New inbound
+ * copies use a private bucket and an authenticated app proxy instead.
  *
  * Everything here is BEST EFFORT and returns `null` rather than
  * throwing. The caller is the Meta webhook, and a webhook that starts
@@ -31,12 +31,12 @@ export interface MirrorStorage {
       body: Uint8Array | Buffer,
       options: { contentType: string; cacheControl: string; upsert: boolean },
     ): Promise<{ error: { message: string } | null }>;
-    getPublicUrl(path: string): { data: { publicUrl: string } };
   };
 }
 
-/** Bucket the composer already writes to; inbound joins it. */
-export const MIRROR_BUCKET = "chat-media";
+/** Private bucket dedicated to customer-sent attachments. */
+export const MIRROR_BUCKET = "chat-inbound";
+export const PRIVATE_MEDIA_PROXY_PREFIX = "/api/whatsapp/inbound-media/";
 
 /**
  * Second path segment for mirrored inbound objects, so a bucket listing
@@ -226,10 +226,8 @@ export async function mirrorInboundMedia(
       return null;
     }
 
-    const {
-      data: { publicUrl },
-    } = storage.from(MIRROR_BUCKET).getPublicUrl(path);
-    return publicUrl || null;
+    const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+    return `${PRIVATE_MEDIA_PROXY_PREFIX}${encodedPath}`;
   } catch (error) {
     console.warn(
       `[mirror-media] could not mirror ${mediaId}:`,

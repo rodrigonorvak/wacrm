@@ -36,6 +36,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'flow-media') THEN
     RAISE EXCEPTION 'the flow-media bucket row was not created (migration 016)';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM storage.buckets
+    WHERE id = 'chat-inbound' AND public = FALSE
+  ) THEN
+    RAISE EXCEPTION 'the private chat-inbound bucket is missing or public (migration 046)';
+  END IF;
 
   -- Account scoping (017) is load-bearing for every RLS policy.
   IF to_regclass('public.accounts') IS NULL THEN
