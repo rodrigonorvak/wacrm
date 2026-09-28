@@ -238,7 +238,11 @@ async function processWebhook(body: { entry?: WhatsAppWebhookEntry[] }) {
       // don't try to read message-shaped fields off a template event.
       if (isTemplateWebhookField(change.field)) {
         await handleTemplateWebhookChange(
-          { field: change.field, value: change.value as unknown },
+          {
+            field: change.field,
+            value: change.value as unknown,
+            wabaId: entry.id,
+          },
           supabaseAdmin(),
         )
         continue

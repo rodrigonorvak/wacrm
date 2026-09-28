@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
 import { validateFlowForActivation } from '@/lib/flows/validate'
@@ -28,18 +27,11 @@ export async function POST(
   // flows_update policy requires `agent`, but the service-role client
   // below bypasses RLS, so enforce the role here (a viewer passes the
   // membership-only ownership check).
+  let ctx
   try {
-    await requireRole('agent')
+    ctx = await requireRole('agent')
   } catch (err) {
     return toErrorResponse(err)
-  }
-
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const body = (await request.json().catch(() => null)) as
@@ -54,10 +46,11 @@ export async function POST(
   }
 
   // Ownership via RLS — caller's client.
-  const { data: existing } = await supabase
+  const { data: existing } = await ctx.supabase
     .from('flows')
     .select('id')
     .eq('id', id)
+    .eq('account_id', ctx.accountId)
     .maybeSingle()
   if (!existing) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -72,6 +65,7 @@ export async function POST(
         .from('flows')
         .select('name, trigger_type, trigger_config, entry_node_id')
         .eq('id', id)
+        .eq('account_id', ctx.accountId)
         .maybeSingle(),
       admin
         .from('flow_nodes')
@@ -110,6 +104,7 @@ export async function POST(
     .from('flows')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('account_id', ctx.accountId)
     .select()
     .maybeSingle()
   if (error) {

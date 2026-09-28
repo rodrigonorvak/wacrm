@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireRole, toErrorResponse } from '@/lib/auth/account'
+import { getCurrentAccount, requireRole, toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
 
 /**
@@ -24,28 +23,39 @@ async function requireOwnership(
   | {
       ok: true
       userId: string
-      supabase: Awaited<ReturnType<typeof createClient>>
+      accountId: string
+      supabase: Awaited<ReturnType<typeof getCurrentAccount>>['supabase']
     }
   | { ok: false; status: number; body: { error: string } }
 > {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) {
-    return { ok: false, status: 401, body: { error: 'Unauthorized' } }
+  let account
+  try {
+    account = await getCurrentAccount()
+  } catch (err) {
+    const response = toErrorResponse(err)
+    return {
+      ok: false,
+      status: response.status,
+      body: (await response.json()) as { error: string },
+    }
   }
-  // RLS scopes this to the caller — a flow owned by another user
-  // returns null (404 below).
-  const { data: flow } = await supabase
+  // RLS scopes this to the caller's account; the explicit account
+  // filter also gives downstream service-role operations a tenant key.
+  const { data: flow } = await account.supabase
     .from('flows')
     .select('id')
     .eq('id', flowId)
+    .eq('account_id', account.accountId)
     .maybeSingle()
   if (!flow) {
     return { ok: false, status: 404, body: { error: 'Not found' } }
   }
-  return { ok: true, userId: user.id, supabase }
+  return {
+    ok: true,
+    userId: account.userId,
+    accountId: account.accountId,
+    supabase: account.supabase,
+  }
 }
 
 export async function GET(
@@ -139,6 +149,7 @@ export async function PUT(
     .from('flows')
     .update(flowPatch)
     .eq('id', id)
+    .eq('account_id', guard.accountId)
   if (updErr) {
     return NextResponse.json({ error: updErr.message }, { status: 500 })
   }
@@ -173,7 +184,12 @@ export async function PUT(
   // Re-fetch and return the new state — the editor uses the response
   // to reconcile its local form state.
   const [{ data: flow }, { data: nodes }] = await Promise.all([
-    admin.from('flows').select('*').eq('id', id).maybeSingle(),
+    admin
+      .from('flows')
+      .select('*')
+      .eq('id', id)
+      .eq('account_id', guard.accountId)
+      .maybeSingle(),
     admin
       .from('flow_nodes')
       .select('*')
@@ -205,7 +221,11 @@ export async function DELETE(
   // mechanism in v1, but that's intentional: deleting a flow is a
   // deliberate destructive action and the partial unique index will
   // free up the contact for new triggers immediately.
-  const { error } = await supabaseAdmin().from('flows').delete().eq('id', id)
+  const { error } = await supabaseAdmin()
+    .from('flows')
+    .delete()
+    .eq('id', id)
+    .eq('account_id', guard.accountId)
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

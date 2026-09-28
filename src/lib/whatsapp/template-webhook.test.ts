@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  handleTemplateWebhookChange,
+  handleTemplateWebhookChange as dispatchTemplateWebhookChange,
   isTemplateWebhookField,
 } from './template-webhook';
+import type { TemplateWebhookChange } from './template-webhook';
 
 // Tiny mock that records the .update payload and the .eq filter for
 // inspection. Mirrors the surface this module actually uses on the
@@ -14,15 +15,32 @@ function makeSupabaseStub(
     data: [{ id: 'row-1' }],
     error: null,
   },
+  accountResult: { data: { account_id: string }[] | null; error: { message: string } | null } = {
+    data: [{ account_id: 'account-1' }],
+    error: null,
+  },
 ) {
   const calls: {
     table: string;
     update?: Record<string, unknown>;
-    filter?: { column: string; value: unknown };
+    filters?: { column: string; value: unknown }[];
   }[] = [];
+  let wabaLookup: { column: string; value: unknown } | null = null;
 
   const stub = {
     from(table: string) {
+      if (table === 'whatsapp_config') {
+        return {
+          select() {
+            return {
+              eq(column: string, value: unknown) {
+                wabaLookup = { column, value };
+                return Promise.resolve(accountResult);
+              },
+            };
+          },
+        };
+      }
       const entry: (typeof calls)[number] = { table };
       calls.push(entry);
       return {
@@ -30,8 +48,11 @@ function makeSupabaseStub(
           entry.update = payload;
           return {
             eq(column: string, value: unknown) {
-              entry.filter = { column, value };
+              entry.filters = [{ column, value }];
               return {
+                in(column: string, value: unknown) {
+                  entry.filters?.push({ column, value });
+                  return {
                 select() {
                   return Promise.resolve(selectResult);
                 },
@@ -45,6 +66,8 @@ function makeSupabaseStub(
                     onFulfilled,
                   );
                 },
+                  };
+                },
               };
             },
           };
@@ -53,7 +76,21 @@ function makeSupabaseStub(
     },
   };
 
-  return { stub: stub as unknown as SupabaseClient, calls };
+  return {
+    stub: stub as unknown as SupabaseClient,
+    calls,
+    getWabaLookup: () => wabaLookup,
+  };
+}
+
+function handleTemplateWebhookChange(
+  change: Omit<TemplateWebhookChange, 'wabaId'>,
+  supabase: SupabaseClient,
+) {
+  return dispatchTemplateWebhookChange(
+    { ...change, wabaId: 'waba-1' },
+    supabase,
+  );
 }
 
 describe('isTemplateWebhookField', () => {
@@ -96,10 +133,11 @@ describe('handleTemplateWebhookChange — status update', () => {
     );
     expect(supabaseCalls).toHaveLength(1);
     expect(supabaseCalls[0].table).toBe('message_templates');
-    expect(supabaseCalls[0].filter).toEqual({
-      column: 'meta_template_id',
-      value: '12345', // coerced to string so the .eq matches the TEXT column
-    });
+    expect(supabaseCalls[0].filters).toEqual([
+      { column: 'meta_template_id', value: '12345' },
+      { column: 'account_id', value: ['account-1'] },
+    ]);
+    expect(calls.length).toBe(1);
     expect(supabaseCalls[0].update).toEqual({
       status: 'APPROVED',
       rejection_reason: null,
@@ -195,10 +233,10 @@ describe('handleTemplateWebhookChange — quality update', () => {
       stub,
     );
     expect(calls[0].update).toEqual({ quality_score: 'YELLOW' });
-    expect(calls[0].filter).toEqual({
-      column: 'meta_template_id',
-      value: '99',
-    });
+    expect(calls[0].filters).toEqual([
+      { column: 'meta_template_id', value: '99' },
+      { column: 'account_id', value: ['account-1'] },
+    ]);
   });
 
   it('stores null for unrecognised quality scores', async () => {
@@ -214,6 +252,52 @@ describe('handleTemplateWebhookChange — quality update', () => {
       stub,
     );
     expect(calls[0].update).toEqual({ quality_score: null });
+  });
+});
+
+describe('handleTemplateWebhookChange — tenant scope', () => {
+  it('resolves account ids from the event WABA before updating templates', async () => {
+    const { stub, calls, getWabaLookup } = makeSupabaseStub();
+    await handleTemplateWebhookChange(
+      {
+        field: 'message_template_status_update',
+        value: { event: 'APPROVED', message_template_id: 'template-1' },
+      },
+      stub,
+    );
+
+    expect(getWabaLookup()).toEqual({ column: 'waba_id', value: 'waba-1' });
+    expect(calls[0].filters).toContainEqual({
+      column: 'account_id',
+      value: ['account-1'],
+    });
+  });
+
+  it('refuses the update when the event has no WABA id', async () => {
+    const { stub, calls } = makeSupabaseStub();
+    await dispatchTemplateWebhookChange(
+      {
+        field: 'message_template_status_update',
+        value: { event: 'APPROVED', message_template_id: 'template-1' },
+      },
+      stub,
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  it('refuses the update when no CRM account is linked to the WABA', async () => {
+    const { stub, calls } = makeSupabaseStub(
+      undefined,
+      { data: [], error: null },
+    );
+    await handleTemplateWebhookChange(
+      {
+        field: 'message_template_status_update',
+        value: { event: 'APPROVED', message_template_id: 'template-1' },
+      },
+      stub,
+    );
+    expect(calls).toHaveLength(0);
   });
 });
 

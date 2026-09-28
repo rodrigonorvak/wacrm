@@ -20,11 +20,10 @@
  * button (the legacy fallback, intentionally preserved).
  *
  * ─── Multi-tenant note ────────────────────────────────────────────
- * `meta_template_id` is globally unique per WABA — the lookup doesn't
- * filter by user_id. If two wacrm tenants somehow ended up with the
- * same id (impossible in practice, but a theoretical race during
- * cross-tenant moves), the handler updates both rows and logs a
- * warning so operators can investigate.
+ * `meta_template_id` is unique within a WABA, not across the CRM.
+ * Resolve the webhook entry's WABA ID to its account and scope every
+ * template update to that account. Events without a known WABA fail
+ * closed so they cannot update another tenant's templates.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -65,6 +64,7 @@ interface TemplateComponentsUpdateValue {
 export interface TemplateWebhookChange {
   field: string
   value: unknown
+  wabaId?: string
 }
 
 /**
@@ -85,12 +85,14 @@ export async function handleTemplateWebhookChange(
       await handleStatusUpdate(
         change.value as TemplateStatusUpdateValue,
         supabase,
+        change.wabaId,
       )
       return
     case 'message_template_quality_update':
       await handleQualityUpdate(
         change.value as TemplateQualityUpdateValue,
         supabase,
+        change.wabaId,
       )
       return
     case 'message_template_components_update':
@@ -104,6 +106,7 @@ export async function handleTemplateWebhookChange(
 async function handleStatusUpdate(
   value: TemplateStatusUpdateValue,
   supabase: SupabaseClient,
+  wabaId?: string,
 ): Promise<void> {
   const metaTemplateId =
     value.message_template_id !== undefined
@@ -116,6 +119,9 @@ async function handleStatusUpdate(
     )
     return
   }
+
+  const accountIds = await resolveAccountIds(supabase, wabaId)
+  if (accountIds.length === 0) return
 
   const status = normalizeStatus(value.event)
 
@@ -134,6 +140,7 @@ async function handleStatusUpdate(
     .from('message_templates')
     .update(update)
     .eq('meta_template_id', metaTemplateId)
+    .in('account_id', accountIds)
     .select('id')
 
   if (error) {
@@ -162,6 +169,7 @@ async function handleStatusUpdate(
 async function handleQualityUpdate(
   value: TemplateQualityUpdateValue,
   supabase: SupabaseClient,
+  wabaId?: string,
 ): Promise<void> {
   const metaTemplateId =
     value.message_template_id !== undefined
@@ -175,6 +183,9 @@ async function handleQualityUpdate(
     return
   }
 
+  const accountIds = await resolveAccountIds(supabase, wabaId)
+  if (accountIds.length === 0) return
+
   const raw = value.new_quality_score
   const score =
     raw && ['GREEN', 'YELLOW', 'RED'].includes(raw.toUpperCase())
@@ -185,6 +196,7 @@ async function handleQualityUpdate(
     .from('message_templates')
     .update({ quality_score: score })
     .eq('meta_template_id', metaTemplateId)
+    .in('account_id', accountIds)
 
   if (error) {
     console.error(
@@ -193,6 +205,34 @@ async function handleQualityUpdate(
       error.message,
     )
   }
+}
+
+async function resolveAccountIds(
+  supabase: SupabaseClient,
+  wabaId?: string,
+): Promise<string[]> {
+  if (!wabaId) {
+    console.warn('[template-webhook] missing WABA id; refusing update')
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('whatsapp_config')
+    .select('account_id')
+    .eq('waba_id', wabaId)
+
+  if (error) {
+    console.error('[template-webhook] failed to resolve WABA account:', error.message)
+    return []
+  }
+
+  return [
+    ...new Set(
+      ((data ?? []) as { account_id: string }[])
+        .map((row) => row.account_id)
+        .filter(Boolean),
+    ),
+  ]
 }
 
 /**
