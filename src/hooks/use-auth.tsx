@@ -13,6 +13,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
+import { privateAvatarUrl } from "@/lib/storage/avatar-url";
 import {
   canEditSettings as canEditSettingsFor,
   canManageMembers as canManageMembersFor,
@@ -271,7 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           full_name: data.full_name,
           email: data.email,
-          avatar_url: data.avatar_url,
+          avatar_url: privateAvatarUrl(data.avatar_url, userId),
           role: data.role,
           // `beta_features` is `NOT NULL DEFAULT ARRAY[]` in the DB, but
           // narrow defensively in case the column hasn't been migrated yet

@@ -16,6 +16,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAccount, toErrorResponse } from "@/lib/auth/account";
 import { canManageMembers, isAccountRole } from "@/lib/auth/roles";
+import { privateAvatarUrl } from "@/lib/storage/avatar-url";
 import type { AccountMember } from "@/types";
 
 interface ProfileRow {
@@ -59,7 +60,7 @@ export async function GET() {
           user_id: row.user_id,
           full_name: row.full_name ?? "",
           email: canSeeEmails ? row.email : null,
-          avatar_url: row.avatar_url,
+          avatar_url: privateAvatarUrl(row.avatar_url, row.user_id),
           role: row.account_role,
           joined_at: row.created_at,
         },
