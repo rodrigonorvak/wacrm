@@ -52,7 +52,7 @@ export function SettingsRail({
       className={cn(
         'flex gap-1 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         'border-b border-border',
-        'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible lg:border-b-0 lg:pb-0',
+        'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible lg:border-r lg:border-b-0 lg:pb-0 lg:pr-3',
       )}
     >
       {RAIL_GROUPS.map(({ label, group }) => {
@@ -62,7 +62,7 @@ export function SettingsRail({
         return (
           <div
             key={group}
-            className="flex shrink-0 gap-1 lg:flex-col lg:gap-0.5"
+            className="flex shrink-0 gap-1 lg:mb-2 lg:flex-col lg:gap-0.5 lg:border-b lg:border-border lg:pb-2 last:lg:mb-0 last:lg:border-b-0"
           >
             {label ? (
               <div className="hidden px-3 pt-3.5 pb-1.5 text-[11px] font-semibold tracking-[0.09em] text-muted-foreground uppercase lg:block">
@@ -81,11 +81,11 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
-                    'lg:w-full',
+                    'flex shrink-0 items-center gap-2.5 border-b-2 border-transparent px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
+                    'lg:w-full lg:border-b-0 lg:border-l-2 lg:py-2.5',
                     isActive
-                      ? 'bg-primary-soft text-primary'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      ? 'border-primary text-primary'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
