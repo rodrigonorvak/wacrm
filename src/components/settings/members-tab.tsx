@@ -28,8 +28,8 @@ import {
   Loader2,
   Mail,
   MailX,
-  Plus,
   Trash2,
+  UserPlus,
   UsersRound,
 } from 'lucide-react';
 
@@ -72,7 +72,7 @@ import {
   PRESENCE_DOT_CLASS,
   PresenceDot,
 } from '@/components/presence/presence-dot';
-import { InviteMemberDialog } from './invite-member-dialog';
+import { CreateMemberDialog } from './create-member-dialog';
 import { SettingsPanelHead } from './settings-panel-head';
 import { ROLE_META } from './role-meta';
 
@@ -134,7 +134,7 @@ export function MembersTab() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [createMemberOpen, setCreateMemberOpen] = useState(false);
   const [removingMember, setRemovingMember] = useState<Member | null>(null);
   const [pendingMemberAction, setPendingMemberAction] = useState<string | null>(
     null,
@@ -287,9 +287,9 @@ export function MembersTab() {
         description={t('description')}
         action={
           <RequireRole min="admin">
-            <Button onClick={() => setInviteOpen(true)}>
-              <Plus className="size-4" />
-              {t('inviteMember')}
+            <Button onClick={() => setCreateMemberOpen(true)}>
+              <UserPlus className="size-4" />
+              {t('createMember')}
             </Button>
           </RequireRole>
         }
@@ -560,9 +560,9 @@ export function MembersTab() {
         </div>
       </RequireRole>
 
-      <InviteMemberDialog
-        open={inviteOpen}
-        onOpenChange={setInviteOpen}
+      <CreateMemberDialog
+        open={createMemberOpen}
+        onOpenChange={setCreateMemberOpen}
         onCreated={loadEverything}
       />
 

@@ -14,6 +14,20 @@
     "noAccount": "계정이 없으신가요?",
     "createAccount": "계정 만들기"
   },
+  "ChangePasswordPage": {
+    "title": "새 비밀번호 설정",
+    "description": "임시 비밀번호는 첫 로그인에만 사용할 수 있습니다. 계속하려면 개인 비밀번호를 설정하세요.",
+    "passwordLabel": "새 비밀번호",
+    "confirmPasswordLabel": "새 비밀번호 확인",
+    "passwordTooShort": "최소 {length}자 이상 입력하세요.",
+    "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+    "saveFailed": "비밀번호를 변경할 수 없습니다. 다시 시도하세요.",
+    "saving": "저장 중...",
+    "submit": "비밀번호 변경",
+    "successTitle": "비밀번호 변경 완료",
+    "successDescription": "새 비밀번호로 다시 로그인하세요.",
+    "backToLogin": "로그인으로 돌아가기"
+  },
   "Sidebar": {
     "title": "WhatsApp용 CRM 템플릿",
     "dashboard": "대시보드",
@@ -1258,8 +1272,9 @@
     },
     "members": {
       "title": "팀원",
-      "description": "이 계정에 접근 권한이 있는 사람들입니다. 역할에 따라 각 팀원이 할 수 있는 작업이 결정됩니다.",
+      "description": "이 계정에 접근 권한이 있는 사람들입니다. 사용자를 직접 추가하고 역할별 권한을 선택할 수 있습니다.",
       "inviteMember": "멤버 초대",
+      "createMember": "사용자 추가",
       "online": "온라인",
       "away": "자리비움",
       "offline": "오프라인",
@@ -1271,9 +1286,9 @@
       "removedToast": "{name}을(를) 제거했습니다",
       "updatedToast": "{name}을(를) {role}(으)로 변경했습니다",
       "pendingInvitations": "대기 중인 초대",
-      "inviteHint": "보안을 위해 초대 URL 원문은 생성 시 한 번만 표시됩니다 — 다시 공유하려면 아래에서 초대를 취소하고 새로 만드세요.",
+      "inviteHint": "아래 링크는 직접 계정 생성 기능이 추가되기 전에 만든 초대입니다. 새 사용자는 이메일과 임시 비밀번호로 추가합니다.",
       "noPendingTitle": "대기 중인 초대가 없습니다.",
-      "noPendingDesc": "위의 <bold>멤버 초대</bold>를 클릭해 공유 가능한 링크를 생성하세요.",
+      "noPendingDesc": "새 팀원은 이메일과 임시 비밀번호로 바로 생성할 수 있습니다.",
       "untitledInvite": "제목 없는 초대",
       "created": "{date} 생성",
       "expiresInDays": "{days}일 후 만료",
@@ -1286,6 +1301,20 @@
       "cancel": "취소",
       "removing": "제거 중...",
       "removeBtn": "멤버 제거"
+    },
+    "createMember": {
+      "title": "팀원 추가",
+      "description": "직접 계정을 만듭니다. CRM을 사용하기 전에 새 비밀번호를 설정해야 합니다. 임시 비밀번호는 안전한 방법으로 전달하세요.",
+      "nameLabel": "이름 (선택)",
+      "emailLabel": "이메일",
+      "temporaryPasswordLabel": "임시 비밀번호",
+      "temporaryPasswordHint": "12자 이상이어야 합니다. 생성 후 다시 표시되지 않습니다.",
+      "roleLabel": "접근 역할",
+      "cancel": "취소",
+      "create": "접근 권한 만들기",
+      "creating": "만드는 중...",
+      "created": "계정이 생성되었습니다. 첫 로그인 후 임시 비밀번호를 변경해야 합니다.",
+      "failed": "계정을 만들 수 없습니다. 입력 내용을 확인하고 다시 시도하세요."
     },
     "invite": {
       "inviteCreated": "초대가 생성되었습니다",

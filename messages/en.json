@@ -14,6 +14,20 @@
     "noAccount": "Don't have an account?",
     "createAccount": "Create account"
   },
+  "ChangePasswordPage": {
+    "title": "Choose your password",
+    "description": "Your temporary password only works for this first sign-in. Set a personal password to continue.",
+    "passwordLabel": "New password",
+    "confirmPasswordLabel": "Confirm new password",
+    "passwordTooShort": "Use at least {length} characters.",
+    "passwordMismatch": "The passwords do not match.",
+    "saveFailed": "Could not change the password. Try again.",
+    "saving": "Saving...",
+    "submit": "Change password",
+    "successTitle": "Password changed",
+    "successDescription": "Sign in again with your new password.",
+    "backToLogin": "Back to sign in"
+  },
   "Sidebar": {
     "title": "CRM Template for WhatsApp",
     "dashboard": "Dashboard",
@@ -1258,8 +1272,9 @@
     },
     "members": {
       "title": "Team members",
-      "description": "People with access to this account. Roles control what each teammate can do.",
+      "description": "People with access to this account. Add users directly and choose what each role can do.",
       "inviteMember": "Invite member",
+      "createMember": "Add user",
       "online": "online",
       "away": "away",
       "offline": "offline",
@@ -1271,9 +1286,9 @@
       "removedToast": "Removed {name}",
       "updatedToast": "Updated {name} to {role}",
       "pendingInvitations": "Pending invitations",
-      "inviteHint": "The plaintext invite URL is only shown once at creation for security — to re-share, revoke the invite below and create a new one.",
+      "inviteHint": "These are pending links created before direct account creation. New users are added with email and a temporary password.",
       "noPendingTitle": "No pending invitations.",
-      "noPendingDesc": "Click <bold>Invite member</bold> above to generate a shareable link.",
+      "noPendingDesc": "New team members can now be created directly with an email and temporary password.",
       "untitledInvite": "Untitled invite",
       "created": "Created {date}",
       "expiresInDays": "expires in {days} {days, plural, =1 {day} other {days}}",
@@ -1286,6 +1301,20 @@
       "cancel": "Cancel",
       "removing": "Removing...",
       "removeBtn": "Remove member"
+    },
+    "createMember": {
+      "title": "Add a team member",
+      "description": "Create access directly. The user must choose a new password before using the CRM. Share the temporary password privately.",
+      "nameLabel": "Name (optional)",
+      "emailLabel": "Email",
+      "temporaryPasswordLabel": "Temporary password",
+      "temporaryPasswordHint": "At least 12 characters. It will not be shown again after creation.",
+      "roleLabel": "Access role",
+      "cancel": "Cancel",
+      "create": "Create access",
+      "creating": "Creating...",
+      "created": "Access created. The user must change the temporary password at first sign-in.",
+      "failed": "Could not create access. Check the details and try again."
     },
     "invite": {
       "inviteCreated": "Invite created",

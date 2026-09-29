@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -40,6 +40,24 @@ export async function middleware(request: NextRequest) {
       response.cookies.set(cookie)
     })
     return response
+  }
+
+  const requiresPasswordChange = user?.app_metadata?.must_change_password === true
+  const isPasswordChangePage = request.nextUrl.pathname === '/change-password'
+  const isPasswordChangeApi = request.nextUrl.pathname === '/api/auth/change-password'
+  if (requiresPasswordChange && !isPasswordChangePage && !isPasswordChangeApi) {
+    if (request.nextUrl.pathname.startsWith('/api/')) {
+      return withRefreshedCookies(
+        NextResponse.json(
+          { error: 'Change your temporary password before using the CRM' },
+          { status: 403 },
+        ),
+      )
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = '/change-password'
+    url.search = ''
+    return withRefreshedCookies(NextResponse.redirect(url))
   }
 
   // Auth pages - redirect to dashboard if already logged in.
@@ -70,7 +88,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protected pages - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/settings']
+  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/settings', '/change-password']
   if (!user && protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'

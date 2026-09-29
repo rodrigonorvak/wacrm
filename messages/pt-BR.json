@@ -14,6 +14,41 @@
     "noAccount": "Ainda não tem uma conta?",
     "createAccount": "Criar conta"
   },
+  "ChangePasswordPage": {
+    "title": "Crie sua senha pessoal",
+    "description": "A senha temporária serve apenas para este primeiro acesso. Defina sua senha pessoal para continuar.",
+    "passwordLabel": "Nova senha",
+    "confirmPasswordLabel": "Confirme a nova senha",
+    "passwordTooShort": "Use pelo menos {length} caracteres.",
+    "passwordMismatch": "As senhas não coincidem.",
+    "saveFailed": "Não foi possível alterar a senha. Tente novamente.",
+    "saving": "Salvando...",
+    "submit": "Alterar senha",
+    "successTitle": "Senha alterada",
+    "successDescription": "Entre novamente com sua nova senha.",
+    "backToLogin": "Voltar para o login"
+  },
+  "Settings": {
+    "members": {
+      "createMember": "Adicionar usuário",
+      "inviteHint": "Estes são links pendentes criados antes da criação direta. Novos usuários são adicionados com e-mail e senha temporária.",
+      "noPendingDesc": "Novos usuários podem ser criados diretamente com e-mail e senha temporária."
+    },
+    "createMember": {
+      "title": "Adicionar usuário à equipe",
+      "description": "Crie o acesso diretamente. O usuário deverá definir uma nova senha antes de usar o CRM. Compartilhe a senha temporária por um canal seguro.",
+      "nameLabel": "Nome (opcional)",
+      "emailLabel": "E-mail",
+      "temporaryPasswordLabel": "Senha temporária",
+      "temporaryPasswordHint": "Pelo menos 12 caracteres. Ela não será exibida novamente após a criação.",
+      "roleLabel": "Nível de acesso",
+      "cancel": "Cancelar",
+      "create": "Criar acesso",
+      "creating": "Criando...",
+      "created": "Acesso criado. O usuário deverá trocar a senha temporária no primeiro login.",
+      "failed": "Não foi possível criar o acesso. Confira os dados e tente novamente."
+    }
+  },
   "Sidebar": {
     "title": "CRM para WhatsApp",
     "dashboard": "Painel",

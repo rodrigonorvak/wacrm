@@ -8,7 +8,7 @@ import { NextRequest } from "next/server";
 //                      i.e. the freshly *rotated* auth token. The whole point
 //                      of the test is that these must survive onto whatever
 //                      response the middleware returns — including redirects.
-let mockUser: { id: string } | null = null;
+let mockUser: { id: string; app_metadata?: Record<string, unknown> } | null = null;
 let refreshedCookies: Array<{
   name: string;
   value: string;
@@ -109,5 +109,32 @@ describe("middleware — refreshed auth cookies survive redirects", () => {
     // No redirect — the normal NextResponse.next() already carries cookies.
     expect(res.headers.get("location")).toBeNull();
     expect(res.cookies.get(ROTATED.name)?.value).toBe(ROTATED.value);
+  });
+
+  it("forces provisioned members to the password change page", async () => {
+    mockUser = { id: "user-1", app_metadata: { must_change_password: true } };
+
+    const res = await middleware(new NextRequest("https://app.test/dashboard"));
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/change-password");
+  });
+
+  it("blocks API requests until the temporary password is changed", async () => {
+    mockUser = { id: "user-1", app_metadata: { must_change_password: true } };
+
+    const res = await middleware(new NextRequest("https://app.test/api/account/members"));
+
+    expect(res.status).toBe(403);
+  });
+
+  it("allows the password change page and endpoint for provisioned members", async () => {
+    mockUser = { id: "user-1", app_metadata: { must_change_password: true } };
+
+    const page = await middleware(new NextRequest("https://app.test/change-password"));
+    const endpoint = await middleware(new NextRequest("https://app.test/api/auth/change-password", { method: "POST" }));
+
+    expect(page.headers.get("location")).toBeNull();
+    expect(endpoint.headers.get("location")).toBeNull();
   });
 });

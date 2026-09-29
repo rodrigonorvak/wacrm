@@ -57,6 +57,16 @@ BEGIN
   IF NOT has_function_privilege('service_role', 'public.record_webhook_failure(uuid,integer)', 'EXECUTE') THEN
     RAISE EXCEPTION 'service_role cannot execute record_webhook_failure (migration 048)';
   END IF;
+  IF position(
+    'must_change_password' IN pg_get_functiondef('public.is_account_member(uuid,account_role_enum)'::regprocedure)
+  ) = 0 THEN
+    RAISE EXCEPTION 'account RLS does not enforce forced password changes (migration 050)';
+  END IF;
+  IF position(
+    'member_provisioning_account_id' IN pg_get_functiondef('public.handle_new_user()'::regprocedure)
+  ) = 0 THEN
+    RAISE EXCEPTION 'new-member account provisioning is missing (migration 049)';
+  END IF;
 
   -- Account scoping (017) is load-bearing for every RLS policy.
   IF to_regclass('public.accounts') IS NULL THEN

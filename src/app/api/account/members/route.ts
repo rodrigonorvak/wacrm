@@ -16,8 +16,16 @@ import { NextResponse } from "next/server";
 
 import { getCurrentAccount, toErrorResponse } from "@/lib/auth/account";
 import { canManageMembers, isAccountRole } from "@/lib/auth/roles";
+import { requireRole } from "@/lib/auth/account";
+import { supabaseAdmin } from "@/lib/flows/admin-client";
+import { parseNewMemberInput } from "@/lib/auth/member-provisioning";
 import { privateAvatarUrl } from "@/lib/storage/avatar-url";
 import type { AccountMember } from "@/types";
+import {
+  checkRateLimit,
+  rateLimitResponse,
+  RATE_LIMITS,
+} from "@/lib/rate-limit";
 
 interface ProfileRow {
   user_id: string;
@@ -68,6 +76,99 @@ export async function GET() {
     });
 
     return NextResponse.json({ members });
+  } catch (err) {
+    return toErrorResponse(err);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const ctx = await requireRole("admin");
+    const limit = checkRateLimit(
+      `admin:memberCreate:${ctx.userId}`,
+      RATE_LIMITS.adminAction,
+    );
+    if (!limit.success) return rateLimitResponse(limit);
+
+    const body = await request.json().catch(() => null);
+    const parsed = parseNewMemberInput(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+
+    const admin = supabaseAdmin();
+    const { data, error } = await admin.auth.admin.createUser({
+      email: parsed.value.email,
+      password: parsed.value.password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: parsed.value.fullName || parsed.value.email.split("@")[0],
+      },
+      app_metadata: {
+        must_change_password: true,
+        member_provisioning_account_id: ctx.accountId,
+        member_provisioning_role: parsed.value.role,
+      },
+    });
+
+    if (error || !data.user) {
+      if (error?.code === "email_exists" || error?.status === 422) {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 409 },
+        );
+      }
+      console.error("[POST /api/account/members] auth user creation failed", error?.code);
+      return NextResponse.json({ error: "Failed to create member" }, { status: 500 });
+    }
+
+    const user = data.user;
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("user_id, account_id, account_role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (
+      profileError ||
+      !profile ||
+      profile.account_id !== ctx.accountId ||
+      profile.account_role !== parsed.value.role
+    ) {
+      const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
+      console.error("[POST /api/account/members] profile provisioning failed", {
+        cleanupSucceeded: !cleanupError,
+      });
+      return NextResponse.json(
+        { error: "Member setup did not complete; no access was granted" },
+        { status: 500 },
+      );
+    }
+
+    const appMetadata: Record<string, unknown> = {
+      ...user.app_metadata,
+      must_change_password: true,
+    };
+    delete appMetadata.member_provisioning_account_id;
+    delete appMetadata.member_provisioning_role;
+    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
+      app_metadata: appMetadata,
+    });
+    if (metadataError) {
+      console.error("[POST /api/account/members] temporary provisioning metadata cleanup failed");
+    }
+
+    return NextResponse.json(
+      {
+        member: {
+          user_id: user.id,
+          email: parsed.value.email,
+          role: parsed.value.role,
+          requires_password_change: true,
+        },
+      },
+      { status: 201 },
+    );
   } catch (err) {
     return toErrorResponse(err);
   }
