@@ -49,6 +49,23 @@ describe('serializeContact', () => {
     };
     expect(serializeContact(row).tags).toEqual([]);
   });
+
+  it('does not serialize a tag linked from another account', () => {
+    const row = {
+      id: 'c3',
+      phone: '+1',
+      created_at: 'a',
+      updated_at: 'b',
+      contact_tags: [
+        { tags: { id: 't1', name: 'own', color: '#fff', account_id: 'account-a' } },
+        { tags: { id: 't2', name: 'foreign', color: '#000', account_id: 'account-b' } },
+      ],
+    };
+
+    expect(serializeContact(row, 'account-a').tags).toEqual([
+      { id: 't1', name: 'own', color: '#fff' },
+    ]);
+  });
 });
 
 describe('findOrCreateContact', () => {

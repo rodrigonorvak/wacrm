@@ -39,10 +39,15 @@ export class ContactError extends Error {
   }
 }
 
-type RawTagJoin = { tags: { id: string; name: string; color: string } | null };
+type RawTagJoin = {
+  tags: { id: string; name: string; color: string; account_id?: string } | null;
+};
 
 /** Flatten a `CONTACT_SELECT` row into the public contact shape. */
-export function serializeContact(row: Record<string, unknown>): ApiContact {
+export function serializeContact(
+  row: Record<string, unknown>,
+  accountId?: string,
+): ApiContact {
   const joins = (row.contact_tags as RawTagJoin[] | undefined) ?? [];
   return {
     id: row.id as string,
@@ -54,6 +59,7 @@ export function serializeContact(row: Record<string, unknown>): ApiContact {
     tags: joins
       .map((j) => j.tags)
       .filter((t): t is NonNullable<RawTagJoin['tags']> => t != null)
+      .filter((t) => !accountId || t.account_id === accountId)
       .map((t) => ({ id: t.id, name: t.name, color: t.color })),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
@@ -229,5 +235,5 @@ export async function getContactById(
     .eq('account_id', accountId)
     .maybeSingle();
   if (error || !data) return null;
-  return serializeContact(data as Record<string, unknown>);
+  return serializeContact(data as Record<string, unknown>, accountId);
 }

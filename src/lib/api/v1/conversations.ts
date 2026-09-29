@@ -50,7 +50,10 @@ export interface ApiMessage {
  * Project a normalized `Conversation` (from `normalizeConversation`,
  * which has already flattened `contact.tags`) into the public shape.
  */
-export function serializeConversation(conv: Conversation): ApiConversation {
+export function serializeConversation(
+  conv: Conversation,
+  accountId?: string,
+): ApiConversation {
   const c = conv.contact;
   return {
     id: conv.id,
@@ -69,11 +72,17 @@ export function serializeConversation(conv: Conversation): ApiConversation {
           name: c.name ?? null,
           email: c.email ?? null,
           company: c.company ?? null,
-          tags: (c.tags ?? []).map((t) => ({
-            id: t.id,
-            name: t.name,
-            color: t.color,
-          })),
+          tags: (c.tags ?? [])
+            .filter(
+              (tag) =>
+                !accountId ||
+                (tag as typeof tag & { account_id?: string }).account_id === accountId,
+            )
+            .map((t) => ({
+              id: t.id,
+              name: t.name,
+              color: t.color,
+            })),
         }
       : null,
   };

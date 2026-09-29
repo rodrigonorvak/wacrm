@@ -29,6 +29,28 @@ describe('serializeConversation', () => {
     expect(out.contact?.tags).toEqual([{ id: 't1', name: 'vip', color: '#fff' }]);
     expect(out.unread_count).toBe(2);
   });
+
+  it('omits nested tags that do not belong to the API key account', () => {
+    const conv = {
+      id: 'conv2',
+      contact_id: 'c2',
+      status: 'open',
+      created_at: 'a',
+      updated_at: 'b',
+      contact: {
+        id: 'c2',
+        phone: '+1',
+        tags: [
+          { id: 't1', name: 'own', color: '#fff', account_id: 'account-a' },
+          { id: 't2', name: 'foreign', color: '#000', account_id: 'account-b' },
+        ],
+      },
+    } as unknown as Conversation;
+
+    expect(serializeConversation(conv, 'account-a').contact?.tags).toEqual([
+      { id: 't1', name: 'own', color: '#fff' },
+    ]);
+  });
 });
 
 describe('serializeMessage', () => {

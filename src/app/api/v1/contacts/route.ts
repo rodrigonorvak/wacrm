@@ -85,7 +85,9 @@ export async function GET(request: Request) {
       limit
     );
     return okList(
-      items.map((r) => serializeContact(r as Record<string, unknown>)),
+      items.map((r) =>
+        serializeContact(r as Record<string, unknown>, ctx.accountId)
+      ),
       nextCursor
     );
   } catch (err) {
