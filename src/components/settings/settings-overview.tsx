@@ -10,7 +10,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { THEMES } from '@/lib/themes';
 import { CURRENCIES } from '@/lib/currency';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 import { SECTION_META, type SettingsSection } from './settings-sections';
@@ -260,9 +259,9 @@ export function SettingsOverview({
   ];
 
   return (
-    <section className="animate-in fade-in-50 duration-200">
+    <section className="animate-in fade-in-50 space-y-7 duration-200">
       {/* Identity */}
-      <Card className="flex-row items-center gap-4 px-5 py-5">
+      <div className="flex flex-wrap items-center gap-4 border-b border-border pb-5">
         <Avatar size="lg" className="size-14">
           {profile?.avatar_url ? (
             <AvatarImage src={profile.avatar_url} alt={displayName} />
@@ -287,10 +286,10 @@ export function SettingsOverview({
             {tRoles(accountRole!)}
           </SettingsChip>
         ) : null}
-      </Card>
+      </div>
 
-      {/* Status tiles */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {/* Section navigation */}
+      <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
         {tiles.map(({ section, loading, subtitle }) => {
           const meta = SECTION_META[section];
           const Icon = meta.icon;
@@ -300,11 +299,11 @@ export function SettingsOverview({
               type="button"
               onClick={() => onSelect(section)}
               className={cn(
-                'group flex items-start gap-3.5 rounded-xl border border-border bg-card p-4 text-left transition-colors',
-                'hover:border-primary-soft-2 hover:bg-card-2',
+                'group flex min-h-20 items-start gap-3.5 border-b border-border py-4 text-left transition-colors',
+                'hover:text-primary',
               )}
             >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
+              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center text-primary">
                 <Icon className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
