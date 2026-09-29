@@ -49,6 +49,15 @@ BEGIN
     RAISE EXCEPTION 'the avatars bucket is missing or public (migration 047)';
   END IF;
 
+  IF has_function_privilege('anon', 'public.record_webhook_failure(uuid,integer)', 'EXECUTE')
+      OR has_function_privilege('authenticated', 'public.record_webhook_failure(uuid,integer)', 'EXECUTE')
+  THEN
+    RAISE EXCEPTION 'record_webhook_failure is executable by an untrusted role (migration 048)';
+  END IF;
+  IF NOT has_function_privilege('service_role', 'public.record_webhook_failure(uuid,integer)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'service_role cannot execute record_webhook_failure (migration 048)';
+  END IF;
+
   -- Account scoping (017) is load-bearing for every RLS policy.
   IF to_regclass('public.accounts') IS NULL THEN
     RAISE EXCEPTION 'public.accounts is missing — migration 017 did not apply';
