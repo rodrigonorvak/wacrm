@@ -72,6 +72,18 @@ BEGIN
   IF to_regclass('public.accounts') IS NULL THEN
     RAISE EXCEPTION 'public.accounts is missing — migration 017 did not apply';
   END IF;
+  IF to_regclass('public.platform_admins') IS NULL THEN
+    RAISE EXCEPTION 'public.platform_admins is missing — migration 051 did not apply';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'platform_admins'
+      AND policyname = 'platform_admins_self_read'
+  ) THEN
+    RAISE EXCEPTION 'platform admin self-read policy is missing — migration 051 did not apply';
+  END IF;
 
   RAISE NOTICE 'schema verification passed';
 END

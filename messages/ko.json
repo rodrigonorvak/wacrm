@@ -28,6 +28,21 @@
     "successDescription": "새 비밀번호로 다시 로그인하세요.",
     "backToLogin": "로그인으로 돌아가기"
   },
+  "PlatformAdmin": {
+    "title": "플랫폼 관리",
+    "description": "계정 및 현재 사용자 정보입니다.",
+    "accounts": "계정",
+    "members": "사용자",
+    "owner": "계정 소유자",
+    "created": "생성일",
+    "account": "계정",
+    "loading": "플랫폼 데이터를 불러오는 중...",
+    "loadFailed": "플랫폼 데이터를 불러올 수 없습니다.",
+    "accessDenied": "이 계정에는 플랫폼 관리 권한이 없습니다.",
+    "empty": "계정이 없습니다.",
+    "truncated": "최근 계정 100개를 표시합니다.",
+    "refresh": "새로고침"
+  },
   "Sidebar": {
     "title": "WhatsApp용 CRM 템플릿",
     "dashboard": "대시보드",

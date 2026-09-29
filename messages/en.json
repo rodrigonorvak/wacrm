@@ -28,6 +28,21 @@
     "successDescription": "Sign in again with your new password.",
     "backToLogin": "Back to sign in"
   },
+  "PlatformAdmin": {
+    "title": "Platform administration",
+    "description": "Accounts and their current membership.",
+    "accounts": "Accounts",
+    "members": "Users",
+    "owner": "Account owner",
+    "created": "Created",
+    "account": "Account",
+    "loading": "Loading platform data...",
+    "loadFailed": "Could not load platform data.",
+    "accessDenied": "This account is not authorized for platform administration.",
+    "empty": "No accounts found.",
+    "truncated": "Showing the latest 100 accounts.",
+    "refresh": "Refresh"
+  },
   "Sidebar": {
     "title": "CRM Template for WhatsApp",
     "dashboard": "Dashboard",

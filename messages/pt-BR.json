@@ -28,6 +28,21 @@
     "successDescription": "Entre novamente com sua nova senha.",
     "backToLogin": "Voltar para o login"
   },
+  "PlatformAdmin": {
+    "title": "Administração da plataforma",
+    "description": "Contas e seus usuários atuais.",
+    "accounts": "Contas",
+    "members": "Usuários",
+    "owner": "Responsável pela conta",
+    "created": "Criada em",
+    "account": "Conta",
+    "loading": "Carregando dados da plataforma...",
+    "loadFailed": "Não foi possível carregar os dados da plataforma.",
+    "accessDenied": "Esta conta não tem autorização para administrar a plataforma.",
+    "empty": "Nenhuma conta encontrada.",
+    "truncated": "Exibindo as 100 contas mais recentes.",
+    "refresh": "Atualizar"
+  },
   "Settings": {
     "members": {
       "createMember": "Adicionar usuário",
