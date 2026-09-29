@@ -133,7 +133,7 @@ export default function PlatformAdminPage() {
                   {accounts.map((account) => (
                     <tr key={account.id} className="border-b border-border/70 align-top">
                       <td className="py-4 pr-4">
-                        <p className="font-medium">{account.name}</p>
+                        <Link href={`/admin/accounts/${encodeURIComponent(account.id)}`} className="font-medium text-primary hover:underline">{account.name}</Link>
                         <p className="mt-1 font-mono text-[11px] text-muted-foreground">{account.id}</p>
                       </td>
                       <td className="py-4 pr-4">
