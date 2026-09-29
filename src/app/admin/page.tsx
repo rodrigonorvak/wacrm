@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
@@ -81,6 +82,11 @@ export default function PlatformAdminPage() {
             <span>{t("refresh")}</span>
           </Button>
         </header>
+
+        <nav className="flex gap-5 border-b border-border text-sm" aria-label="Platform administration">
+          <Link href="/admin" aria-current="page" className="border-b-2 border-primary py-3 font-medium text-foreground">{t("accountsPage")}</Link>
+          <Link href="/admin/users" className="py-3 text-muted-foreground hover:text-foreground">{t("usersPage")}</Link>
+        </nav>
 
         <section className="grid grid-cols-2 gap-6 border-b border-border py-5 sm:grid-cols-3">
           <div>

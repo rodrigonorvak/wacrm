@@ -41,7 +41,22 @@
     "accessDenied": "이 계정에는 플랫폼 관리 권한이 없습니다.",
     "empty": "계정이 없습니다.",
     "truncated": "최근 계정 100개를 표시합니다.",
-    "refresh": "새로고침"
+    "refresh": "새로고침",
+    "usersPage": "사용자",
+    "accountsPage": "계정",
+    "email": "이메일",
+    "access": "접근",
+    "confirmed": "확인됨",
+    "unconfirmed": "미확인",
+    "enabled": "사용 가능",
+    "suspended": "정지됨",
+    "noProfile": "계정 프로필 없음",
+    "previous": "이전",
+    "next": "다음",
+    "page": "페이지 {page}",
+    "lastLogin": "마지막 로그인",
+    "createdAt": "생성일",
+    "unlinkedCount": "CRM 프로필이 없는 사용자"
   },
   "Sidebar": {
     "title": "WhatsApp용 CRM 템플릿",

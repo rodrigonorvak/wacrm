@@ -41,7 +41,22 @@
     "accessDenied": "Esta conta não tem autorização para administrar a plataforma.",
     "empty": "Nenhuma conta encontrada.",
     "truncated": "Exibindo as 100 contas mais recentes.",
-    "refresh": "Atualizar"
+    "refresh": "Atualizar",
+    "usersPage": "Usuários",
+    "accountsPage": "Contas",
+    "email": "E-mail",
+    "access": "Acesso",
+    "confirmed": "Confirmado",
+    "unconfirmed": "Não confirmado",
+    "enabled": "Habilitado",
+    "suspended": "Suspenso",
+    "noProfile": "Sem perfil de conta",
+    "previous": "Anterior",
+    "next": "Próxima",
+    "page": "Página {page}",
+    "lastLogin": "Último acesso",
+    "createdAt": "Criado em",
+    "unlinkedCount": "Usuários sem perfil no CRM"
   },
   "Settings": {
     "members": {

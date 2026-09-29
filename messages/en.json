@@ -41,7 +41,22 @@
     "accessDenied": "This account is not authorized for platform administration.",
     "empty": "No accounts found.",
     "truncated": "Showing the latest 100 accounts.",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "usersPage": "Users",
+    "accountsPage": "Accounts",
+    "email": "Email",
+    "access": "Access",
+    "confirmed": "Confirmed",
+    "unconfirmed": "Unconfirmed",
+    "enabled": "Enabled",
+    "suspended": "Suspended",
+    "noProfile": "No account profile",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {page}",
+    "lastLogin": "Last login",
+    "createdAt": "Created",
+    "unlinkedCount": "Users without a CRM profile"
   },
   "Sidebar": {
     "title": "CRM Template for WhatsApp",
