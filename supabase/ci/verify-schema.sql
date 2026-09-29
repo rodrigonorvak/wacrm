@@ -42,6 +42,12 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'the private chat-inbound bucket is missing or public (migration 046)';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM storage.buckets
+    WHERE id = 'avatars' AND public = FALSE
+  ) THEN
+    RAISE EXCEPTION 'the avatars bucket is missing or public (migration 047)';
+  END IF;
 
   -- Account scoping (017) is load-bearing for every RLS policy.
   IF to_regclass('public.accounts') IS NULL THEN
