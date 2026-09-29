@@ -122,10 +122,10 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="space-y-5">
+    <div className="dashboard-pilot -m-4 min-h-full space-y-5 p-4 sm:-m-6 sm:p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{t('title')}</h1>
+      <div className="mx-auto max-w-2xl pb-1 text-center">
+        <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {t('description')}
         </p>
