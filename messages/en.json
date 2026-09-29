@@ -122,9 +122,6 @@
     "menuSettings": "Settings",
     "menuSignOut": "Sign out"
   },
-  "ModeToggle": {
-    "switchMode": "Switch to {mode} mode"
-  },
   "AccountAccess": {
     "unlinkedTitle": "This user is not linked to an account",
     "unlinkedBody": "Nothing you change will be saved while this is unresolved — the database rejects every write from a user with no account or role. If you were invited to a team, ask the owner to re-send the invitation. On a self-hosted install, check that the account-bootstrap migration ran for this user.",
@@ -1317,7 +1314,7 @@
       "tagsAndFields": "Tags and custom fields",
       "tagsCount": "{count} {count, plural, =1 {tag} other {tags}}",
       "fieldsCount": "{count} custom {count, plural, =1 {field} other {fields}}",
-      "appearance": "{mode} mode · {theme} accent",
+      "appearance": "Accent: {theme}",
       "yourAccount": "Your account",
       "loading": "Loading…"
     },
@@ -1691,9 +1688,7 @@
     },
     "appearance": {
       "title": "Appearance",
-      "description": "Set the mode and accent colour used across the app. Saved to this device — try it, it changes live.",
-      "mode": "Mode",
-      "useMode": "Use {mode} mode",
+      "description": "Choose the accent color used across the app. Saved to this device and applied immediately.",
       "active": "Active",
       "accentColor": "Accent color",
       "useTheme": "Use {name} theme"

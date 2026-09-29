@@ -80,6 +80,16 @@
     "no": "Não"
   },
   "Settings": {
+    "overview": {
+      "appearance": "Cor de destaque: {theme}"
+    },
+    "appearance": {
+      "title": "Aparência",
+      "description": "Escolha a cor de destaque usada no CRM. A mudança é salva neste dispositivo e aplicada na hora.",
+      "accentColor": "Cor de destaque",
+      "active": "Ativa",
+      "useTheme": "Usar tema {name}"
+    },
     "members": {
       "createMember": "Adicionar usuário",
       "inviteHint": "Estes são links pendentes criados antes da criação direta. Novos usuários são adicionados com e-mail e senha temporária.",
@@ -142,9 +152,6 @@
     "menuProfile": "Perfil",
     "menuSettings": "Configurações",
     "menuSignOut": "Sair"
-  },
-  "ModeToggle": {
-    "switchMode": "Mudar para o modo {mode}"
   },
   "Dashboard": {
     "page": {

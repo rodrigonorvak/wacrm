@@ -28,10 +28,6 @@
   box-shadow: 0 4px 20px rgb(0 0 0 / 25%), 0 0 15px rgb(225 29 72 / 30%);
 }
 
-html[data-mode="dark"] .crm-sidebar-item-active {
-  background: var(--background);
-}
-
 .crm-sidebar-item-active::before,
 .crm-sidebar-item-active::after {
   position: absolute;
@@ -52,14 +48,6 @@ html[data-mode="dark"] .crm-sidebar-item-active {
   bottom: -16px;
   border-top-right-radius: 16px;
   box-shadow: 6px -6px 0 6px #ffffff;
-}
-
-html[data-mode="dark"] .crm-sidebar-item-active::before {
-  box-shadow: 6px 6px 0 6px var(--background);
-}
-
-html[data-mode="dark"] .crm-sidebar-item-active::after {
-  box-shadow: 6px -6px 0 6px var(--background);
 }
 
 @theme inline {
@@ -116,23 +104,12 @@ html[data-mode="dark"] .crm-sidebar-item-active::after {
 }
 
 /* ============================================================
- * THEMING — two orthogonal dimensions
+ * THEMING — fixed light surfaces and selectable accent color.
+ * Neutral surface tokens live on :root; accent tokens are selected
+ * with `document.documentElement.dataset.theme`.
  *
- *   1. MODE   (light / dark)  → neutral surfaces. Selected with
- *      `document.documentElement.dataset.mode`. Defaults to dark.
- *   2. ACCENT (violet / …)    → the primary color only. Selected
- *      with `document.documentElement.dataset.theme`.
- *
- * The two compose: any accent works in either mode. Neutral
- * tokens (background / card / border / muted / sidebar surfaces /
- * neutral charts / radius) live in the MODE blocks below; accent
- * tokens (--primary*, --ring, --chart-1, --sidebar-primary*,
- * --sidebar-ring) live in the ACCENT blocks. They set disjoint
- * variables, so cascade order between them doesn't matter.
- *
- * `:root` carries the dark-mode + violet defaults so a visitor
- * renders correctly before JS runs; the boot script in
- * layout.tsx replays the saved mode + accent before first paint.
+ * `:root` carries the light surface defaults so the app renders
+ * correctly before JS runs; the boot script replays the saved accent.
  *
  * The three `--primary-*` extras (hover / soft / soft-2) feed
  * hovered primary buttons and tinted-primary surfaces (sidebar
@@ -142,39 +119,7 @@ html[data-mode="dark"] .crm-sidebar-item-active::after {
  * project/Color Themes.html — change one, change the other.
  * ============================================================ */
 
-/* ---- MODE: neutral surfaces ---- */
-
-:root,
-html[data-mode="dark"] {
-  --background: oklch(0.13 0.01 260);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.18 0.01 260);
-  --card-2: oklch(0.205 0.01 260);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.18 0.01 260);
-  --popover-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.22 0.01 260);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0.01 260);
-  --accent: oklch(0.22 0.01 260);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.28 0.01 260);
-  --input: oklch(0.28 0.01 260);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.16 0.01 260);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.22 0.01 260);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.28 0.01 260);
-}
-
-html[data-mode="light"] {
+:root {
   --background: oklch(0.99 0.002 260);
   --foreground: oklch(0.21 0.01 260);
   --card: oklch(1 0 0);
