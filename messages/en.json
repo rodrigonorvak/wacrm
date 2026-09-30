@@ -1856,7 +1856,9 @@
       "addDoc": "Add document",
       "reindex": "Reindex",
       "reindexTooltip": "Re-embed all documents (e.g. after adding an embeddings key)",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "edit": "Edit",
+      "delete": "Delete"
     }
   }
 }
