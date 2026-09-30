@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SettingsPanelHead } from './settings-panel-head';
 
 function MetaBrandIcon() {
   return (
-    <span className="flex size-10 items-center justify-center rounded-xl bg-[#1877f2] text-2xl font-semibold leading-none text-white" aria-hidden="true">
+    <span className="flex size-9 items-center justify-center rounded-md bg-[#1877f2] text-xl font-semibold leading-none text-white" aria-hidden="true">
       ∞
     </span>
   );
@@ -30,32 +29,30 @@ export function IntegrationsOverview({ onOpenMeta }: { onOpenMeta: () => void })
         title="Integrações"
         description="Conecte o CRM aos serviços que sua operação usa para captar e acompanhar leads."
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Integrações disponíveis</CardTitle>
-          <CardDescription>Escolha uma integração para configurar.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <button
-            type="button"
-            onClick={onOpenMeta}
-            className="flex w-full items-center gap-4 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted"
-          >
-            <MetaBrandIcon />
-            <span className="min-w-0 flex-1">
-              <span className="block font-medium text-foreground">Meta</span>
-              <span className="mt-1 block text-sm text-muted-foreground">Conversões, Elementor e Meta Instant Forms</span>
-              <span className={metaConnected ? 'mt-1 flex items-center gap-1.5 text-xs text-emerald-600' : 'mt-1 flex items-center gap-1.5 text-xs text-muted-foreground'}>
-                <span className={metaConnected ? 'size-1.5 rounded-full bg-emerald-500' : 'size-1.5 rounded-full bg-muted-foreground'} aria-hidden="true" />
-                {metaConnected === null ? 'Verificando...' : metaConnected ? 'Conectado' : 'Precisa ser reconectado'}
-              </span>
+      <section className="border-y border-border">
+        <header className="py-4">
+          <h3 className="text-sm font-medium text-foreground">Integrações disponíveis</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Escolha uma integração para configurar.</p>
+        </header>
+        <button
+          type="button"
+          onClick={onOpenMeta}
+          className="flex w-full items-center gap-4 border-t border-border py-4 text-left transition-colors hover:bg-muted/30"
+        >
+          <MetaBrandIcon />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-foreground">Meta</span>
+            <span className="mt-1 block text-sm text-muted-foreground">Conversões, Elementor e Meta Instant Forms</span>
+            <span className={metaConnected ? 'mt-1 flex items-center gap-1.5 text-xs text-emerald-600' : 'mt-1 flex items-center gap-1.5 text-xs text-muted-foreground'}>
+              <span className={metaConnected ? 'size-1.5 rounded-full bg-emerald-500' : 'size-1.5 rounded-full bg-muted-foreground'} aria-hidden="true" />
+              {metaConnected === null ? 'Verificando...' : metaConnected ? 'Conectado' : 'Precisa ser reconectado'}
             </span>
-            <span className="flex size-8 items-center justify-center rounded-lg text-muted-foreground" aria-hidden="true">
-              <ArrowRight className="size-4" />
-            </span>
-          </button>
-        </CardContent>
-      </Card>
+          </span>
+          <span className="flex size-8 items-center justify-center text-muted-foreground" aria-hidden="true">
+            <ArrowRight className="size-4" />
+          </span>
+        </button>
+      </section>
     </section>
   );
 }
