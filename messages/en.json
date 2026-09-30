@@ -877,6 +877,23 @@
       "runs": "{count} run",
       "runsPlural": "{count} runs",
       "lastRun": "last {time}",
+      "never": "never",
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago",
+      "activeAria": "Active",
+      "openMenu": "Open menu",
+      "triggers": {
+        "new_message_received": "New Message",
+        "first_inbound_message": "First Message from Contact",
+        "keyword_match": "Keyword Match",
+        "interactive_reply": "Button / List Reply",
+        "new_contact_created": "New Contact",
+        "conversation_assigned": "Conversation Assigned",
+        "tag_added": "Tag Added",
+        "time_based": "Time-Based"
+      },
       "activate": "Activate",
       "deactivate": "Deactivate",
       "edit": "Edit",
@@ -1296,6 +1313,24 @@
       "modeRemove": "Remove",
       "tagPicked": "{mode} tag {tag}…",
       "tagNone": "{mode} tag (none picked)"
+    },
+    "header": {
+      "backToFlows": "Back to flows",
+      "namePlaceholder": "Flow name",
+      "nameLabel": "Flow name",
+      "unsavedChanges": "Unsaved changes — click Save to keep them",
+      "edited": "Edited",
+      "runs": "Runs",
+      "delete": "Delete",
+      "pause": "Pause",
+      "activate": "Activate",
+      "fixIssues": "Fix the issues below before activating",
+      "save": "Save",
+      "descriptionPlaceholder": "Add a short description (internal — customers don't see this)",
+      "descriptionLabel": "Flow description",
+      "statusDraft": "Draft",
+      "statusActive": "Active",
+      "statusArchived": "Archived"
     }
   },
   "Settings": {

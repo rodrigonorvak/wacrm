@@ -50,14 +50,26 @@ export function triggerMeta(t: AutomationTriggerType | string): TriggerMeta {
   )
 }
 
-export function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return 'never'
+export interface RelativeTimeMessages {
+  never: string
+  justNow: string
+  minutesAgo: (count: number) => string
+  hoursAgo: (count: number) => string
+  daysAgo: (count: number) => string
+}
+
+export function formatRelative(
+  iso: string | null | undefined,
+  messages: RelativeTimeMessages,
+  locale: string,
+): string {
+  if (!iso) return messages.never
   const then = new Date(iso).getTime()
-  if (Number.isNaN(then)) return 'never'
+  if (Number.isNaN(then)) return messages.never
   const diffSec = Math.round((Date.now() - then) / 1000)
-  if (diffSec < 60) return 'just now'
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  if (diffSec < 2_592_000) return `${Math.floor(diffSec / 86400)}d ago`
-  return new Date(iso).toLocaleDateString()
+  if (diffSec < 60) return messages.justNow
+  if (diffSec < 3600) return messages.minutesAgo(Math.floor(diffSec / 60))
+  if (diffSec < 86400) return messages.hoursAgo(Math.floor(diffSec / 3600))
+  if (diffSec < 2_592_000) return messages.daysAgo(Math.floor(diffSec / 86400))
+  return new Date(iso).toLocaleDateString(locale)
 }

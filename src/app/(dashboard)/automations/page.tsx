@@ -20,7 +20,7 @@ import {
 
 import { createClient } from "@/lib/supabase/client"
 import { useCan } from "@/hooks/use-can"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import type { Automation } from "@/types"
 import { Button } from "@/components/ui/button"
 import { GatedButton } from "@/components/ui/gated-button"
@@ -79,6 +79,7 @@ const TEMPLATE_COPY: Record<TemplateSlug, { name: string; description: string }>
 
 export default function AutomationsPage() {
   const router = useRouter()
+  const locale = useLocale()
   const canCreate = useCan("send-messages")
   const t = useTranslations("Automations.list")
   const [automations, setAutomations] = useState<Automation[] | null>(null)
@@ -244,6 +245,7 @@ export default function AutomationsPage() {
               onLogs={() => router.push(`/automations/${a.id}/logs`)}
               onDelete={() => setPendingDelete(a)}
               t={t}
+              locale={locale}
             />
           ))}
         </ul>
@@ -288,6 +290,7 @@ function AutomationCard({
   onLogs,
   onDelete,
   t,
+  locale,
 }: {
   automation: Automation
   onToggle: (next: boolean) => void
@@ -296,6 +299,7 @@ function AutomationCard({
   onLogs: () => void
   onDelete: () => void
   t: ReturnType<typeof useTranslations>
+  locale: string
 }) {
   const meta = triggerMeta(automation.trigger_type)
   return (
@@ -318,7 +322,7 @@ function AutomationCard({
               {automation.name}
             </span>
             {automation.is_active && (
-              <span className="relative flex h-2 w-2" aria-label="active">
+              <span className="relative flex h-2 w-2" aria-label={t("activeAria")}>
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
@@ -334,7 +338,7 @@ function AutomationCard({
                 meta.pillClass,
               )}
             >
-              {meta.label}
+              {t(`triggers.${automation.trigger_type}`)}
             </span>
             <span className="tabular-nums">
               {automation.execution_count === 1
@@ -342,7 +346,17 @@ function AutomationCard({
                 : t("runsPlural", { count: automation.execution_count })}
             </span>
             <span aria-hidden>·</span>
-            <span>{t("lastRun", { time: formatRelative(automation.last_executed_at) })}</span>
+            <span>
+              {t("lastRun", {
+                time: formatRelative(automation.last_executed_at, {
+                  never: t("never"),
+                  justNow: t("justNow"),
+                  minutesAgo: (count) => t("minutesAgo", { count }),
+                  hoursAgo: (count) => t("hoursAgo", { count }),
+                  daysAgo: (count) => t("daysAgo", { count }),
+                }, locale)}
+              )}
+            </span>
           </div>
         </button>
 
@@ -355,7 +369,7 @@ function AutomationCard({
 
           <DropdownMenu>
             <DropdownMenuTrigger
-              aria-label="Open menu"
+              aria-label={t("openMenu")}
               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[popup-open]:bg-muted"
             >
               <MoreVertical className="h-4 w-4" />

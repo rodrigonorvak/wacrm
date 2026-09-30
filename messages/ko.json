@@ -877,6 +877,23 @@
       "runs": "실행 {count}회",
       "runsPlural": "실행 {count}회",
       "lastRun": "마지막 실행 {time}",
+      "never": "실행 기록 없음",
+      "justNow": "방금 전",
+      "minutesAgo": "{count}분 전",
+      "hoursAgo": "{count}시간 전",
+      "daysAgo": "{count}일 전",
+      "activeAria": "활성",
+      "openMenu": "메뉴 열기",
+      "triggers": {
+        "new_message_received": "새 메시지",
+        "first_inbound_message": "연락처의 첫 메시지",
+        "keyword_match": "키워드 일치",
+        "interactive_reply": "버튼 / 목록 응답",
+        "new_contact_created": "새 연락처",
+        "conversation_assigned": "대화 배정",
+        "tag_added": "태그 추가",
+        "time_based": "시간 기반"
+      },
       "activate": "활성화",
       "deactivate": "비활성화",
       "edit": "수정",
@@ -1296,6 +1313,24 @@
       "modeRemove": "제거",
       "tagPicked": "{tag} 태그 {mode}…",
       "tagNone": "태그 {mode} (선택된 태그 없음)"
+    },
+    "header": {
+      "backToFlows": "플로우로 돌아가기",
+      "namePlaceholder": "플로우 이름",
+      "nameLabel": "플로우 이름",
+      "unsavedChanges": "저장되지 않은 변경 사항 — 저장을 클릭하여 보관하세요",
+      "edited": "수정됨",
+      "runs": "실행 기록",
+      "delete": "삭제",
+      "pause": "일시 중지",
+      "activate": "활성화",
+      "fixIssues": "활성화하기 전에 아래 문제를 해결하세요",
+      "save": "저장",
+      "descriptionPlaceholder": "짧은 설명을 추가하세요 (내부용 — 고객에게 표시되지 않음)",
+      "descriptionLabel": "플로우 설명",
+      "statusDraft": "초안",
+      "statusActive": "활성",
+      "statusArchived": "보관됨"
     }
   },
   "Settings": {
