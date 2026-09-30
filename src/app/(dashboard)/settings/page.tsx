@@ -101,7 +101,7 @@ function SettingsPageInner() {
   };
 
   return (
-    <div className="-m-4 min-h-full bg-muted/50 sm:-m-6">
+    <div className="settings-workspace -m-4 min-h-full bg-muted/50 sm:-m-6">
       <div className="grid min-h-full lg:grid-cols-[216px_minmax(0,1fr)]">
         <aside className="border-b border-border bg-background lg:border-r lg:border-b-0">
           <div className="flex h-12 items-center border-b border-border px-5">

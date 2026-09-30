@@ -4,6 +4,44 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.settings-workspace {
+  --foreground: #343b43;
+  --muted-foreground: #747d86;
+  --border: #e0e4e8;
+  --input: #dfe3e7;
+  --primary: #e889a0;
+  --primary-foreground: #ffffff;
+  --primary-hover: #df748e;
+  --primary-soft: rgb(232 137 160 / 12%);
+  --primary-soft-2: rgb(232 137 160 / 22%);
+  font-family: inherit;
+}
+
+.settings-workspace label {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.settings-workspace select,
+.settings-workspace [data-slot="select-trigger"] {
+  min-height: 36px;
+  height: 36px;
+  border-color: var(--input);
+  border-radius: 6px;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.settings-workspace button[data-slot="button"] {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
 .crm-sidebar {
   background: linear-gradient(to bottom, #e11d48, #881337);
   overflow-x: hidden;
