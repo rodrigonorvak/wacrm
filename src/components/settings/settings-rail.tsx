@@ -81,13 +81,19 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'flex shrink-0 items-center gap-2.5 border-b-2 border-transparent px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
-                    'lg:w-full lg:border-b-0 lg:border-l-2 lg:py-2.5',
+                    'relative flex shrink-0 items-center gap-2.5 px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
+                    'lg:w-full lg:py-2.5',
                     isActive
-                      ? 'border-primary text-primary'
+                      ? 'text-primary'
                       : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                   )}
                 >
+                  {isActive && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary lg:top-2 lg:bottom-2 lg:left-0 lg:right-auto lg:h-auto lg:w-0.5"
+                    />
+                  )}
                   <Icon className="size-4 shrink-0" />
                   <span className="flex-1">{t(`sections.${s}`)}</span>
                   {hints?.[s] != null ? (
