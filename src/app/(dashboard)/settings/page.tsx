@@ -101,19 +101,30 @@ function SettingsPageInner() {
   };
 
   return (
-    <div>
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {t('pageTitle')}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('pageDesc')}
-        </p>
-      </div>
+    <div className="-m-4 min-h-full bg-muted/50 sm:-m-6">
+      <div className="grid min-h-full lg:grid-cols-[216px_minmax(0,1fr)]">
+        <aside className="border-b border-border bg-background lg:border-r lg:border-b-0">
+          <div className="flex h-12 items-center border-b border-border px-5">
+            <span className="text-xs font-semibold uppercase text-foreground">
+              {t('pageTitle')}
+            </span>
+          </div>
+          <div className="p-3">
+            <SettingsRail active={section} onSelect={go} hints={hints} />
+          </div>
+        </aside>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[236px_minmax(0,1fr)] lg:items-start">
-        <SettingsRail active={section} onSelect={go} hints={hints} />
-        <div className="min-w-0">{panel[section]}</div>
+        <div className="min-w-0 bg-background px-4 py-5 sm:px-6 sm:py-6">
+          {section === 'overview' && (
+            <div className="mb-6 border-b border-border pb-4">
+              <h1 className="text-lg font-semibold text-foreground">
+                {t('pageTitle')}
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t('pageDesc')}</p>
+            </div>
+          )}
+          {panel[section]}
+        </div>
       </div>
     </div>
   );
