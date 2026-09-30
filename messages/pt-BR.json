@@ -297,6 +297,21 @@
       "untitled": "Automação sem título",
       "trigger": "Gatilho",
       "triggerType": "Tipo de gatilho",
+      "steps": {
+        "send_message": "Enviar mensagem",
+        "send_buttons": "Enviar botões",
+        "send_list": "Enviar lista",
+        "send_template": "Enviar modelo",
+        "add_tag": "Adicionar etiqueta",
+        "remove_tag": "Remover etiqueta",
+        "assign_conversation": "Atribuir conversa",
+        "update_contact_field": "Atualizar campo do contato",
+        "create_deal": "Criar negócio",
+        "wait": "Aguardar",
+        "condition": "Condição (se/senão)",
+        "send_webhook": "Enviar webhook",
+        "close_conversation": "Encerrar conversa"
+      },
       "triggers": {
         "new_message_received": {
           "label": "Nova mensagem recebida",
