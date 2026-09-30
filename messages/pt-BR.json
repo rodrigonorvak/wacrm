@@ -111,6 +111,25 @@
       "creating": "Criando...",
       "created": "Acesso criado. O usuário deverá trocar a senha temporária no primeiro login.",
       "failed": "Não foi possível criar o acesso. Confira os dados e tente novamente."
+    },
+    "aiConfig": {
+      "title": "Configuração do agente de IA",
+      "description": "Use sua própria chave OpenAI ou Anthropic. O wacrm consulta o provedor diretamente com ela, sem custo de IA por usuário, e mantém seus dados sob seu controle. Essa configuração alimenta sugestões de resposta na Caixa de entrada, o bot de resposta automática e a área de testes.",
+      "adminOnlyConfig": "Somente administradores e proprietários podem alterar a configuração de IA.",
+      "loadFailed": "Não foi possível carregar a configuração de IA.",
+      "providerAndKey": "Provedor e chave",
+      "encryptionNotice": "Sua chave é criptografada quando armazenada (AES-256-GCM) e não será exibida novamente depois de salva.",
+      "provider": "Provedor",
+      "model": "Modelo",
+      "apiKey": "Chave de API",
+      "testKey": "Testar chave",
+      "testSuccess": "A chave funciona; o provedor respondeu.",
+      "testRejected": "O provedor recusou a solicitação.",
+      "testNetworkError": "Não foi possível conectar ao provedor.",
+      "embeddingsKey": "Chave para embeddings",
+      "optionalSemanticSearch": "(opcional — habilita a busca semântica na base de conhecimento)",
+      "embeddingsHint": "Uma chave OpenAI usada apenas para gerar embeddings da base de conhecimento (text-embedding-3-small){sameKeyText}. Deixe em branco para usar a busca por palavras-chave. Apague a chave para desativar a busca semântica.",
+      "sameKeyText": " — pode ser a mesma chave informada acima"
     }
   },
   "Sidebar": {
