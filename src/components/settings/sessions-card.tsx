@@ -7,13 +7,6 @@ import { Loader2, LogOut } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -51,17 +44,17 @@ export function SessionsCard() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-foreground">
+      <section className="grid gap-3 py-5 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-start">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
             <LogOut className="size-4 text-primary" />
             {t('sessionsTitle')}
-          </CardTitle>
-          <CardDescription className="text-muted-foreground">
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {t('sessionsDesc')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           <Button
             type="button"
             variant="outline"
@@ -70,8 +63,8 @@ export function SessionsCard() {
             <LogOut className="size-4" />
             {t('signOutAll')}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

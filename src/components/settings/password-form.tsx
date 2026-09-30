@@ -9,13 +9,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
 import { useTranslations } from 'next-intl';
 
 const MIN_PASSWORD = 8;
@@ -83,20 +76,20 @@ export function PasswordForm() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-foreground">
-          <KeyRound className="size-4 text-primary" />
-          {t('passwordTitle')}
-        </CardTitle>
-        <CardDescription className="text-muted-foreground">
-          {t('passwordDesc', { min: MIN_PASSWORD })}
-        </CardDescription>
-      </CardHeader>
+    <section className="border-b border-border py-5">
+      <div className="grid gap-3 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-start">
+        <div>
+          <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <KeyRound className="size-4 text-primary" />
+            {t('passwordTitle')}
+          </h3>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {t('passwordDesc', { min: MIN_PASSWORD })}
+          </p>
+        </div>
 
-      <CardContent>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={onSubmit} className="max-w-2xl space-y-3">
+          <div className="grid gap-2 sm:grid-cols-[170px_minmax(0,1fr)] sm:items-center">
             <Label htmlFor="current-password" className="text-foreground">
               {t('currentPassword')}
             </Label>
@@ -111,46 +104,45 @@ export function PasswordForm() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="new-password" className="text-foreground">
-                {t('newPassword')}
-              </Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-                autoComplete="new-password"
-                minLength={MIN_PASSWORD}
-                disabled={saving}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password" className="text-foreground">
-                {t('confirmPassword')}
-              </Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                autoComplete="new-password"
-                minLength={MIN_PASSWORD}
-                disabled={saving}
-                required
-              />
-            </div>
+          <div className="grid gap-2 sm:grid-cols-[170px_minmax(0,1fr)] sm:items-center">
+            <Label htmlFor="new-password" className="text-foreground">
+              {t('newPassword')}
+            </Label>
+            <Input
+              id="new-password"
+              type="password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD}
+              disabled={saving}
+              required
+            />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-[170px_minmax(0,1fr)] sm:items-center">
+            <Label htmlFor="confirm-password" className="text-foreground">
+              {t('confirmPassword')}
+            </Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD}
+              disabled={saving}
+              required
+            />
           </div>
 
           {confirmError && (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <p className="sm:ml-[178px] rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {confirmError}
             </p>
           )}
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-1">
             <Button
               type="submit"
               disabled={saving || !current || !next || !confirm}
@@ -166,7 +158,7 @@ export function PasswordForm() {
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
