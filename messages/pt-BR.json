@@ -434,6 +434,127 @@
           "label": "Agendamento por horário",
           "hint": "Executa em uma programação recorrente"
         }
+      },
+      "keywords": "Palavras-chave",
+      "keywordsHint": "Separe por vírgulas (ex.: olá, ajuda, comprar)",
+      "replyIds": "IDs de resposta",
+      "replyIdsHint": "yes, no, more_info",
+      "replyIdsHelp": "Informe IDs de botões ou itens de lista separados por vírgula, com correspondência exata. Use os mesmos IDs definidos nas etapas Enviar botões ou Enviar lista.",
+      "schedule": "Agendamento",
+      "scheduleHint": "Expressão cron (ex.: 0 9 * * 1-5)",
+      "schedulePlaceholder": "Expressão cron ou HH:mm",
+      "active": "Ativa",
+      "activeAria": "Ativa",
+      "save": "Salvar",
+      "saveDraft": "Salvar rascunho",
+      "backToAutomations": "Voltar para Automações",
+      "toasts": {
+        "saved": "Automação salva",
+        "created": "Automação criada",
+        "saveFailed": "Não foi possível salvar a automação"
+      },
+      "tags": {
+        "select": "Selecione uma etiqueta…",
+        "placeholder": "ID da etiqueta",
+        "unknown": "{id} (etiqueta desconhecida)"
+      },
+      "fields": {
+        "name": "Nome",
+        "email": "E-mail",
+        "company": "Empresa",
+        "customFields": "Campos personalizados",
+        "unknown": "{id} (campo desconhecido)"
+      },
+      "agents": {
+        "select": "Selecione um atendente…",
+        "placeholder": "ID do atendente",
+        "unknown": "{id} (atendente desconhecido)"
+      },
+      "pipelines": {
+        "pipelineLabel": "Funil",
+        "pipelineIdLabel": "ID do funil",
+        "stageLabel": "Etapa",
+        "stageIdLabel": "ID da etapa",
+        "selectPipeline": "Selecione um funil…",
+        "selectStage": "Selecione uma etapa…",
+        "selectPipelineFirst": "Selecione um funil primeiro…",
+        "unknownPipeline": "{id} (funil desconhecido)",
+        "unknownStage": "{id} (etapa desconhecida)"
+      },
+      "templates": {
+        "templateLabel": "Modelo",
+        "templateNameLabel": "Nome do modelo",
+        "languageLabel": "Idioma",
+        "select": "Selecione um modelo…",
+        "unknown": "{name} ({lang}) — fora da lista aprovada",
+        "unknownLang": "desconhecido"
+      },
+      "branches": {
+        "yes": "Sim",
+        "no": "Não"
+      },
+      "stepKinds": {
+        "action": "Ação",
+        "condition": "Condição",
+        "wait": "Aguardar"
+      },
+      "previews": {
+        "noTextYet": "Nenhum texto ainda",
+        "noBodyYet": "Nenhum conteúdo ainda",
+        "pickTemplate": "Selecione um modelo",
+        "wait": "{amount} {unit}",
+        "condition": "Quando: {subject}",
+        "noUrl": "Nenhuma URL",
+        "unknown": "desconhecido"
+      },
+      "moveUp": "Mover para cima",
+      "moveDown": "Mover para baixo",
+      "addStep": "Adicionar etapa",
+      "delete": "Excluir",
+      "config": {
+        "messageText": "Texto da mensagem",
+        "placeholderMessageText": "Olá! Agradecemos por entrar em contato…",
+        "tagLabel": "Etiqueta",
+        "modeLabel": "Modo de atribuição",
+        "modes": {
+          "round_robin": "Distribuição rotativa",
+          "specific": "Atendente específico"
+        },
+        "agentLabel": "Atendente",
+        "fieldLabel": "Campo do contato",
+        "valueLabel": "Valor",
+        "placeholderValue": "Texto ou {{ vars.x }} / {{ message.text }}",
+        "titleLabel": "Título do negócio",
+        "amountLabel": "Quantidade",
+        "unitLabel": "Unidade",
+        "units": {
+          "minutes": "minutos",
+          "hours": "horas",
+          "days": "dias"
+        },
+        "subjectLabel": "Verificar condição",
+        "subjects": {
+          "tag_presence": "Presença da etiqueta",
+          "contact_field": "Campo do contato",
+          "message_content": "Conteúdo da mensagem",
+          "time_of_day": "Horário do dia"
+        },
+        "operandLabel": "Valor de comparação",
+        "placeholderTime": "HH:mm-HH:mm",
+        "placeholderContact": "name / email / company",
+        "placeholderTag": "ID da etiqueta",
+        "urlLabel": "URL",
+        "headersLabel": "Cabeçalhos",
+        "placeholderHeaders": "{\"Authorization\": \"Bearer ...\"}",
+        "bodyTemplateLabel": "Modelo do corpo da requisição",
+        "placeholderBody": "{\"id\": \"{{ contact.id }}\"}",
+        "matchType": "Tipo de correspondência",
+        "matchContains": "Contém",
+        "matchWord": "Palavra inteira",
+        "matchWordHint": "Só corresponde à palavra-chave isolada; por exemplo, “k” não será acionada dentro de “thanks”. É mais adequado para palavras curtas em idiomas que separam palavras com espaços. Para idiomas sem espaços entre palavras, use “Contém”.",
+        "matchExact": "Exata",
+        "closeConversationHint": "Define o status da conversa como \"closed\". Não requer configuração."
+      }
       }
     }
   },

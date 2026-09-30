@@ -861,7 +861,7 @@ function TriggerCard({
             {type === "tag_added" && (
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Tag
+                  {t("config.tagLabel")}
                 </label>
                 <TagSelect
                   value={(config.tag_id as string) ?? ""}
@@ -876,7 +876,7 @@ function TriggerCard({
                   {t("schedule")}
                 </label>
                 <Input
-                  placeholder="Cron expression or HH:mm"
+                  placeholder={t("schedulePlaceholder")}
                   value={(config.schedule as string) ?? ""}
                   onChange={(e) =>
                     onConfigChange({ ...config, schedule: e.target.value })
@@ -1133,10 +1133,14 @@ function StepRenderer({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                {isCondition ? "Condition" : step.step_type === "wait" ? "Wait" : "Action"}
+                {isCondition
+                  ? t("stepKinds.condition")
+                  : step.step_type === "wait"
+                    ? t("stepKinds.wait")
+                    : t("stepKinds.action")}
               </div>
               <div className="truncate text-sm font-medium text-foreground">{t(`steps.${meta.label}`)}</div>
-              <div className="truncate text-[11px] text-muted-foreground">{previewFor(step)}</div>
+              <div className="truncate text-[11px] text-muted-foreground">{previewFor(step, t)}</div>
             </div>
             <ChevronDown
               className={cn("h-4 w-4 text-muted-foreground transition-transform", expanded && "rotate-180")}
@@ -1154,7 +1158,7 @@ function StepRenderer({
                     variant="ghost"
                     size="icon"
                     disabled={index === 0}
-                    aria-label="Move up"
+                    aria-label={t("moveUp")}
                     onClick={() => props.moveStepAt(path, -1)}
                   >
                     <ArrowUp className="h-4 w-4" />
@@ -1163,7 +1167,7 @@ function StepRenderer({
                     variant="ghost"
                     size="icon"
                     disabled={index === total - 1}
-                    aria-label="Move down"
+                    aria-label={t("moveDown")}
                     onClick={() => props.moveStepAt(path, 1)}
                   >
                     <ArrowDown className="h-4 w-4" />
@@ -1473,7 +1477,7 @@ function StepEditor({
             />
           </FieldBlock>
           {(cfg.subject === "contact_field" || cfg.subject === "message_content") && (
-            <FieldBlock label="Value">
+            <FieldBlock label={t("config.valueLabel")}>
               <Input
                 value={(cfg.value as string) ?? ""}
                 onChange={(e) => set({ value: e.target.value })}
@@ -1528,21 +1532,49 @@ function FieldBlock({
   )
 }
 
-function previewFor(step: BuilderStep): string {
+function previewFor(
+  step: BuilderStep,
+  t: ReturnType<typeof useTranslations>,
+): string {
   switch (step.step_type) {
     case "send_message":
-      return (step.step_config.text as string) || "no text yet"
+      return (step.step_config.text as string) || t("previews.noTextYet")
     case "send_buttons":
     case "send_list":
-      return interactivePayloadPreviewText(asInteractive(step.step_config)) || "no body yet"
+      return interactivePayloadPreviewText(asInteractive(step.step_config)) || t("previews.noBodyYet")
     case "send_template":
-      return (step.step_config.template_name as string) || "pick a template"
-    case "wait":
-      return `${step.step_config.amount ?? "?"} ${step.step_config.unit ?? ""}`
-    case "condition":
-      return `when ${step.step_config.subject ?? "?"}`
+      return (step.step_config.template_name as string) || t("previews.pickTemplate")
+    case "wait": {
+      const unit = step.step_config.unit
+      const unitLabel =
+        unit === "minutes"
+          ? t("config.units.minutes")
+          : unit === "days"
+            ? t("config.units.days")
+            : unit === "hours"
+              ? t("config.units.hours")
+              : t("previews.unknown")
+      return t("previews.wait", {
+        amount: String(step.step_config.amount ?? "?"),
+        unit: unitLabel,
+      })
+    }
+    case "condition": {
+      const subject = step.step_config.subject
+      const subjectLabel =
+        subject === "tag_presence"
+          ? t("config.subjects.tag_presence")
+          : subject === "contact_field"
+            ? t("config.subjects.contact_field")
+            : subject === "message_content"
+              ? t("config.subjects.message_content")
+              : subject === "time_of_day"
+                ? t("config.subjects.time_of_day")
+                : t("previews.unknown")
+      return t("previews.condition", { subject: subjectLabel })
+    }
     case "send_webhook":
-      return (step.step_config.url as string) || "no url"
+      return (step.step_config.url as string) || t("previews.noUrl")
     default:
       return ""
   }

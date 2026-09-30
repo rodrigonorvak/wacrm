@@ -1002,6 +1002,7 @@
       "replyIdsHelp": "Comma-separated button/list-row ids to match, exact. Use the same ids you set on a Send Buttons / Send List step.",
       "schedule": "Schedule",
       "scheduleHint": "Cron expression (e.g. 0 9 * * 1-5)",
+      "schedulePlaceholder": "Cron expression or HH:mm",
       "active": "Active",
       "activeAria": "Active",
       "save": "Save",
@@ -1053,6 +1054,22 @@
         "yes": "Yes",
         "no": "No"
       },
+      "stepKinds": {
+        "action": "Action",
+        "condition": "Condition",
+        "wait": "Wait"
+      },
+      "previews": {
+        "noTextYet": "no text yet",
+        "noBodyYet": "no body yet",
+        "pickTemplate": "pick a template",
+        "wait": "{amount} {unit}",
+        "condition": "when: {subject}",
+        "noUrl": "no URL",
+        "unknown": "unknown"
+      },
+      "moveUp": "Move up",
+      "moveDown": "Move down",
       "addStep": "Add step",
       "delete": "Delete",
       "config": {
