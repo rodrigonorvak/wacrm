@@ -1636,6 +1636,7 @@
     "profile": {
       "title": "내 프로필",
       "description": "앱 전체에서 나를 어떻게 보여줄지 설정합니다. 아바타와 이름은 헤더, 사이드바, 팀원이 보는 모든 곳에 표시됩니다.",
+      "photoSection": "프로필 사진",
       "changePhoto": "사진 변경",
       "uploadPhoto": "사진 업로드",
       "remove": "제거",

@@ -90,6 +90,9 @@
       "active": "Ativa",
       "useTheme": "Usar tema {name}"
     },
+    "profile": {
+      "photoSection": "Foto do perfil"
+    },
     "members": {
       "createMember": "Adicionar usuário",
       "inviteHint": "Estes são links pendentes criados antes da criação direta. Novos usuários são adicionados com e-mail e senha temporária.",

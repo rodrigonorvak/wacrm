@@ -14,7 +14,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
 import { useTranslations } from 'next-intl';
 import { SettingsPanelHead } from './settings-panel-head';
 
@@ -207,26 +206,27 @@ export function ProfileForm() {
     : '—';
 
   return (
-    <section className="max-w-2xl animate-in fade-in-50 duration-200">
+    <section className="max-w-3xl animate-in fade-in-50 duration-200">
       <SettingsPanelHead
         title={t('title')}
         description={t('description')}
       />
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Card>
-          <CardContent className="space-y-6">
-          {/* Avatar row */}
-          <div className="flex flex-wrap items-center gap-5">
-            <Avatar size="lg" className="size-16">
-              {currentAvatar ? (
-                <AvatarImage src={currentAvatar} alt={fullName || 'Avatar'} />
-              ) : null}
-              <AvatarFallback className="bg-primary/10 text-base text-primary">
-                {initial}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex flex-wrap gap-2">
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div className="divide-y divide-border border-y border-border">
+          <div className="grid gap-3 py-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
+            <div>
+              <p className="text-sm font-medium text-foreground">{t('photoSection')}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('photoHint')}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-4">
+              <Avatar size="lg" className="size-14">
+                {currentAvatar ? (
+                  <AvatarImage src={currentAvatar} alt={fullName || 'Avatar'} />
+                ) : null}
+                <AvatarFallback className="bg-primary/10 text-base text-primary">
+                  {initial}
+                </AvatarFallback>
+              </Avatar>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -255,14 +255,10 @@ export function ProfileForm() {
                   {t('remove')}
                 </Button>
               )}
-              <p className="w-full text-xs text-muted-foreground">
-                {t('photoHint')}
-              </p>
             </div>
           </div>
 
-          {/* Name */}
-          <div className="space-y-2">
+          <div className="grid gap-3 py-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-center">
             <Label htmlFor="profile-full-name" className="text-foreground">
               {t('displayName')}
             </Label>
@@ -277,67 +273,61 @@ export function ProfileForm() {
             />
           </div>
 
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="profile-email" className="text-foreground">
+          <div className="grid gap-3 py-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
+            <Label htmlFor="profile-email" className="pt-2 text-foreground">
               {t('email')}
             </Label>
-            <Input
-              id="profile-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={saving}
-              required
-            />
-            {emailChangePending && (
-              <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                <Mail className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  {t.rich('emailChangeHint', { 
-                    oldEmail: profile?.email || '', 
-                    newEmail: email,
-                    bold: (chunks: React.ReactNode) => <strong>{chunks}</strong>
-                  })}
-                </span>
-              </p>
-            )}
+            <div className="space-y-3">
+              <Input
+                id="profile-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={saving}
+                required
+              />
+              {emailChangePending && (
+                <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                  <Mail className="mt-0.5 size-3.5 shrink-0" />
+                  <span>
+                    {t.rich('emailChangeHint', {
+                      oldEmail: profile?.email || '',
+                      newEmail: email,
+                      bold: (chunks: React.ReactNode) => <strong>{chunks}</strong>
+                    })}
+                  </span>
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Read-only block */}
-          <div className="rounded-lg border border-border bg-muted p-4">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('accountDetails')}
-            </p>
-            <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div className="grid gap-3 py-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:items-start">
+            <div>
+              <p className="text-sm font-medium text-foreground">{t('accountDetails')}</p>
+            </div>
+            <dl className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
               <div>
-                <dt className="text-muted-foreground">{t('role')}</dt>
-                <dd className="mt-0.5 font-mono text-foreground">
-                  {profile?.role ?? 'user'}
-                </dd>
+                <dt className="text-xs text-muted-foreground">{t('role')}</dt>
+                <dd className="mt-1 font-mono text-foreground">{profile?.role ?? 'user'}</dd>
               </div>
               <div>
-                <dt className="text-muted-foreground">{t('joined')}</dt>
-                <dd className="mt-0.5 text-foreground">{joined}</dd>
+                <dt className="text-xs text-muted-foreground">{t('joined')}</dt>
+                <dd className="mt-1 text-foreground">{joined}</dd>
               </div>
               <div className="sm:col-span-2">
-                <dt className="text-muted-foreground">{t('userId')}</dt>
-                <dd className="mt-0.5 break-all font-mono text-xs text-muted-foreground">
-                  {user?.id ?? '—'}
-                </dd>
+                <dt className="text-xs text-muted-foreground">{t('userId')}</dt>
+                <dd className="mt-1 break-all font-mono text-xs text-muted-foreground">{user?.id ?? '—'}</dd>
               </div>
             </dl>
           </div>
+        </div>
 
-          {!profile && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CircleAlert className="size-4" />
-              {t('loading')}
-            </p>
-          )}
-
-        </CardContent>
-        </Card>
+        {!profile && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CircleAlert className="size-4" />
+            {t('loading')}
+          </p>
+        )}
 
         <div className="flex justify-end">
           <Button type="submit" disabled={saving || !dirty || !profile}>

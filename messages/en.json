@@ -1636,6 +1636,7 @@
     "profile": {
       "title": "Your profile",
       "description": "How you show up across the app. Your avatar and name appear in the header, sidebar, and anywhere your teammates see you.",
+      "photoSection": "Profile photo",
       "changePhoto": "Change photo",
       "uploadPhoto": "Upload photo",
       "remove": "Remove",
