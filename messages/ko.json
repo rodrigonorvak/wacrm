@@ -575,6 +575,14 @@
       "pipelineName": "파이프라인 이름",
       "pipelineNamePlaceholder": "예: 기업 영업",
       "defaultStagesDesc": "기본 단계(신규 리드 → 성사)가 자동으로 생성됩니다.",
+      "defaultPipelineName": "영업 파이프라인",
+      "defaultStages": {
+        "newLead": "신규 리드",
+        "qualified": "적격 리드",
+        "proposalSent": "제안서 발송",
+        "negotiation": "협상",
+        "won": "성사"
+      },
       "cancel": "취소",
       "creating": "만드는 중...",
       "createPipelineBtn": "파이프라인 만들기",

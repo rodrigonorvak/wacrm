@@ -245,6 +245,26 @@
       "selectConversationHint": "Escolha uma conversa à esquerda para começar a enviar mensagens"
     }
   },
+  "Pipelines": {
+    "page": {
+      "addDeal": "Adicionar negócio",
+      "defaultPipelineName": "Funil de vendas",
+      "defaultStagesDesc": "As etapas padrão (Novo lead → Ganho) serão criadas automaticamente.",
+      "defaultStages": {
+        "newLead": "Novo lead",
+        "qualified": "Qualificado",
+        "proposalSent": "Proposta enviada",
+        "negotiation": "Em negociação",
+        "won": "Ganho"
+      }
+    },
+    "board": {
+      "addDeal": "Adicionar negócio"
+    },
+    "form": {
+      "newDeal": "Novo negócio"
+    }
+  },
   "Automations": {
     "list": {
       "title": "Automações",
