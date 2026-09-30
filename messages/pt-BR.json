@@ -166,7 +166,7 @@
       "messagesSentToday": "Mensagens enviadas hoje",
       "newTodayVsYesterday": "novos hoje em relação a ontem",
       "vsYesterday": "em relação a ontem",
-      "openDeals": "{count} negócio {count, plural, =1 {aberto} other {abertos}}",
+      "openDeals": "{count} {count, plural, =1 {negócio aberto} other {negócios abertos}}",
       "noChange": "Sem alteração {suffix}"
     },
     "quickActions": {
@@ -182,10 +182,43 @@
       "noActivityHint": "As atividades de mensagens, negócios, disparos e automações aparecerão aqui.",
       "showingOf": "Exibindo {visible} de {totalLoaded}{plus}",
       "show": "Exibir",
-      "timeS": "há {sec}s",
-      "timeM": "há {min}min",
-      "timeH": "há {hr}h",
-      "timeD": "há {day}d"
+      "timeS": "há {sec} s",
+      "timeM": "há {min} min",
+      "timeH": "há {hr} h",
+      "timeD": "há {day} dias"
+    },
+    "conversationsChart": {
+      "title": "Conversas ao longo do tempo",
+      "description": "Volume diário de mensagens por direção",
+      "days": "{count} dias",
+      "noActivity": "Nenhuma atividade de mensagens neste período",
+      "noActivityHint": "Envie ou receba mensagens para começar a preencher este gráfico.",
+      "incoming": "Recebidas",
+      "outgoing": "Enviadas",
+      "tooltipIncoming": "{count} {count, plural, =1 {recebida} other {recebidas}}",
+      "tooltipOutgoing": "{count} {count, plural, =1 {enviada} other {enviadas}}",
+      "ariaLabel": "Conversas por dia"
+    },
+    "pipelineDonut": {
+      "title": "Valor do funil",
+      "description": "Negócios em aberto por etapa",
+      "noOpenDeals": "Nenhum negócio em aberto ainda",
+      "noOpenDealsHint": "Crie negócios em Funis para ver a distribuição por etapa aqui.",
+      "dealCount": "{count} {count, plural, =1 {negócio} other {negócios}}",
+      "total": "Total",
+      "ariaLabel": "Valor do funil por etapa"
+    },
+    "responseTimeChart": {
+      "title": "Tempo médio da primeira resposta",
+      "description": "Minutos até responder à primeira mensagem não respondida do cliente, por dia da semana",
+      "target": "meta de {minutes} min",
+      "thisWeek": "Esta semana:",
+      "lastWeek": "Semana passada:",
+      "noReplies": "Nenhuma resposta registrada ainda",
+      "noRepliesHint": "Este gráfico será preenchido conforme você responder às mensagens dos clientes."
+    },
+    "emptyState": {
+      "title": "Ainda não há dados suficientes"
     }
   },
   "Inbox": {
