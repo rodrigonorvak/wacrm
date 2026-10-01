@@ -22,7 +22,8 @@ export const metadata: Metadata = {
     default: "CRM Malybo",
     template: "%s — CRM Malybo",
   },
-  description: "Self-hostable CRM template for WhatsApp.",
+  description:
+    "Organize conversas do WhatsApp, acompanhe contatos e oportunidades e automatize o atendimento em um só lugar.",
   robots: {
     index: false,
     follow: false,

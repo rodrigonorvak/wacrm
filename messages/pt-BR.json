@@ -936,6 +936,21 @@
     },
     "form": {
       "newDeal": "Novo negócio"
+    },
+    "analytics": {
+      "totalDeals": "Total de negócios",
+      "totalDealsTooltip": "Quantidade de negócios deste funil que não estão marcados como perdidos. Negócios ganhos também são incluídos.",
+      "pipelineValue": "Valor do funil",
+      "pipelineValueTooltip": "Soma dos valores dos negócios deste funil, sem incluir os marcados como perdidos.",
+      "avgDealSize": "Tamanho médio do negócio",
+      "avgDealSizeTooltip": "Valor do funil dividido pelo total de negócios: o valor médio de cada negócio não perdido.",
+      "weightedValue": "Valor ponderado",
+      "weightedValueTooltip": "Receita prevista: valor de cada negócio aberto × probabilidade da etapa. A primeira etapa fica em torno de 10%, as seguintes avançam até 90% e Ganho equivale a 100%. Negócios perdidos são excluídos.",
+      "wonThisMonth": "Ganhos neste mês",
+      "wonThisMonthTooltip": "Negócios marcados como ganhos desde o primeiro dia do mês atual.",
+      "lostThisMonth": "Perdidos neste mês",
+      "lostThisMonthTooltip": "Negócios marcados como perdidos desde o primeiro dia do mês atual.",
+      "howCalculated": "Como calculamos {label}"
     }
   },
   "Automations": {
