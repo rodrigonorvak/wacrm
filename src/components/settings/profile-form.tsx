@@ -212,14 +212,25 @@ export function ProfileForm() {
 
       // Upload a newly-staged image, if any.
       if (pendingAvatar) {
+        const {
+          data: { user: authenticatedUser },
+          error: authError,
+        } = await supabase.auth.getUser();
+        if (authError || !authenticatedUser) {
+          throw new Error(
+            t('uploadFailed', {
+              message: authError?.message ?? 'No authenticated user',
+            }),
+          );
+        }
+
         const ext =
           pendingAvatar.name.split('.').pop()?.toLowerCase() || 'png';
-        const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+        const path = `${authenticatedUser.id}/avatar-${Date.now()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from('avatars')
           .upload(path, pendingAvatar, {
             cacheControl: '3600',
-            upsert: true,
             contentType: pendingAvatar.type,
           });
         if (uploadError) {
