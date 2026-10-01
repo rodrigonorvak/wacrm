@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -190,9 +191,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             close button is hidden since the sidebar is always-visible. */}
         <div className={cn("relative flex h-14 shrink-0 items-center border-b border-white/10", collapsed ? "justify-center" : "justify-between px-4")}>
           <Link href="/dashboard" className="flex min-w-0 items-center justify-center">
-            <img
-              src={collapsed ? "https://agencia.malybo.com.br/wp-content/uploads/2026/09/Design-sem-nome-4.png" : "https://agencia.malybo.com.br/wp-content/uploads/2026/09/LOGO-CRM.png"}
-              alt={t("title")}
+            <Image
+              unoptimized
+              width={150}
+              height={36}
+              src={collapsed ? "https://agencia.malybo.com.br/wp-content/uploads/2026/09/Design-sem-nome-4.png" : account?.logo_url || "https://agencia.malybo.com.br/wp-content/uploads/2026/09/LOGO-CRM.png"}
+              alt={collapsed ? t("title") : account?.name || t("title")}
               className={collapsed ? "h-8 w-8 object-contain" : "h-8 max-w-[150px] object-contain"}
             />
           </Link>

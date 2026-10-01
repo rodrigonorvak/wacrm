@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
-import { Loader2, Upload, Trash2, Mail, CircleAlert } from 'lucide-react';
+import { Building2, Loader2, Upload, Trash2, Mail, CircleAlert } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -14,7 +15,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { SettingsPanelHead } from './settings-panel-head';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -32,9 +33,27 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function ProfileForm() {
   const t = useTranslations('Settings.profile');
-  const { user, profile, refreshProfile } = useAuth();
+  const tRoles = useTranslations('Settings.roles');
+  const locale = useLocale();
+  const {
+    user,
+    profile,
+    account,
+    accountId,
+    canEditSettings,
+    refreshProfile,
+  } = useAuth();
+  const role = profile?.role ?? 'user';
+  const roleLabels: Record<string, string> = {
+    owner: tRoles('owner'),
+    admin: tRoles('admin'),
+    agent: tRoles('agent'),
+    viewer: tRoles('viewer'),
+    user: tRoles('user'),
+  };
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const companyLogoInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,6 +62,10 @@ export function ProfileForm() {
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [emailChangePending, setEmailChangePending] = useState(false);
+  const [companyLogoFile, setCompanyLogoFile] = useState<File | null>(null);
+  const [companyLogoPreview, setCompanyLogoPreview] = useState<string | null>(null);
+  const [removeCompanyLogo, setRemoveCompanyLogo] = useState(false);
+  const [savingCompanyLogo, setSavingCompanyLogo] = useState(false);
 
   // Seed form state once the profile loads.
   useEffect(() => {
@@ -58,8 +81,16 @@ export function ProfileForm() {
     };
   }, [previewUrl]);
 
+  useEffect(() => {
+    return () => {
+      if (companyLogoPreview) URL.revokeObjectURL(companyLogoPreview);
+    };
+  }, [companyLogoPreview]);
+
   const currentAvatar =
     previewUrl ?? (!removeAvatar ? profile?.avatar_url ?? null : null);
+  const currentCompanyLogo =
+    companyLogoPreview ?? (!removeCompanyLogo ? account?.logo_url ?? null : null);
 
   const initial = (fullName || profile?.full_name || profile?.email || 'U')
     .charAt(0)
@@ -94,6 +125,70 @@ export function ProfileForm() {
     setPendingAvatar(null);
     setPreviewUrl(null);
     setRemoveAvatar(true);
+  };
+
+  const onPickCompanyLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (!ALLOWED_MIME.has(file.type)) {
+      toast.error(t('companyLogoUnsupportedImage'));
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(t('companyLogoImageTooLarge'));
+      return;
+    }
+
+    if (companyLogoPreview) URL.revokeObjectURL(companyLogoPreview);
+    setCompanyLogoFile(file);
+    setCompanyLogoPreview(URL.createObjectURL(file));
+    setRemoveCompanyLogo(false);
+  };
+
+  const saveCompanyLogo = async () => {
+    if (!accountId || !canEditSettings) return;
+
+    setSavingCompanyLogo(true);
+    try {
+      let logoUrl = account?.logo_url ?? null;
+      if (companyLogoFile) {
+        const extension = companyLogoFile.type.split('/')[1] || 'png';
+        const path = `${accountId}/company-logo-${Date.now()}.${extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from('account-logos')
+          .upload(path, companyLogoFile, {
+            cacheControl: '31536000',
+            contentType: companyLogoFile.type,
+          });
+        if (uploadError) throw uploadError;
+        logoUrl = supabase.storage.from('account-logos').getPublicUrl(path)
+          .data.publicUrl;
+      } else if (removeCompanyLogo) {
+        logoUrl = null;
+      } else {
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('accounts')
+        .update({ logo_url: logoUrl })
+        .eq('id', accountId);
+      if (updateError) throw updateError;
+
+      setCompanyLogoFile(null);
+      setCompanyLogoPreview(null);
+      setRemoveCompanyLogo(false);
+      await refreshProfile();
+      toast.success(t('companyLogoSaved'));
+    } catch (error) {
+      toast.error(t('companyLogoSaveFailed', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+      }));
+    } finally {
+      setSavingCompanyLogo(false);
+    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -198,7 +293,7 @@ export function ProfileForm() {
       removeAvatar);
 
   const joined = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString(undefined, {
+    ? new Date(user.created_at).toLocaleDateString(locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -308,7 +403,7 @@ export function ProfileForm() {
             <dl className="grid grid-cols-1 gap-x-8 gap-y-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted-foreground">{t('role')}</dt>
-                <dd className="mt-1 font-mono text-foreground">{profile?.role ?? 'user'}</dd>
+                <dd className="mt-1 font-mono text-foreground">{roleLabels[role] ?? role}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">{t('joined')}</dt>
@@ -342,6 +437,76 @@ export function ProfileForm() {
           </Button>
         </div>
       </form>
+
+      <div className="mt-8 border-t border-border pt-6">
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-foreground">
+            {t('companyLogoTitle')}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t('companyLogoDescription')}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex h-16 w-40 items-center justify-center overflow-hidden rounded-md border border-border bg-muted px-3">
+            {currentCompanyLogo ? (
+              <Image
+                unoptimized
+                width={160}
+                height={48}
+                src={currentCompanyLogo}
+                alt={account?.name || t('companyLogoTitle')}
+                className="max-h-12 max-w-full object-contain"
+              />
+            ) : (
+              <Building2 className="size-7 text-muted-foreground" />
+            )}
+          </div>
+          {canEditSettings && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={companyLogoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={onPickCompanyLogo}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => companyLogoInputRef.current?.click()}
+                disabled={savingCompanyLogo}
+              >
+                <Upload className="size-4" />
+                {account?.logo_url ? t('companyLogoChange') : t('companyLogoUpload')}
+              </Button>
+              {account?.logo_url && !removeCompanyLogo && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    if (companyLogoPreview) URL.revokeObjectURL(companyLogoPreview);
+                    setCompanyLogoFile(null);
+                    setCompanyLogoPreview(null);
+                    setRemoveCompanyLogo(true);
+                  }}
+                  disabled={savingCompanyLogo}
+                >
+                  <Trash2 className="size-4" />
+                  {t('companyLogoRemove')}
+                </Button>
+              )}
+              <Button
+                type="button"
+                onClick={saveCompanyLogo}
+                disabled={savingCompanyLogo || (!companyLogoFile && !removeCompanyLogo)}
+              >
+                {savingCompanyLogo ? t('saving') : t('companyLogoSave')}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

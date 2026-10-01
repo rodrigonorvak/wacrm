@@ -447,10 +447,10 @@ export function WhatsAppConfig() {
               <AlertTriangle className="size-5 text-amber-400 mt-0.5 shrink-0" />
               <div className="flex-1">
                 <AlertTitle className="text-amber-200 mb-1">
-                  Stored token can&apos;t be decrypted
+                  {t('tokenCorrupted')}
                 </AlertTitle>
                 <AlertDescription className="text-amber-100/80 text-sm">
-                  {statusMessage}
+                  {t('tokenCorruptedDescription')}
                 </AlertDescription>
                 <Button
                   onClick={handleReset}

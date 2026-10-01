@@ -14,6 +14,10 @@ import { SettingsPanelHead } from "./settings-panel-head";
 export function AppearancePanel() {
   const { theme, setTheme } = useTheme();
   const t = useTranslations("Settings.appearance");
+  const themeText = t.raw("themes") as Record<
+    ThemeId,
+    { name: string; tagline: string }
+  >;
 
   return (
     <section className="max-w-3xl animate-in fade-in-50 duration-200">
@@ -33,8 +37,8 @@ export function AppearancePanel() {
             <ThemeCard
               key={tObj.id}
               id={tObj.id}
-              name={tObj.name}
-              tagline={tObj.tagline}
+              name={themeText[tObj.id].name}
+              tagline={themeText[tObj.id].tagline}
               swatch={tObj.swatch}
               isActive={tObj.id === theme}
               onPick={() => setTheme(tObj.id)}
@@ -106,7 +110,7 @@ function ThemeCard({
         <span className="w-3 bg-muted" />
         <span className="w-3 bg-card" />
       </div>
-      <span className="sr-only">Theme id: {id}</span>
+      <span className="sr-only">{t("themeId", { id })}</span>
     </button>
   );
 }

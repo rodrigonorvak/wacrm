@@ -1361,6 +1361,7 @@
   "Settings": {
     "pageTitle": "설정",
     "pageDesc": "계정과 워크스페이스에 관한 모든 것을 한곳에서 관리하세요. 관리할 섹션을 선택하세요.",
+    "sectionsAriaLabel": "설정 섹션",
     "overview": {
       "notSetup": "아직 설정되지 않음",
       "connected": "연결됨",
@@ -1601,12 +1602,14 @@
       "viewer": "뷰어",
       "viewerHint": "앱 전체를 읽기 전용으로 열람",
       "owner": "소유자",
-      "ownerHint": "계정과 결제에 대한 전체 권한"
+      "ownerHint": "계정과 결제에 대한 전체 권한",
+      "user": "사용자"
     },
     "whatsapp": {
       "title": "WhatsApp 연결",
       "description": "Meta WhatsApp 비즈니스 API를 연결하세요. 자격 증명, 웹훅, 설정 단계가 모두 여기 있습니다.",
       "tokenCorrupted": "저장된 토큰을 복호화할 수 없습니다",
+      "tokenCorruptedDescription": "현재 ENCRYPTION_KEY로 저장된 액세스 토큰을 복호화할 수 없습니다. 키가 변경되었거나 환경(로컬, Hostinger, Vercel)마다 다를 수 있습니다. 아래에서 \"설정 초기화\"를 클릭한 다음 자격 증명을 다시 저장하세요.",
       "resetting": "초기화 중...",
       "resetConfig": "설정 초기화",
       "credentialsValid": "자격 증명이 유효합니다",
@@ -1701,6 +1704,16 @@
       "uploadPhoto": "사진 업로드",
       "remove": "제거",
       "photoHint": "PNG, JPG, WebP, GIF. 최대 2MB.",
+      "companyLogoTitle": "회사 로고",
+      "companyLogoDescription": "이 로고는 사이드바가 펼쳐져 있을 때만 표시됩니다. 접힌 사이드바에는 현재 CRM 로고가 유지됩니다.",
+      "companyLogoUpload": "회사 로고 업로드",
+      "companyLogoChange": "회사 로고 변경",
+      "companyLogoRemove": "회사 로고 제거",
+      "companyLogoSave": "로고 저장",
+      "companyLogoSaved": "회사 로고가 업데이트되었습니다.",
+      "companyLogoSaveFailed": "회사 로고를 업데이트할 수 없습니다: {message}",
+      "companyLogoUnsupportedImage": "PNG, JPEG, WebP 또는 GIF 이미지를 선택하세요.",
+      "companyLogoImageTooLarge": "회사 로고는 5MB 이하여야 합니다.",
       "displayName": "표시 이름",
       "email": "이메일",
       "emailChangeHint": "<bold>{oldEmail}</bold>과(와) <bold>{newEmail}</bold>의 받은편지함을 확인하세요 — 변경 사항이 적용되려면 둘 다 확인이 필요합니다.",
@@ -1752,7 +1765,50 @@
       "description": "앱 전체에서 사용할 강조 색상을 선택합니다. 이 기기에 저장되고 즉시 적용됩니다.",
       "active": "사용 중",
       "accentColor": "강조 색상",
-      "useTheme": "{name} 테마 사용"
+      "useTheme": "{name} 테마 사용",
+      "themeId": "테마 ID: {id}",
+      "themes": {
+        "violet": {
+          "name": "바이올렛",
+          "tagline": "기본 테마로, 자신감 있고 약간 경쾌한 느낌입니다."
+        },
+        "emerald": {
+          "name": "에메랄드",
+          "tagline": "성장과 메시징을 떠올리게 하면서 WhatsApp의 녹색을 그대로 사용하지 않습니다."
+        },
+        "cobalt": {
+          "name": "코발트",
+          "tagline": "차분하고 제품다운 깔끔한 B2B SaaS 블루입니다."
+        },
+        "amber": {
+          "name": "앰버",
+          "tagline": "따뜻하고 친근해 소규모 팀에 잘 어울립니다."
+        },
+        "rose": {
+          "name": "로즈",
+          "tagline": "D2C, 크리에이터 경제, 라이프스타일에 어울리는 대담하고 현대적인 색상입니다."
+        }
+      }
+    },
+    "quickReplies": {
+      "title": "빠른 답장",
+      "description": "상담원이 받은 편지함 작성기에서 삽입할 수 있는 일반 텍스트 또는 저장된 대화형 메시지입니다.",
+      "new": "새 빠른 답장",
+      "edit": "빠른 답장 수정",
+      "empty": "아직 빠른 답장이 없습니다. 대화에서 재사용할 답장을 만드세요.",
+      "name": "이름",
+      "namePlaceholder": "예: 영업시간",
+      "text": "텍스트",
+      "interactive": "대화형",
+      "messagePlaceholder": "삽입할 메시지 내용",
+      "cancel": "취소",
+      "save": "저장",
+      "nameRequired": "빠른 답장 이름을 입력하세요.",
+      "saveFailed": "빠른 답장을 저장하지 못했습니다.",
+      "updated": "빠른 답장이 업데이트되었습니다.",
+      "created": "빠른 답장이 생성되었습니다.",
+      "deleteConfirm": "이 빠른 답장을 삭제하시겠습니까?",
+      "deleteFailed": "빠른 답장을 삭제하지 못했습니다."
     },
     "security": {
       "title": "로그인 & 보안",
