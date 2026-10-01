@@ -4,6 +4,7 @@ import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -94,10 +95,13 @@ function LoginPageInner() {
 
       <Card className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#1e1e23]/[.78] text-white shadow-2xl shadow-black/40 backdrop-blur-xl">
         <CardHeader className="items-center px-8 pt-8 text-center sm:px-10 sm:pt-10">
-          <img
+          <Image
+            unoptimized
+            width={2560}
+            height={816}
             src="https://agencia.malybo.com.br/wp-content/uploads/2026/09/0C1026.png"
             alt="CRMIntegrado"
-            className="mb-5 h-16 object-contain drop-shadow-lg"
+            className="mx-auto mb-5 block h-16 w-auto object-contain drop-shadow-lg"
           />
           <CardTitle className="text-2xl font-bold text-white">
             CRM<span className="text-primary">Integrado</span>

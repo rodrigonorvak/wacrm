@@ -197,7 +197,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               height={36}
               src={collapsed ? "https://agencia.malybo.com.br/wp-content/uploads/2026/09/Design-sem-nome-4.png" : account?.logo_url || "https://agencia.malybo.com.br/wp-content/uploads/2026/09/LOGO-CRM.png"}
               alt={collapsed ? t("title") : account?.name || t("title")}
-              className={collapsed ? "h-8 w-8 object-contain" : "h-8 max-w-[150px] object-contain"}
+              className={collapsed ? "h-8 w-8 object-contain" : "h-8 w-auto max-w-[150px] object-contain"}
             />
           </Link>
           <button
