@@ -715,7 +715,25 @@
       "timeS": "há {sec} s",
       "timeM": "há {min} min",
       "timeH": "há {hr} h",
-      "timeD": "há {day} dias"
+      "timeD": "há {day} dias",
+      "unknownContact": "um contato desconhecido",
+      "defaultAutomation": "Automação",
+      "broadcastStatuses": {
+        "draft": "rascunho",
+        "scheduled": "agendado",
+        "sending": "enviando",
+        "failed": "falhou"
+      },
+      "events": {
+        "newMessage": "Nova mensagem de {who}",
+        "newContact": "Novo contato: {name}",
+        "dealInStage": "Negócio \"{title}\" em {stage}",
+        "dealUpdated": "Negócio \"{title}\" atualizado",
+        "broadcastSent": "Disparo \"{name}\" enviado para {count} {count, plural, =1 {contato} other {contatos}}",
+        "broadcastStatus": "Disparo \"{name}\": {status} ({count} {count, plural, =1 {destinatário} other {destinatários}})",
+        "automationTriggered": "Automação \"{automation}\" acionada para {who}",
+        "automationFailed": "Automação \"{automation}\" falhou para {who}"
+      }
     },
     "conversationsChart": {
       "title": "Conversas ao longo do tempo",

@@ -158,7 +158,25 @@
       "timeS": "{sec}s ago",
       "timeM": "{min}m ago",
       "timeH": "{hr}h ago",
-      "timeD": "{day}d ago"
+      "timeD": "{day}d ago",
+      "unknownContact": "an unknown contact",
+      "defaultAutomation": "Automation",
+      "broadcastStatuses": {
+        "draft": "draft",
+        "scheduled": "scheduled",
+        "sending": "sending",
+        "failed": "failed"
+      },
+      "events": {
+        "newMessage": "New message from {who}",
+        "newContact": "New contact: {name}",
+        "dealInStage": "Deal \"{title}\" in {stage}",
+        "dealUpdated": "Deal \"{title}\" updated",
+        "broadcastSent": "Broadcast \"{name}\" sent to {count} {count, plural, =1 {contact} other {contacts}}",
+        "broadcastStatus": "Broadcast \"{name}\": {status} ({count} {count, plural, =1 {recipient} other {recipients}})",
+        "automationTriggered": "Automation \"{automation}\" triggered for {who}",
+        "automationFailed": "Automation \"{automation}\" failed for {who}"
+      }
     },
     "conversationsChart": {
       "title": "Conversations Over Time",

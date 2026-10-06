@@ -55,11 +55,23 @@ export type ActivityKind =
   | 'automation'
   | 'contact'
 
+export type ActivityEvent =
+  | 'newMessage'
+  | 'newContact'
+  | 'dealInStage'
+  | 'dealUpdated'
+  | 'broadcastSent'
+  | 'broadcastStatus'
+  | 'automationTriggered'
+  | 'automationFailed'
+
 export interface ActivityItem {
   id: string
   kind: ActivityKind
-  /** Primary line of text rendered in the feed. Pre-formatted. */
-  text: string
+  /** Key under Dashboard.activityFeed.events; the feed formats it per locale. */
+  event: ActivityEvent
+  /** ICU params for the event; empty strings mean "unknown" and get a localized fallback. */
+  params: Record<string, string | number>
   /** ISO timestamp the item happened at, drives relative-time + sort. */
   at: string
   /** Optional deep-link for the whole row (not all items have a target). */

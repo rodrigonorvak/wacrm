@@ -103,7 +103,7 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
                     <Icon className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {it.text}
+                    {activityText(it, t)}
                   </span>
                   <span className="flex-shrink-0 text-xs text-muted-foreground tabular-nums">
                     {relativeTime(it.at, t)}
@@ -155,6 +155,16 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
       )}
     </section>
   )
+}
+
+function activityText(it: ActivityItem, t: ReturnType<typeof useTranslations>): string {
+  const status = String(it.params.status ?? '')
+  return t(`events.${it.event}`, {
+    ...it.params,
+    who: it.params.who || t('unknownContact'),
+    automation: it.params.automation || t('defaultAutomation'),
+    status: t.has(`broadcastStatuses.${status}`) ? t(`broadcastStatuses.${status}`) : status,
+  })
 }
 
 function relativeTime(iso: string, t: ReturnType<typeof useTranslations>): string {
