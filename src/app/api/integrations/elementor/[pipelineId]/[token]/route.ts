@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
@@ -186,15 +186,18 @@ export async function POST(
     }).eq('id', event.id);
     await db.from('lead_integrations').update({ last_received_at: new Date().toISOString() }).eq('id', integrationRow.id);
 
-    await sendMetaEvent({
-      accountId: integrationRow.account_id,
-      pipelineId: integrationRow.pipeline_id,
-      dealId: deal.id,
-      contactId,
-      stageId: deal.stage_id,
-      eventName: 'Lead',
-      value: 0,
-    });
+    // Elementor times out in seconds; the Meta call must not delay the response.
+    after(() =>
+      sendMetaEvent({
+        accountId: integrationRow.account_id,
+        pipelineId: integrationRow.pipeline_id,
+        dealId: deal.id,
+        contactId,
+        stageId: deal.stage_id,
+        eventName: 'Lead',
+        value: 0,
+      }).catch((error) => console.error('[elementor-webhook] meta event failed:', error)),
+    );
 
     return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 200 });
   } catch (error) {
