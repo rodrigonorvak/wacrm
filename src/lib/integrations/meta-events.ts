@@ -200,7 +200,15 @@ export async function sendMetaEvent(
         },
       );
       const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!response.ok) throw new Error(`Meta API returned ${response.status}`);
+      if (!response.ok) {
+        const apiError = responseBody.error as { message?: unknown } | undefined;
+        const detail = typeof apiError?.message === 'string' ? apiError.message : null;
+        throw new Error(
+          detail
+            ? `Meta API returned ${response.status}: ${detail}`
+            : `Meta API returned ${response.status}`,
+        );
+      }
 
       await db
         .from('meta_conversion_events')

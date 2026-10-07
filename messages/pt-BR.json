@@ -91,7 +91,7 @@
       "integrations": "Integrações",
       "quick-replies": "Respostas rápidas",
       "fields": "Campos e etiquetas",
-      "deals": "Negócios e moeda",
+      "deals": "Moeda do CRM",
       "members": "Membros da equipe"
     },
     "security": {
@@ -138,6 +138,7 @@
     },
     "overview": {
       "appearance": "Cor de destaque: {theme}",
+      "currencyBRL": "real brasileiro",
       "notSetup": "Ainda não configurado",
       "connected": "Conectado",
       "needsReconnecting": "Precisa reconectar",
@@ -631,11 +632,12 @@
       "workspace": "Espaço de trabalho"
     },
     "deals": {
-      "title": "Negócios e moeda",
-      "description": "Moeda usada nos novos negócios e nos totais do funil e do painel.",
-      "defaultCurrency": "Moeda padrão",
-      "defaultCurrencyDesc": "Novos negócios usarão esta moeda por padrão, assim como os totais do funil e do painel. Os negócios existentes mantêm a moeda em que foram salvos.",
+      "title": "Moeda do CRM",
+      "description": "Este CRM usa exclusivamente o real brasileiro (BRL).",
+      "defaultCurrency": "Moeda",
+      "defaultCurrencyDesc": "Todos os valores de negócios, funis e painel são exibidos em reais (BRL).",
       "currencyLabel": "Moeda",
+      "currencyBRL": "real brasileiro",
       "adminOnlyHint": "Somente administradores da conta podem alterar a moeda padrão.",
       "save": "Salvar",
       "saving": "Salvando...",
@@ -941,6 +943,12 @@
       "addDeal": "Adicionar negócio",
       "defaultPipelineName": "Funil de vendas",
       "defaultStagesDesc": "As etapas padrão (Novo lead → Ganho) serão criadas automaticamente.",
+      "paidStageAmountTitle": "Informe o valor recebido",
+      "paidStageAmountDescription": "Informe quanto foi pago pelo negócio {dealTitle}. Esse valor será considerado nos totais do funil e do painel.",
+      "paidStageAmountLabel": "Valor pago (BRL)",
+      "paidStageAmountPlaceholder": "0,00",
+      "paidStageAmountInvalid": "Informe um valor maior que zero.",
+      "confirmPaidMove": "Salvar valor e mover negócio",
       "defaultStages": {
         "newLead": "Novo lead",
         "qualified": "Qualificado",
@@ -950,10 +958,14 @@
       }
     },
     "board": {
+      "dropDealHere": "Solte um negócio aqui",
       "addDeal": "Adicionar negócio"
     },
     "form": {
-      "newDeal": "Novo negócio"
+      "newDeal": "Novo negócio",
+      "paidAmount": "Valor pago",
+      "paidAmountRequired": "Informe o valor pago antes de mover o negócio para uma etapa de pagamento.",
+      "paidAmountPlaceholder": "0,00"
     },
     "analytics": {
       "totalDeals": "Total de negócios",

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Deal, PipelineStage } from "@/types";
 import {
-  DollarSign,
+  Banknote,
   TrendingUp,
   Target,
   BarChart3,
@@ -104,7 +104,7 @@ export function PipelineAnalytics({ stages, deals }: PipelineAnalyticsProps) {
           t={t}
         />
         <Metric
-          icon={<DollarSign className="h-4 w-4 text-primary" />}
+          icon={<Banknote className="h-4 w-4 text-primary" />}
           label={t("pipelineValue")}
           value={formatCurrency(stats.totalValue, defaultCurrency)}
           tooltip={t("pipelineValueTooltip")}

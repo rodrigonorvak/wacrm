@@ -8,7 +8,6 @@ import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
 import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
-import { sendMetaEventForStage } from "@/lib/integrations/meta-events";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
@@ -37,6 +36,7 @@ import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
 import { GatedButton } from "@/components/ui/gated-button";
 import { useTranslations } from "next-intl";
+import { isPaidStageName } from "@/lib/pipelines/paid-stage";
 
 // Pipeline creation is admin-class (settings-tier write under
 // the new RLS); deal creation is operational and only requires
@@ -103,6 +103,15 @@ function mappingTarget(fieldName: string): {
   return { targetType: "contact_custom_field", targetKey: fieldName.trim(), required: false };
 }
 
+function parseBrlAmount(raw: string): number | null {
+  const normalized = raw.trim().replace(/^R\$\s*/i, "").replace(/\s/g, "");
+  const decimal = normalized.includes(",")
+    ? normalized.replace(/\./g, "").replace(",", ".")
+    : normalized;
+  const amount = Number(decimal);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
   const supabase = createClient();
@@ -135,6 +144,12 @@ export default function PipelinesPage() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [leadDetailDeal, setLeadDetailDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
+  const [paidMove, setPaidMove] = useState<{
+    dealId: string;
+    stageId: string;
+    dealTitle: string;
+  } | null>(null);
+  const [paidAmountInput, setPaidAmountInput] = useState("");
 
   // Guard against double-seeding (React StrictMode double-effect in dev).
   const seedAttempted = useRef(false);
@@ -280,36 +295,60 @@ export default function PipelinesPage() {
     setDeals(await loadDeals(selectedPipelineId));
   }, [loadDeals, selectedPipelineId]);
 
-  const handleDealMoved = useCallback(
-    async (dealId: string, newStageId: string) => {
-      // Optimistic update — board already animated; just persist.
-      setDeals((prev) =>
-        prev.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d)),
-      );
-      const { error } = await supabase
-        .from("deals")
-        .update({ stage_id: newStageId })
-        .eq("id", dealId);
-      if (error) {
+  const saveDealStage = useCallback(
+    async (dealId: string, newStageId: string, paidAmount?: number) => {
+      const nextStage = stages.find((stage) => stage.id === newStageId);
+      setDeals((prev) => prev.map((deal) => deal.id === dealId
+        ? {
+            ...deal,
+            stage_id: newStageId,
+            stage: nextStage ?? deal.stage,
+            ...(paidAmount !== undefined ? { value: paidAmount, currency: "BRL" } : {}),
+          }
+        : deal));
+      const response = await fetch(`/api/deals/${dealId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage_id: newStageId,
+          ...(paidAmount !== undefined ? { value: paidAmount, currency: "BRL" } : {}),
+        }),
+      });
+      if (!response.ok) {
         toast.error(t("toastFailedMoveDeal"));
         refreshDeals();
+        return false;
+      }
+      return true;
+    },
+    [stages, refreshDeals, t],
+  );
+
+  const handleDealMoved = useCallback(
+    async (dealId: string, newStageId: string) => {
+      const deal = deals.find((item) => item.id === dealId);
+      const nextStage = stages.find((stage) => stage.id === newStageId);
+      if (!deal || !nextStage) return;
+      if (isPaidStageName(nextStage.name)) {
+        setPaidMove({ dealId, stageId: newStageId, dealTitle: deal.title });
+        setPaidAmountInput("");
         return;
       }
-      const movedDeal = deals.find((deal) => deal.id === dealId);
-      if (movedDeal && accountId && movedDeal.contact_id) {
-        void sendMetaEventForStage({
-          accountId,
-          pipelineId: movedDeal.pipeline_id,
-          dealId: movedDeal.id,
-          contactId: movedDeal.contact_id,
-          stageId: newStageId,
-          value: Number(movedDeal.value ?? 0),
-          currency: movedDeal.currency,
-        });
-      }
+      await saveDealStage(dealId, newStageId);
     },
-    [supabase, refreshDeals, t, deals, accountId],
+    [deals, stages, saveDealStage],
   );
+
+  async function confirmPaidMove() {
+    if (!paidMove) return;
+    const amount = parseBrlAmount(paidAmountInput);
+    if (amount === null) {
+      toast.error(t("paidStageAmountInvalid"));
+      return;
+    }
+    const moved = await saveDealStage(paidMove.dealId, paidMove.stageId, amount);
+    if (moved) setPaidMove(null);
+  }
 
   const handleAddDeal = useCallback(
     (stageId?: string) => {
@@ -698,6 +737,45 @@ export default function PipelinesPage() {
           />
         </>
       )}
+
+      <Dialog
+        open={paidMove !== null}
+        onOpenChange={(open) => {
+          if (!open) setPaidMove(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("paidStageAmountTitle")}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t("paidStageAmountDescription", { dealTitle: paidMove?.dealTitle ?? "" })}
+          </p>
+          <div className="grid gap-2">
+            <Label htmlFor="paid-deal-amount">{t("paidStageAmountLabel")}</Label>
+            <Input
+              id="paid-deal-amount"
+              type="text"
+              inputMode="decimal"
+              autoFocus
+              placeholder={t("paidStageAmountPlaceholder")}
+              value={paidAmountInput}
+              onChange={(event) => setPaidAmountInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void confirmPaidMove();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPaidMove(null)}>
+              {t("cancel")}
+            </Button>
+            <Button type="button" onClick={() => void confirmPaidMove()}>
+              {t("confirmPaidMove")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Pipeline Dialog */}
       <Dialog open={newPipelineOpen} onOpenChange={setNewPipelineOpen}>

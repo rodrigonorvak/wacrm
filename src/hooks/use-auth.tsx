@@ -256,7 +256,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id: account.id,
               name: account.name,
               logo_url: account.logo_url ?? null,
-              default_currency: account.default_currency ?? DEFAULT_CURRENCY,
+              default_currency: DEFAULT_CURRENCY,
             };
           }
         }

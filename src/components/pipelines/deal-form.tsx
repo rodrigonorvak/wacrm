@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { CURRENCIES } from "@/lib/currency";
+import { isPaidStageName } from "@/lib/pipelines/paid-stage";
 import type {
   Contact,
   Conversation,
@@ -28,7 +28,6 @@ import {
   X,
   Trash2,
   MessageSquare,
-  DollarSign,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -55,11 +54,10 @@ export function DealForm({
 }: DealFormProps) {
   const t = useTranslations("Pipelines.form");
   const supabase = createClient();
-  const { accountId, defaultCurrency } = useAuth();
+  const { accountId } = useAuth();
 
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
-  const [currency, setCurrency] = useState(defaultCurrency);
   const [contactId, setContactId] = useState("");
   const [stageId, setStageId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
@@ -86,7 +84,6 @@ export function DealForm({
     if (deal) {
       setTitle(deal.title);
       setValue(String(deal.value ?? ""));
-      setCurrency(deal.currency || defaultCurrency);
       // contact_id is nullable when the contact has been deleted
       // (migration 004: ON DELETE SET NULL). "" means "no selection".
       setContactId(deal.contact_id ?? "");
@@ -97,14 +94,13 @@ export function DealForm({
     } else {
       setTitle("");
       setValue("");
-      setCurrency(defaultCurrency);
       setContactId("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
     }
-  }, [open, deal, defaultStageId, stages, defaultCurrency]);
+  }, [open, deal, defaultStageId, stages]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Load supporting data once the sheet is open
@@ -156,12 +152,17 @@ export function DealForm({
       toast.error(t("toastRequired"));
       return;
     }
+    const selectedStage = stages.find((stage) => stage.id === stageId);
+    if (isPaidStageName(selectedStage?.name) && !(Number(value) > 0)) {
+      toast.error(t("paidAmountRequired"));
+      return;
+    }
     setSaving(true);
 
     const payload = {
       title: title.trim(),
       value: parseFloat(value) || 0,
-      currency,
+      currency: "BRL",
       contact_id: contactId,
       pipeline_id: pipelineId,
       stage_id: stageId,
@@ -171,11 +172,12 @@ export function DealForm({
     };
 
     if (deal) {
-      const { error } = await supabase
-        .from("deals")
-        .update(payload)
-        .eq("id", deal.id);
-      if (error) {
+      const response = await fetch(`/api/deals/${deal.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
         toast.error(t("toastFailedSave"));
         setSaving(false);
         return;
@@ -295,34 +297,22 @@ export function DealForm({
               )}
             </div>
 
-            <div className="grid grid-cols-[1fr_110px] gap-3">
-              <div className="grid gap-2">
-                <Label className="text-muted-foreground">{t("value")}</Label>
+            <div className="grid gap-2">
+                <Label className="text-muted-foreground">
+                  {t(isPaidStageName(stages.find((stage) => stage.id === stageId)?.name) ? "paidAmount" : "value")}
+                </Label>
                 <div className="relative">
-                  <DollarSign className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
                   <Input
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder="0"
-                    className="border-border bg-muted pl-7 text-foreground"
+                    placeholder={isPaidStageName(stages.find((stage) => stage.id === stageId)?.name) ? t("paidAmountPlaceholder") : "0,00"}
+                    className="border-border bg-muted pl-9 text-foreground"
                   />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label className="text-muted-foreground">{t("currency")}</Label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             <div className="grid gap-2">
@@ -339,7 +329,14 @@ export function DealForm({
               <Label className="text-muted-foreground">{t("stage")}</Label>
               <select
                 value={stageId}
-                onChange={(e) => setStageId(e.target.value)}
+                onChange={(e) => {
+                  const nextStageId = e.target.value;
+                  const nextStage = stages.find((stage) => stage.id === nextStageId);
+                  if (isPaidStageName(nextStage?.name) && !isPaidStageName(stages.find((stage) => stage.id === stageId)?.name)) {
+                    setValue("");
+                  }
+                  setStageId(nextStageId);
+                }}
                 className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary"
               >
                 {stages.map((s) => (

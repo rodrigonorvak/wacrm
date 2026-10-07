@@ -7,7 +7,7 @@ import { formatCurrency } from '@/lib/currency'
 import {
   MessageSquare,
   UserPlus,
-  DollarSign,
+  Banknote,
   Send,
 } from 'lucide-react'
 
@@ -167,7 +167,7 @@ export default function DashboardPage() {
             <MetricCard
               title={t('openDealsValue')}
               value={formatCurrency(metrics.openDealsValue, defaultCurrency)}
-              icon={DollarSign}
+              icon={Banknote}
               subtitle={t('openDeals', { count: metrics.openDealsCount })}
             />
             <MetricCard

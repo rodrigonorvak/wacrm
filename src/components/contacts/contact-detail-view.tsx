@@ -37,7 +37,7 @@ import {
   Trash2,
   Save,
   X,
-  DollarSign,
+  Banknote,
   LayoutTemplate,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -57,7 +57,7 @@ export function ContactDetailView({
 }: ContactDetailViewProps) {
   const t = useTranslations('Contacts.detailView');
   const supabase = createClient();
-  const { accountId, defaultCurrency } = useAuth();
+  const { accountId } = useAuth();
 
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(false);
@@ -721,10 +721,10 @@ export function ContactDetailView({
                         </div>
                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <DollarSign className="size-3" />
+                            <Banknote className="size-3" />
                             {formatCurrency(
                               deal.value ?? 0,
-                              deal.currency || defaultCurrency,
+                              "BRL",
                             )}
                           </span>
                           {deal.status && deal.status !== 'open' && (
