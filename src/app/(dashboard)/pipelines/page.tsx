@@ -609,25 +609,7 @@ export default function PipelinesPage() {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex animate-in fade-in-0 slide-in-from-top-1 items-center justify-between duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none">
-          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
-          <div className="h-9 w-28 animate-pulse rounded-lg bg-muted" />
-        </div>
-        <div className="flex gap-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              style={{ animationDelay: `${(i - 1) * 90}ms` }}
-              className="h-96 w-72 shrink-0 animate-in fade-in-0 slide-in-from-right-2 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
-            >
-              <div className="h-full w-full animate-pulse rounded-xl bg-muted/50" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
