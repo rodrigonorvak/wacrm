@@ -8,6 +8,7 @@ export type DealCardField = "company" | "phone" | "assignee";
 
 interface DealCardProps {
   deal: Deal;
+  entranceDelay?: string;
   visibleFields?: DealCardField[];
   onEdit: (deal: Deal) => void;
   isOverlay?: boolean;
@@ -15,6 +16,7 @@ interface DealCardProps {
 
 export function DealCard({
   deal,
+  entranceDelay,
   visibleFields = ["company"],
   onEdit,
   isOverlay,
@@ -45,10 +47,11 @@ export function DealCard({
         e.stopPropagation();
         onEdit(deal);
       }}
+      style={entranceDelay ? { animationDelay: entranceDelay } : undefined}
       className={`group w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-[0_2px_8px_rgb(15_23_42_/_7%)] transition-colors ${
         isOverlay
           ? "shadow-lg"
-          : "hover:border-primary/40 hover:bg-muted/30"
+          : `hover:border-primary/40 hover:bg-muted/30 ${entranceDelay ? "animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none" : ""}`
       }`}
     >
       <div className="min-w-0">

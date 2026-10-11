@@ -44,7 +44,7 @@ export function PipelineList({
         </p>
       ) : (
         <ul className="divide-y divide-border">
-          {deals.map((deal) => {
+          {deals.map((deal, index) => {
             const stage = stageById.get(deal.stage_id);
             const createdAt = new Date(deal.created_at);
             const dateLabel = Number.isNaN(createdAt.getTime())
@@ -57,7 +57,11 @@ export function PipelineList({
             const details = getDetails(deal);
 
             return (
-              <li key={deal.id}>
+              <li
+                key={deal.id}
+                style={{ animationDelay: `${Math.min(index * 22, 176)}ms` }}
+                className="animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none"
+              >
                 <button
                   type="button"
                   onClick={() => onEditDeal(deal)}

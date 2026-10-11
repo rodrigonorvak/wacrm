@@ -114,10 +114,11 @@ export function PipelineBoard({
       onDragCancel={handleDragCancel}
     >
       <div className="pipeline-scroll flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 lg:snap-none">
-        {sortedStages.map((stage) => (
+        {sortedStages.map((stage, stageIndex) => (
           <StageColumn
             key={stage.id}
             stage={stage}
+            entranceDelay={`${stageIndex * 45}ms`}
             deals={dealsByStage.get(stage.id) ?? []}
             visibleCardFields={visibleCardFields}
             canEditStageColors={canEditStageColors}
@@ -185,6 +186,7 @@ export function PipelineBoard({
 
 function StageColumn({
   stage,
+  entranceDelay,
   deals,
   visibleCardFields,
   canEditStageColors,
@@ -193,6 +195,7 @@ function StageColumn({
   onEditDeal,
 }: {
   stage: PipelineStage;
+  entranceDelay: string;
   deals: Deal[];
   visibleCardFields: PipelineCardField[];
   canEditStageColors: boolean;
@@ -207,7 +210,10 @@ function StageColumn({
   const hiddenCount = deals.length - visibleDeals.length;
 
   return (
-    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
+    <section
+      style={{ animationDelay: entranceDelay }}
+      className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none"
+    >
       <header
         className="-mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 rounded-t-xl border-b border-border px-3 py-3 sm:-mx-4 sm:-mt-4 sm:px-4"
         style={stage.color ? { backgroundColor: `${stage.color}14` } : undefined}
@@ -279,10 +285,11 @@ function StageColumn({
             {t("dropDealHere")}
           </div>
         ) : (
-          visibleDeals.map((deal) => (
+          visibleDeals.map((deal, dealIndex) => (
             <DraggableDealCard
               key={deal.id}
               deal={deal}
+              entranceDelay={`${Math.min(dealIndex * 24, 120)}ms`}
               visibleCardFields={visibleCardFields}
               onEdit={onEditDeal}
             />
@@ -328,10 +335,12 @@ function StageColumn({
 
 function DraggableDealCard({
   deal,
+  entranceDelay,
   visibleCardFields,
   onEdit,
 }: {
   deal: Deal;
+  entranceDelay: string;
   visibleCardFields: PipelineCardField[];
   onEdit: (deal: Deal) => void;
 }) {
@@ -346,7 +355,12 @@ function DraggableDealCard({
       {...attributes}
       style={{ opacity: isDragging ? 0.3 : 1, touchAction: "none" }}
     >
-      <DealCard deal={deal} visibleFields={visibleCardFields} onEdit={onEdit} />
+      <DealCard
+        deal={deal}
+        entranceDelay={entranceDelay}
+        visibleFields={visibleCardFields}
+        onEdit={onEdit}
+      />
     </div>
   );
 }
