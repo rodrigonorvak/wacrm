@@ -4,6 +4,7 @@ import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import { hashLeadIntegrationToken } from '@/lib/integrations/lead-token';
 import { asObject, getElementorEventId, readElementorField } from '@/lib/integrations/elementor';
+import { getElementorIdempotencyKey } from '@/lib/integrations/elementor-idempotency';
 import { sendMetaEvent } from '@/lib/integrations/meta-events';
 
 type Mapping = {
@@ -65,6 +66,23 @@ export async function POST(
     pipeline_id: string;
     is_active: boolean;
   };
+  const { data: claimed, error: deduplicationError } = await db.rpc(
+    'claim_elementor_lead_submission',
+    {
+      p_integration_id: integrationRow.id,
+      p_dedupe_key: getElementorIdempotencyKey(payload),
+      p_window_seconds: 120,
+    },
+  );
+
+  if (deduplicationError) {
+    console.error('[elementor-webhook] deduplication claim failed:', deduplicationError);
+    return NextResponse.json({ error: 'Failed to validate webhook submission' }, { status: 500 });
+  }
+  if (!claimed) {
+    return NextResponse.json({ success: true, duplicate: true }, { status: 200 });
+  }
+
   const eventId = getElementorEventId(payload);
   const { data: event, error: eventError } = await db
     .from('lead_integration_events')

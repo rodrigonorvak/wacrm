@@ -581,6 +581,12 @@
     }
   },
   "Pipelines": {
+    "list": {
+      "deal": "딜",
+      "stage": "단계",
+      "createdAt": "생성일",
+      "empty": "필터에 맞는 딜이 없습니다."
+    },
     "page": {
       "selectPipeline": "파이프라인 선택",
       "noPipelinesYet": "아직 파이프라인이 없습니다",
@@ -612,6 +618,7 @@
       "createPipelineBtn": "파이프라인 만들기",
       "toastFailedLoadPipelines": "파이프라인을 불러오지 못했습니다",
       "toastFailedMoveDeal": "딜을 이동하지 못했습니다",
+      "toastFailedStageColor": "열 색상을 변경하지 못했습니다.",
       "toastFailedCreatePipeline": "파이프라인을 만들지 못했습니다",
       "toastPipelineCreated": "파이프라인이 생성되었습니다",
       "toastNotLinkedToAccount": "프로필이 계정에 연결되어 있지 않습니다."
@@ -620,7 +627,26 @@
       "dropDealHere": "여기에 딜을 놓으세요",
       "addDeal": "딜 추가",
       "showMore": "더 보기 (+{count}) · {count}개 숨김",
-      "showLess": "접기"
+      "showLess": "접기",
+      "changeStageColor": "{stage} 색상 변경",
+      "columnColor": "열 색상",
+      "noColumnColor": "색상 없음",
+      "selectColumnColor": "열 색상 선택 {color}",
+      "viewKanban": "칸반 보기",
+      "viewList": "목록 보기",
+      "viewOptions": "파이프라인 보기 방식",
+      "colors": {
+        "blue": "파랑",
+        "indigo": "남색",
+        "violet": "보라",
+        "pink": "분홍",
+        "rose": "장미색",
+        "orange": "주황",
+        "yellow": "노랑",
+        "green": "초록",
+        "teal": "청록",
+        "cyan": "시안"
+      }
     },
     "card": {
       "noContact": "연락처 없음",

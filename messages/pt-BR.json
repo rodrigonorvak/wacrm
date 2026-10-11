@@ -939,10 +939,17 @@
     }
   },
   "Pipelines": {
+    "list": {
+      "deal": "Negócio",
+      "stage": "Etapa",
+      "createdAt": "Criado em",
+      "empty": "Nenhum negócio corresponde aos filtros."
+    },
     "page": {
       "addDeal": "Adicionar negócio",
       "defaultPipelineName": "Funil de vendas",
       "defaultStagesDesc": "As etapas padrão (Novo lead → Ganho) serão criadas automaticamente.",
+      "toastFailedStageColor": "Não foi possível alterar a cor da coluna.",
       "paidStageAmountTitle": "Informe o valor recebido",
       "paidStageAmountDescription": "Informe quanto foi pago pelo negócio {dealTitle}. Esse valor será considerado nos totais do funil e do painel.",
       "paidStageAmountLabel": "Valor pago (BRL)",
@@ -961,7 +968,26 @@
       "dropDealHere": "Solte um negócio aqui",
       "addDeal": "Adicionar negócio",
       "showMore": "Mostrar mais (+{count}) · {count} {count, plural, =1 {oculto} other {ocultos}}",
-      "showLess": "Mostrar menos"
+      "showLess": "Mostrar menos",
+      "changeStageColor": "Alterar cor de {stage}",
+      "columnColor": "Cor da coluna",
+      "noColumnColor": "Sem cor",
+      "selectColumnColor": "Selecionar cor {color}",
+      "viewKanban": "Visualização Kanban",
+      "viewList": "Visualização em lista",
+      "viewOptions": "Modo de visualização da pipeline",
+      "colors": {
+        "blue": "Azul",
+        "indigo": "Índigo",
+        "violet": "Violeta",
+        "pink": "Rosa",
+        "rose": "Rosé",
+        "orange": "Laranja",
+        "yellow": "Amarelo",
+        "green": "Verde",
+        "teal": "Verde-azulado",
+        "cyan": "Ciano"
+      }
     },
     "form": {
       "newDeal": "Novo negócio",

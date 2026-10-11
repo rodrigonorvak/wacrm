@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Pipeline, PipelineStage, Deal } from "@/types";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
+import { PipelineList } from "@/components/pipelines/pipeline-list";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GitBranch, Plus, ChevronDown, Settings, Copy, Filter, X, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { GitBranch, Plus, ChevronDown, Settings, Copy, Filter, X, CalendarDays, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { useCan } from "@/hooks/use-can";
@@ -118,6 +119,7 @@ function parseBrlAmount(raw: string): number | null {
 
 export default function PipelinesPage() {
   const t = useTranslations("Pipelines.page");
+  const tBoard = useTranslations("Pipelines.board");
   const supabase = createClient();
   const canEditSettings = useCan("edit-settings");
   const canCreateDeals = useCan("send-messages");
@@ -133,6 +135,7 @@ export default function PipelinesPage() {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
 
   // Dialog / sheet state
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
@@ -318,6 +321,21 @@ export default function PipelinesPage() {
     setStages(await loadStages(selectedPipelineId));
     setStageFilter("all");
   }, [loadStages, selectedPipelineId]);
+
+  const handleStageColorChange = useCallback(async (stageId: string, color: string) => {
+    const { error } = await supabase
+      .from("pipeline_stages")
+      .update({ color })
+      .eq("id", stageId)
+      .eq("pipeline_id", selectedPipelineId);
+    if (error) {
+      toast.error(t("toastFailedStageColor"));
+      return;
+    }
+    setStages((current) => current.map((stage) =>
+      stage.id === stageId ? { ...stage, color } : stage,
+    ));
+  }, [selectedPipelineId, supabase, t]);
 
   const refreshDeals = useCallback(async () => {
     if (!selectedPipelineId) return;
@@ -689,6 +707,34 @@ export default function PipelinesPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+          <div
+            role="group"
+            aria-label={tBoard("viewOptions")}
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-background p-0.5"
+          >
+            <Button
+              type="button"
+              variant={viewMode === "kanban" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label={tBoard("viewKanban")}
+              aria-pressed={viewMode === "kanban"}
+              title={tBoard("viewKanban")}
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon-sm"
+              aria-label={tBoard("viewList")}
+              aria-pressed={viewMode === "list"}
+              title={tBoard("viewList")}
+              onClick={() => setViewMode("list")}
+            >
+              <List className="size-4" />
+            </Button>
+          </div>
           <GatedButton
             variant="outline"
             canAct={canEditSettings}
@@ -752,15 +798,26 @@ export default function PipelinesPage() {
           </GatedButton>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4">
-          <PipelineBoard
-            stages={filteredStages}
-            deals={filteredDeals}
-            visibleCardFields={visibleCardFields}
-            onDealMoved={handleDealMoved}
-            onAddDeal={handleAddDeal}
-            onEditDeal={handleEditDeal}
-          />
+        <div className="overflow-hidden rounded-xl border border-border bg-muted/50 p-3 shadow-sm sm:p-4">
+          {viewMode === "kanban" ? (
+            <PipelineBoard
+              stages={filteredStages}
+              deals={filteredDeals}
+              visibleCardFields={visibleCardFields}
+              canEditStageColors={canEditSettings}
+              onStageColorChange={handleStageColorChange}
+              onDealMoved={handleDealMoved}
+              onAddDeal={handleAddDeal}
+              onEditDeal={handleEditDeal}
+            />
+          ) : (
+            <PipelineList
+              stages={filteredStages}
+              deals={filteredDeals}
+              visibleCardFields={visibleCardFields}
+              onEditDeal={handleEditDeal}
+            />
+          )}
         </div>
       )}
 

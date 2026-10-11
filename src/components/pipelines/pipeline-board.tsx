@@ -16,15 +16,31 @@ import {
 } from "@dnd-kit/core";
 import type { Deal, PipelineStage } from "@/types";
 import type { PipelineCardField } from "@/lib/pipelines/card-fields";
+import { PIPELINE_STAGE_COLOR_OPTIONS, PIPELINE_STAGE_NO_COLOR } from "@/lib/pipelines/stage-colors";
 import { DealCard } from "./deal-card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  CircleSlash2,
+  MoreHorizontal,
+  Plus,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
 
 interface PipelineBoardProps {
   stages: PipelineStage[];
   deals: Deal[];
   visibleCardFields: PipelineCardField[];
+  canEditStageColors: boolean;
+  onStageColorChange: (stageId: string, color: string) => void;
   onDealMoved: (dealId: string, newStageId: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
@@ -37,6 +53,8 @@ export function PipelineBoard({
   stages,
   deals,
   visibleCardFields,
+  canEditStageColors,
+  onStageColorChange,
   onDealMoved,
   onAddDeal,
   onEditDeal,
@@ -102,6 +120,8 @@ export function PipelineBoard({
             stage={stage}
             deals={dealsByStage.get(stage.id) ?? []}
             visibleCardFields={visibleCardFields}
+            canEditStageColors={canEditStageColors}
+            onStageColorChange={onStageColorChange}
             onAddDeal={onAddDeal}
             onEditDeal={onEditDeal}
           />
@@ -167,12 +187,16 @@ function StageColumn({
   stage,
   deals,
   visibleCardFields,
+  canEditStageColors,
+  onStageColorChange,
   onAddDeal,
   onEditDeal,
 }: {
   stage: PipelineStage;
   deals: Deal[];
   visibleCardFields: PipelineCardField[];
+  canEditStageColors: boolean;
+  onStageColorChange: (stageId: string, color: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
 }) {
@@ -183,14 +207,65 @@ function StageColumn({
   const hiddenCount = deals.length - visibleDeals.length;
 
   return (
-    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-card p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
-      <header className="flex items-center justify-between gap-2 border-b border-border pb-3">
-        <h3 className="truncate text-sm font-semibold text-foreground">
-          {stage.name}
-        </h3>
-        <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {deals.length}
-        </span>
+    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
+      <header
+        className="-mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 rounded-t-xl border-b border-border px-3 py-3 sm:-mx-4 sm:-mt-4 sm:px-4"
+        style={stage.color ? { backgroundColor: `${stage.color}14` } : undefined}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-2.5 shrink-0 rounded-full border border-black/10"
+            style={{ backgroundColor: stage.color || "transparent" }}
+          />
+          <h3 className="truncate text-sm font-semibold text-foreground">
+            {stage.name}
+          </h3>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="rounded-md bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {deals.length}
+          </span>
+          {canEditStageColors && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={t("changeStageColor", { stage: stage.name })}
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t("columnColor")}</DropdownMenuLabel>
+                  <div className="grid grid-cols-5 gap-1 p-1">
+                    {PIPELINE_STAGE_COLOR_OPTIONS.map(({ name, value }) => (
+                      <DropdownMenuItem
+                        key={value}
+                        aria-label={t("selectColumnColor", { color: t(`colors.${name}`) })}
+                        title={t(`colors.${name}`)}
+                        onClick={() => onStageColorChange(stage.id, value)}
+                        className="flex size-7 cursor-pointer items-center justify-center p-0 focus:bg-muted"
+                      >
+                        <span
+                          className="size-4 rounded-full border border-black/10"
+                          style={{ backgroundColor: value }}
+                        />
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onStageColorChange(stage.id, PIPELINE_STAGE_NO_COLOR)}
+                  className="cursor-pointer"
+                >
+                  <CircleSlash2 className="size-4" />
+                  {t("noColumnColor")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </header>
 
       <div

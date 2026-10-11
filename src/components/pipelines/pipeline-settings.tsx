@@ -36,23 +36,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { PIPELINE_STAGE_COLORS as STAGE_COLORS } from "@/lib/pipelines/stage-colors";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
 } from "@/lib/integrations/lead-token";
-
-const STAGE_COLORS = [
-  "#3b82f6",
-  "#6366f1",
-  "#8b5cf6",
-  "#ec4899",
-  "#f43f5e",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#14b8a6",
-  "#06b6d4",
-];
 
 interface PipelineSettingsProps {
   open: boolean;
@@ -79,7 +67,7 @@ export function PipelineSettings({
   const [name, setName] = useState(pipeline.name);
   const [localStages, setLocalStages] = useState<PipelineStage[]>(stages);
   const [newStageName, setNewStageName] = useState("");
-  const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[0]);
+  const [newStageColor, setNewStageColor] = useState<string>(STAGE_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -603,7 +591,7 @@ function SortableStageRow({
   onColorChange: (v: string) => void;
   onRemove: () => void;
   locked: boolean;
-  colors: string[];
+  colors: readonly string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
@@ -661,7 +649,7 @@ function ColorSwatch({
 }: {
   value: string;
   onChange: (v: string) => void;
-  colors: string[];
+  colors: readonly string[];
   disabled: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;

@@ -581,6 +581,12 @@
     }
   },
   "Pipelines": {
+    "list": {
+      "deal": "Deal",
+      "stage": "Stage",
+      "createdAt": "Created",
+      "empty": "No deals match these filters."
+    },
     "page": {
       "selectPipeline": "Select Pipeline",
       "noPipelinesYet": "No pipelines yet",
@@ -612,6 +618,7 @@
       "createPipelineBtn": "Create Pipeline",
       "toastFailedLoadPipelines": "Failed to load pipelines",
       "toastFailedMoveDeal": "Failed to move deal",
+      "toastFailedStageColor": "Could not change the column color.",
       "toastFailedCreatePipeline": "Failed to create pipeline",
       "toastPipelineCreated": "Pipeline created",
       "toastNotLinkedToAccount": "Your profile is not linked to an account."
@@ -620,7 +627,26 @@
       "dropDealHere": "Drop a deal here",
       "addDeal": "Add Deal",
       "showMore": "Show more (+{count}) · {count} hidden",
-      "showLess": "Show less"
+      "showLess": "Show less",
+      "changeStageColor": "Change color for {stage}",
+      "columnColor": "Column color",
+      "noColumnColor": "No color",
+      "selectColumnColor": "Select column color {color}",
+      "viewKanban": "Kanban view",
+      "viewList": "List view",
+      "viewOptions": "Pipeline display mode",
+      "colors": {
+        "blue": "Blue",
+        "indigo": "Indigo",
+        "violet": "Violet",
+        "pink": "Pink",
+        "rose": "Rose",
+        "orange": "Orange",
+        "yellow": "Yellow",
+        "green": "Green",
+        "teal": "Teal",
+        "cyan": "Cyan"
+      }
     },
     "card": {
       "noContact": "No contact",
