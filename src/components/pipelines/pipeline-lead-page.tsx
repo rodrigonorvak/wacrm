@@ -626,7 +626,8 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const pendingServiceSteps = serviceSteps.filter((step) => !step.completed_at).length;
 
   return (
-    <div className="mx-auto w-full max-w-6xl animate-in fade-in-0 slide-in-from-bottom-1 space-y-5 duration-200 motion-reduce:animate-none">
+    <div className="-mx-4 -mt-4 min-h-full bg-[#fff1f4] px-4 pt-4 pb-24 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 sm:pb-24">
+    <div className="mx-auto w-full max-w-6xl animate-in fade-in-0 slide-in-from-bottom-1 space-y-5 duration-300 ease-out motion-reduce:animate-none">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link href={returnTo} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -722,7 +723,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
             ))}
           </div>
 
-          <div key={tab} role="tabpanel" className="min-h-[380px] animate-in fade-in-0 duration-150 motion-reduce:animate-none">
+          <div key={tab} role="tabpanel" className="min-h-[380px] animate-in fade-in-0 duration-200 ease-out motion-reduce:animate-none">
             {contentLoading ? (
               <div className="p-6 text-sm text-muted-foreground">Carregando...</div>
             ) : tab === "whatsapp" ? (
@@ -1057,6 +1058,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         onServiceSteps={() => void openServiceSteps()}
         onDeleteLead={() => setDeleteDialogOpen(true)}
       />
+    </div>
     </div>
   );
 }
