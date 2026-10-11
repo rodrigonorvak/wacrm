@@ -42,6 +42,25 @@
   font-weight: 500;
 }
 
+.pipeline-lead-canvas {
+  background-color: #fbfafb;
+  background-image: radial-gradient(
+    ellipse 54rem 42rem at 100% 0%,
+    rgb(232 137 160 / 10%),
+    transparent 70%
+  );
+}
+
+@media (max-width: 640px) {
+  .pipeline-lead-canvas {
+    background-image: radial-gradient(
+      ellipse 36rem 30rem at 100% 0%,
+      rgb(232 137 160 / 8%),
+      transparent 75%
+    );
+  }
+}
+
 .crm-sidebar {
   background: linear-gradient(to bottom, #e11d48, #881337);
   overflow-x: hidden;

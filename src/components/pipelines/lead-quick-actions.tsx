@@ -97,12 +97,13 @@ export function LeadQuickActions({
         <nav
           id="lead-quick-actions-list"
           aria-label="Ações do lead"
-          className="flex max-h-[calc(100dvh-6rem)] flex-col items-end gap-2 overflow-y-auto p-1 animate-in fade-in-0 slide-in-from-bottom-2 duration-200 ease-out motion-reduce:animate-none"
+          className="flex max-h-[calc(100dvh-6rem)] flex-col items-end gap-2 overflow-y-auto p-1"
         >
-          {actions.map((action) => {
+          {actions.map((action, index) => {
             const Icon = action.icon;
-            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
+            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
             const content = <><span className="truncate">{action.label}</span><Icon className={`size-4 shrink-0 ${action.color}`} /></>;
+            const animationDelay = `${(actions.length - index - 1) * 28}ms`;
 
             if (action.href && !action.disabled) {
               if (action.external) {
@@ -113,6 +114,7 @@ export function LeadQuickActions({
                     title={action.label}
                     onClick={() => setExpanded(false)}
                     className={className}
+                    style={{ animationDelay }}
                     {...(action.href.startsWith("https://") ? { target: "_blank", rel: "noreferrer" } : {})}
                   >
                     {content}
@@ -126,6 +128,7 @@ export function LeadQuickActions({
                   title={action.label}
                   onClick={() => setExpanded(false)}
                   className={className}
+                  style={{ animationDelay }}
                 >
                   {content}
                 </Link>
@@ -140,6 +143,7 @@ export function LeadQuickActions({
                 disabled={action.disabled}
                 onClick={() => closeAndRun(action)}
                 className={className}
+                style={{ animationDelay }}
               >
                 {content}
               </button>

@@ -626,7 +626,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const pendingServiceSteps = serviceSteps.filter((step) => !step.completed_at).length;
 
   return (
-    <div className="-mx-4 -mt-4 min-h-full bg-[#fff1f4] px-4 pt-4 pb-24 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 sm:pb-24">
+    <div className="pipeline-lead-canvas -mx-4 -mt-4 min-h-full px-4 pt-4 pb-24 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 sm:pb-24">
     <div className="mx-auto w-full max-w-6xl animate-in fade-in-0 slide-in-from-bottom-1 space-y-5 duration-300 ease-out motion-reduce:animate-none">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
