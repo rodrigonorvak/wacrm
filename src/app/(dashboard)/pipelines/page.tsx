@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Pipeline, PipelineStage, Deal } from "@/types";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineList } from "@/components/pipelines/pipeline-list";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
-import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
@@ -84,6 +84,10 @@ const DATE_FILTER_LABELS: Record<DateFilter, string> = {
   custom: "Personalizado",
 };
 
+function isDateFilter(value: string | null): value is DateFilter {
+  return value === "today" || value === "7" || value === "14" || value === "30" || value === "max" || value === "custom";
+}
+
 function mappingTarget(fieldName: string): {
   targetType: "contact" | "deal" | "contact_custom_field";
   targetKey: string;
@@ -118,6 +122,7 @@ function parseBrlAmount(raw: string): number | null {
 }
 
 export default function PipelinesPage() {
+  const router = useRouter();
   const t = useTranslations("Pipelines.page");
   const tBoard = useTranslations("Pipelines.board");
   const supabase = createClient();
@@ -151,7 +156,6 @@ export default function PipelinesPage() {
   const [dealFormOpen, setDealFormOpen] = useState(false);
   const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
-  const [leadDetailDeal, setLeadDetailDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
   const [paidMove, setPaidMove] = useState<{
     dealId: string;
@@ -162,6 +166,7 @@ export default function PipelinesPage() {
 
   // Guard against double-seeding (React StrictMode double-effect in dev).
   const seedAttempted = useRef(false);
+  const routeStateRestored = useRef(false);
 
   // This effect synchronizes a browser preference after auth identifies the user.
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -268,9 +273,25 @@ export default function PipelinesPage() {
 
       if (cancelled) return;
       setPipelines(list);
+      const params = new URLSearchParams(window.location.search);
+      const requestedPipelineId = params.get("pipeline");
+      if (!routeStateRestored.current) {
+        routeStateRestored.current = true;
+        const requestedDateFilter = params.get("date");
+        const requestedView = params.get("view");
+        if (isDateFilter(requestedDateFilter)) setDateFilter(requestedDateFilter);
+        if (requestedView === "kanban" || requestedView === "list") setViewMode(requestedView);
+        if (params.has("stage")) setStageFilter(params.get("stage") || "all");
+        if (params.has("start")) setCustomStartDate(params.get("start") || "");
+        if (params.has("end")) setCustomEndDate(params.get("end") || "");
+      }
       if (list.length > 0) {
         setSelectedPipelineId((prev) =>
-          prev && list.some((p) => p.id === prev) ? prev : list[0].id,
+          prev && list.some((p) => p.id === prev)
+            ? prev
+            : requestedPipelineId && list.some((p) => p.id === requestedPipelineId)
+              ? requestedPipelineId
+              : list[0].id,
         );
       } else {
         setSelectedPipelineId("");
@@ -409,36 +430,21 @@ export default function PipelinesPage() {
   const handleEditDeal = useCallback((deal: Deal) => {
     const pipeline = pipelines.find((item) => item.id === deal.pipeline_id);
     if (pipeline?.pipeline_type === "integrated") {
-      setLeadDetailDeal(deal);
+      const params = new URLSearchParams({
+        pipeline: selectedPipelineId,
+        stage: stageFilter,
+        date: dateFilter,
+        view: viewMode,
+      });
+      if (customStartDate) params.set("start", customStartDate);
+      if (customEndDate) params.set("end", customEndDate);
+      router.push(`/pipelines/${deal.id}?${params.toString()}`);
       return;
     }
     setEditingDeal(deal);
     setDefaultStageId(deal.stage_id);
     setDealFormOpen(true);
-  }, [pipelines]);
-
-  const handleIntegratedTemplateSent = useCallback(
-    async (dealId: string) => {
-      const prospectingStage = stages.find(
-        (stage) => stage.name === "Prospecção iniciada",
-      );
-      if (!prospectingStage) return;
-
-      setDeals((current) =>
-        current.map((deal) =>
-          deal.id === dealId
-            ? { ...deal, stage_id: prospectingStage.id, stage: prospectingStage }
-            : deal,
-        ),
-      );
-      const { error } = await supabase
-        .from("deals")
-        .update({ stage_id: prospectingStage.id })
-        .eq("id", dealId);
-      if (error) refreshDeals();
-    },
-    [stages, supabase, refreshDeals],
-  );
+  }, [pipelines, router, selectedPipelineId, stageFilter, dateFilter, viewMode, customStartDate, customEndDate]);
 
   async function handleCreatePipeline() {
     const name = newPipelineName.trim();
@@ -1017,14 +1023,6 @@ export default function PipelinesPage() {
         onSaved={refreshDeals}
       />
 
-      <IntegratedLeadDetail
-        open={leadDetailDeal !== null}
-        onOpenChange={(open) => {
-          if (!open) setLeadDetailDeal(null);
-        }}
-        deal={leadDetailDeal}
-        onTemplateSent={handleIntegratedTemplateSent}
-      />
     </div>
   );
 }

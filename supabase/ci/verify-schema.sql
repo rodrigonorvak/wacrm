@@ -85,6 +85,29 @@ BEGIN
     RAISE EXCEPTION 'platform admin self-read policy is missing — migration 051 did not apply';
   END IF;
 
+  IF to_regclass('public.deal_stage_history') IS NULL THEN
+    RAISE EXCEPTION 'public.deal_stage_history is missing — migration 055 did not apply';
+  END IF;
+  IF (
+    SELECT count(*)
+    FROM pg_trigger
+    WHERE tgrelid = 'public.deals'::regclass
+      AND tgname IN (
+        'deals_record_initial_stage_history',
+        'deals_record_stage_change_history'
+      )
+      AND NOT tgisinternal
+  ) <> 2 THEN
+    RAISE EXCEPTION 'deal stage history triggers are missing — migration 055 did not apply';
+  END IF;
+  IF to_regclass('public.deal_reminders') IS NULL
+      OR to_regclass('public.deal_service_steps') IS NULL THEN
+    RAISE EXCEPTION 'lead quick-action tables are missing — migration 056 did not apply';
+  END IF;
+  IF to_regprocedure('public.dispatch_due_deal_reminders(integer)') IS NULL THEN
+    RAISE EXCEPTION 'deal reminder dispatcher is missing — migration 056 did not apply';
+  END IF;
+
   RAISE NOTICE 'schema verification passed';
 END
 $$;

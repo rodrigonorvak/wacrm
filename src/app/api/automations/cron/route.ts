@@ -7,8 +7,8 @@ import type { AutomationContext } from '@/lib/automations/engine'
 /**
  * Drain due `automation_pending_executions` rows. Meant to be hit
  * on a schedule (Vercel Cron / external pinger) — requires a shared
- * secret via the `x-cron-secret` header to match
- * `AUTOMATION_CRON_SECRET`.
+ * secret via Vercel's `Authorization: Bearer` header or the existing
+ * `x-cron-secret` header.
  *
  * The claim step (status = 'running') serves as a simple lock so
  * overlapping invocations don't double-process rows. Best-effort
@@ -16,21 +16,35 @@ import type { AutomationContext } from '@/lib/automations/engine'
  * two-step UPDATE-by-id.
  */
 export async function GET(request: Request) {
-  const expected = process.env.AUTOMATION_CRON_SECRET
-  if (!expected) {
+  const expectedSecrets = [process.env.CRON_SECRET, process.env.AUTOMATION_CRON_SECRET]
+    .filter((secret): secret is string => Boolean(secret))
+  if (expectedSecrets.length === 0) {
     return NextResponse.json({ error: 'cron not configured' }, { status: 503 })
   }
-  const supplied = request.headers.get('x-cron-secret') ?? ''
-  const suppliedBuf = Buffer.from(supplied)
-  const expectedBuf = Buffer.from(expected)
-  if (
-    suppliedBuf.length !== expectedBuf.length ||
-    !timingSafeEqual(suppliedBuf, expectedBuf)
-  ) {
+  const authorization = request.headers.get('authorization') ?? ''
+  const bearerSecret = /^Bearer\s+(.+)$/i.exec(authorization)?.[1]
+  const suppliedSecrets = [bearerSecret, request.headers.get('x-cron-secret')]
+    .filter((secret): secret is string => Boolean(secret))
+  const authorized = suppliedSecrets.some((supplied) =>
+    expectedSecrets.some((expected) => {
+      const suppliedBuf = Buffer.from(supplied)
+      const expectedBuf = Buffer.from(expected)
+      return suppliedBuf.length === expectedBuf.length && timingSafeEqual(suppliedBuf, expectedBuf)
+    }),
+  )
+  if (!authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const admin = supabaseAdmin()
+  const { data: remindersProcessed, error: reminderError } = await admin.rpc(
+    'dispatch_due_deal_reminders',
+  )
+  if (reminderError) {
+    return NextResponse.json({ error: reminderError.message }, { status: 500 })
+  }
+  const reminderCount = Number(remindersProcessed ?? 0)
+
   const { data: due, error } = await admin
     .from('automation_pending_executions')
     .select('*')
@@ -40,7 +54,9 @@ export async function GET(request: Request) {
     .limit(50)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!due || due.length === 0) return NextResponse.json({ processed: 0 })
+  if (!due || due.length === 0) {
+    return NextResponse.json({ processed: 0, reminders_processed: reminderCount })
+  }
 
   let processed = 0
   for (const row of due) {
@@ -70,5 +86,5 @@ export async function GET(request: Request) {
     processed++
   }
 
-  return NextResponse.json({ processed })
+  return NextResponse.json({ processed, reminders_processed: reminderCount })
 }

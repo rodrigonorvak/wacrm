@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@/types";
-import { Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
+import { AlarmClock, Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ import { toast } from "sonner";
 // (conversation_assigned) but this keeps future types a one-line add.
 const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
   conversation_assigned: UserPlus,
+  deal_reminder: AlarmClock,
 };
 
 export default function NotificationsPage() {
@@ -116,6 +117,11 @@ export default function NotificationsPage() {
       if (!n.read_at) markRead(n.id);
       if (n.conversation_id) {
         router.push(`/inbox?c=${n.conversation_id}`);
+      } else if (n.deal_id) {
+        const pipelineQuery = n.pipeline_id
+          ? `?pipeline=${encodeURIComponent(n.pipeline_id)}`
+          : "";
+        router.push(`/pipelines/${n.deal_id}${pipelineQuery}`);
       }
     },
     [markRead, router],
@@ -167,7 +173,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notificações</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            As conversas atribuídas a você por outros membros da equipe aparecerão aqui.
+            Conversas atribuídas e lembretes dos seus leads aparecem aqui.
           </p>
         </div>
         <Button
@@ -194,7 +200,7 @@ export default function NotificationsPage() {
             Nenhuma notificação ainda
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Você verá um alerta aqui quando alguém atribuir uma conversa a você.
+            Você verá atualizações da equipe e lembretes dos leads aqui.
           </p>
         </div>
       ) : (
