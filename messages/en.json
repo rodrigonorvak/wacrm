@@ -618,7 +618,9 @@
     },
     "board": {
       "dropDealHere": "Drop a deal here",
-      "addDeal": "Add Deal"
+      "addDeal": "Add Deal",
+      "showMore": "Show more (+{count}) · {count} hidden",
+      "showLess": "Show less"
     },
     "card": {
       "noContact": "No contact",
@@ -628,6 +630,14 @@
     "form": {
       "editDeal": "Edit Deal",
       "newDeal": "New Deal",
+      "cardFieldsTitle": "Fields shown on the card",
+      "cardFieldsDescription": "Choose which details appear below the deal name when the card is closed.",
+      "cardFieldOptions": {
+        "company": "Company",
+        "phone": "Phone",
+        "assignee": "Assigned to",
+        "expectedCloseDate": "Expected close date"
+      },
       "title": "Title",
       "titlePlaceholder": "Deal title",
       "contact": "Contact",

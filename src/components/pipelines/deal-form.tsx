@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { isPaidStageName } from "@/lib/pipelines/paid-stage";
+import { PIPELINE_CARD_FIELDS, type PipelineCardField } from "@/lib/pipelines/card-fields";
 import type {
   Contact,
   Conversation,
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Check,
   X,
@@ -40,6 +42,8 @@ interface DealFormProps {
   pipelineId: string;
   stages: PipelineStage[];
   defaultStageId?: string;
+  visibleCardFields: PipelineCardField[];
+  onVisibleCardFieldsChange: (fields: PipelineCardField[]) => void;
   onSaved: () => void;
 }
 
@@ -50,6 +54,8 @@ export function DealForm({
   pipelineId,
   stages,
   defaultStageId,
+  visibleCardFields,
+  onVisibleCardFieldsChange,
   onSaved,
 }: DealFormProps) {
   const t = useTranslations("Pipelines.form");
@@ -372,6 +378,33 @@ export function DealForm({
                 className="min-h-[100px] border-border bg-muted text-foreground"
               />
             </div>
+
+            {deal && (
+              <fieldset className="grid gap-3 rounded-lg border border-border p-3">
+                <legend className="px-1 text-sm font-medium text-foreground">
+                  {t("cardFieldsTitle")}
+                </legend>
+                <p className="-mt-2 text-xs text-muted-foreground">
+                  {t("cardFieldsDescription")}
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {PIPELINE_CARD_FIELDS.map((field) => (
+                    <label key={field} className="flex min-h-10 items-center gap-2 text-sm text-foreground">
+                      <Checkbox
+                        checked={visibleCardFields.includes(field)}
+                        onCheckedChange={(checked) => {
+                          const nextFields = checked === true
+                            ? [...visibleCardFields, field]
+                            : visibleCardFields.filter((item) => item !== field);
+                          onVisibleCardFieldsChange(nextFields);
+                        }}
+                      />
+                      {t(`cardFieldOptions.${field}`)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
             {deal && (
               <div className="space-y-2 rounded-lg border border-border bg-muted/50 p-3">

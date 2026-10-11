@@ -618,7 +618,9 @@
     },
     "board": {
       "dropDealHere": "여기에 딜을 놓으세요",
-      "addDeal": "딜 추가"
+      "addDeal": "딜 추가",
+      "showMore": "더 보기 (+{count}) · {count}개 숨김",
+      "showLess": "접기"
     },
     "card": {
       "noContact": "연락처 없음",
@@ -628,6 +630,14 @@
     "form": {
       "editDeal": "딜 수정",
       "newDeal": "새 딜",
+      "cardFieldsTitle": "카드에 표시할 항목",
+      "cardFieldsDescription": "카드를 닫았을 때 딜 이름 아래에 표시할 정보를 선택하세요.",
+      "cardFieldOptions": {
+        "company": "회사",
+        "phone": "전화번호",
+        "assignee": "담당자",
+        "expectedCloseDate": "예상 마감일"
+      },
       "title": "제목",
       "titlePlaceholder": "딜 제목",
       "contact": "연락처",

@@ -959,10 +959,20 @@
     },
     "board": {
       "dropDealHere": "Solte um negócio aqui",
-      "addDeal": "Adicionar negócio"
+      "addDeal": "Adicionar negócio",
+      "showMore": "Mostrar mais (+{count}) · {count} {count, plural, =1 {oculto} other {ocultos}}",
+      "showLess": "Mostrar menos"
     },
     "form": {
       "newDeal": "Novo negócio",
+      "cardFieldsTitle": "Informações exibidas no card",
+      "cardFieldsDescription": "Escolha quais dados aparecem abaixo do nome do negócio quando o card estiver fechado.",
+      "cardFieldOptions": {
+        "company": "Empresa",
+        "phone": "Telefone",
+        "assignee": "Responsável",
+        "expectedCloseDate": "Previsão de fechamento"
+      },
       "paidAmount": "Valor pago",
       "paidAmountRequired": "Informe o valor pago antes de mover o negócio para uma etapa de pagamento.",
       "paidAmountPlaceholder": "0,00"

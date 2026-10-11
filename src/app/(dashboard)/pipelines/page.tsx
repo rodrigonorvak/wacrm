@@ -6,7 +6,6 @@ import type { Pipeline, PipelineStage, Deal } from "@/types";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
-import { PipelineAnalytics } from "@/components/pipelines/pipeline-analytics";
 import { IntegratedLeadDetail } from "@/components/pipelines/integrated-lead-detail";
 import {
   generateLeadIntegrationToken,
@@ -34,6 +33,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from "sonner";
 import { useCan } from "@/hooks/use-can";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  DEFAULT_PIPELINE_CARD_FIELDS,
+  normalizePipelineCardFields,
+  type PipelineCardField,
+} from "@/lib/pipelines/card-fields";
 import { GatedButton } from "@/components/ui/gated-button";
 import { useTranslations } from "next-intl";
 import { isPaidStageName } from "@/lib/pipelines/paid-stage";
@@ -117,7 +121,8 @@ export default function PipelinesPage() {
   const supabase = createClient();
   const canEditSettings = useCan("edit-settings");
   const canCreateDeals = useCan("send-messages");
-  const { accountId } = useAuth();
+  const { accountId, user } = useAuth();
+  const userId = user?.id;
 
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
@@ -141,6 +146,7 @@ export default function PipelinesPage() {
   // Deal form state is lifted here so both the top-bar "Add Deal" and
   // the per-column "+" trigger the same Sheet.
   const [dealFormOpen, setDealFormOpen] = useState(false);
+  const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [leadDetailDeal, setLeadDetailDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
@@ -153,6 +159,29 @@ export default function PipelinesPage() {
 
   // Guard against double-seeding (React StrictMode double-effect in dev).
   const seedAttempted = useRef(false);
+
+  // This effect synchronizes a browser preference after auth identifies the user.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const stored = localStorage.getItem(`wacrm.pipeline.card-fields.${userId}`);
+      if (stored !== null) setVisibleCardFields(normalizePipelineCardFields(JSON.parse(stored)));
+    } catch {
+      setVisibleCardFields(DEFAULT_PIPELINE_CARD_FIELDS);
+    }
+  }, [userId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const updateVisibleCardFields = useCallback((fields: PipelineCardField[]) => {
+    setVisibleCardFields(fields);
+    if (!userId) return;
+    try {
+      localStorage.setItem(`wacrm.pipeline.card-fields.${userId}`, JSON.stringify(fields));
+    } catch {
+      // Keep the selection for the current page even when storage is unavailable.
+    }
+  }, [userId]);
 
   const loadPipelines = useCallback(async () => {
     const { data, error } = await supabase
@@ -574,8 +603,8 @@ export default function PipelinesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* Pipeline selector dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -622,9 +651,44 @@ export default function PipelinesPage() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          {selectedPipeline && (
+            <>
+              <PipelineDateFilter
+                value={dateFilter}
+                startDate={customStartDate}
+                endDate={customEndDate}
+                onApply={(nextFilter, nextStart, nextEnd) => {
+                  setDateFilter(nextFilter);
+                  setCustomStartDate(nextStart);
+                  setCustomEndDate(nextEnd);
+                }}
+              />
+              <label className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
+                <Filter className="size-4 shrink-0 text-muted-foreground" />
+                <span className="sr-only">Estágio</span>
+                <select
+                  aria-label="Filtrar por estágio"
+                  value={stageFilter}
+                  onChange={(event) => setStageFilter(event.target.value)}
+                  className="min-w-0 max-w-40 bg-transparent outline-none"
+                >
+                  <option value="all">Todos os estágios</option>
+                  {stages.slice().sort((a, b) => a.position - b.position).map((stage) => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+              </label>
+              {(dateFilter !== "max" || stageFilter !== "all") && (
+                <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="size-4" />
+                  Limpar filtros
+                </Button>
+              )}
+            </>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
           <GatedButton
             variant="outline"
             canAct={canEditSettings}
@@ -688,54 +752,16 @@ export default function PipelinesPage() {
           </GatedButton>
         </div>
       ) : (
-        <>
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card/60 p-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Filter className="size-4 text-primary" />
-              Filtros do funil
-            </div>
-            <PipelineDateFilter
-              value={dateFilter}
-              startDate={customStartDate}
-              endDate={customEndDate}
-              onApply={(nextFilter, nextStart, nextEnd) => {
-                setDateFilter(nextFilter);
-                setCustomStartDate(nextStart);
-                setCustomEndDate(nextEnd);
-              }}
-            />
-            <label className="grid gap-1 text-xs text-muted-foreground">
-              Estágio
-              <select
-                value={stageFilter}
-                onChange={(event) => setStageFilter(event.target.value)}
-                className="h-8 min-w-44 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
-              >
-                <option value="all">Todos os estágios</option>
-                {stages.slice().sort((a, b) => a.position - b.position).map((stage) => (
-                  <option key={stage.id} value={stage.id}>{stage.name}</option>
-                ))}
-              </select>
-            </label>
-            {(dateFilter !== "max" || stageFilter !== "all") ? (
-              <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="size-4" />
-                Limpar filtros
-              </Button>
-            ) : null}
-            <span className="ml-auto text-xs text-muted-foreground">
-              {filteredDeals.length} negócio(s) exibido(s)
-            </span>
-          </div>
-          <PipelineAnalytics stages={filteredStages} deals={filteredDeals} />
+        <div className="overflow-hidden rounded-xl border border-border bg-background p-3 shadow-sm sm:p-4">
           <PipelineBoard
             stages={filteredStages}
             deals={filteredDeals}
+            visibleCardFields={visibleCardFields}
             onDealMoved={handleDealMoved}
             onAddDeal={handleAddDeal}
             onEditDeal={handleEditDeal}
           />
-        </>
+        </div>
       )}
 
       <Dialog
@@ -929,6 +955,8 @@ export default function PipelinesPage() {
         pipelineId={selectedPipelineId}
         stages={stages}
         defaultStageId={defaultStageId}
+        visibleCardFields={visibleCardFields}
+        onVisibleCardFieldsChange={updateVisibleCardFields}
         onSaved={refreshDeals}
       />
 
