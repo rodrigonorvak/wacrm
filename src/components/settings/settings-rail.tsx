@@ -50,9 +50,8 @@ export function SettingsRail({
     <nav
       aria-label={t('sectionsAriaLabel')}
       className={cn(
-        'flex gap-1 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-        'border-b border-border',
-        'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible lg:border-r lg:border-b-0 lg:pb-0 lg:pr-3',
+        'flex w-full gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible',
       )}
     >
       {RAIL_GROUPS.map(({ label, group }) => {
@@ -62,7 +61,7 @@ export function SettingsRail({
         return (
           <div
             key={group}
-            className="flex shrink-0 gap-1 lg:mb-2 lg:flex-col lg:gap-0.5 lg:border-b lg:border-border lg:pb-2 last:lg:mb-0 last:lg:border-b-0"
+            className="flex shrink-0 gap-1 lg:mb-2 lg:flex-col lg:gap-1 lg:border-b lg:border-border lg:pb-3 last:lg:mb-0 last:lg:border-b-0 last:lg:pb-0"
           >
             {label ? (
               <div className="hidden px-3 pt-3.5 pb-1.5 text-[11px] font-semibold tracking-[0.09em] text-muted-foreground uppercase lg:block">
@@ -81,26 +80,20 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'relative flex shrink-0 items-center gap-2.5 px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
+                    'relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
                     'lg:w-full lg:py-2.5',
                     isActive
-                      ? 'text-primary'
-                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                      ? 'bg-[#e11d48] text-white shadow-[0_2px_8px_rgb(225_29_72_/_18%)]'
+                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                   )}
                 >
-                  {isActive && (
-                    <span
-                      aria-hidden="true"
-                      className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary lg:top-2 lg:bottom-2 lg:left-0 lg:right-auto lg:h-auto lg:w-0.5"
-                    />
-                  )}
-                  <Icon className="size-4 shrink-0" />
+                  <Icon className={cn('size-4 shrink-0', isActive && 'text-white')} />
                   <span className="flex-1">{t(`sections.${s}`)}</span>
                   {hints?.[s] != null ? (
                     <span
                       className={cn(
                         'hidden items-center gap-1.5 text-xs lg:inline-flex',
-                        isActive ? 'text-primary' : 'text-muted-foreground',
+                        isActive ? 'text-white/85' : 'text-muted-foreground',
                       )}
                     >
                       {hints[s]}

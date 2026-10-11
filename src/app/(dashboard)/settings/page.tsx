@@ -101,10 +101,10 @@ function SettingsPageInner() {
   };
 
   return (
-    <div className="settings-workspace -m-4 min-h-full bg-muted/50 sm:-m-6">
-      <div className="grid min-h-full lg:grid-cols-[216px_minmax(0,1fr)]">
-        <aside className="border-b border-border bg-background lg:border-r lg:border-b-0">
-          <div className="flex h-12 items-center border-b border-border px-5">
+    <div className="settings-workspace -m-4 min-h-full bg-muted/40 p-3 sm:-m-6 sm:p-4 lg:p-5">
+      <div className="grid min-h-full gap-3 lg:grid-cols-[216px_minmax(0,1fr)] xl:gap-5">
+        <aside className="min-w-0 rounded-xl border border-border bg-background shadow-[0_2px_10px_rgb(15_23_42_/_5%)]">
+          <div className="flex h-12 items-center rounded-t-xl border-b border-border px-5">
             <span className="text-xs font-semibold uppercase text-foreground">
               {t('pageTitle')}
             </span>
@@ -114,7 +114,7 @@ function SettingsPageInner() {
           </div>
         </aside>
 
-        <div className="min-w-0 bg-background px-4 py-5 sm:px-6 sm:py-6">
+        <div className="min-h-[420px] min-w-0 rounded-xl border border-border bg-background px-4 py-5 shadow-[0_2px_10px_rgb(15_23_42_/_5%)] sm:px-6 sm:py-6 lg:min-h-full">
           {section === 'overview' && (
             <div className="mb-6 border-b border-border pb-4">
               <h1 className="text-lg font-semibold text-foreground">
