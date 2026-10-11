@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -48,6 +48,7 @@ interface PipelineBoardProps {
 
 const INITIAL_VISIBLE_DEALS = 6;
 const DEALS_PER_REVEAL = 6;
+const STAGE_ENTRANCE_INTERVAL = 550;
 
 export function PipelineBoard({
   stages,
@@ -60,11 +61,23 @@ export function PipelineBoard({
   onEditDeal,
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
+  const [visibleStageCount, setVisibleStageCount] = useState(1);
 
   const sortedStages = useMemo(
     () => [...stages].sort((a, b) => a.position - b.position),
     [stages],
   );
+
+  useEffect(() => {
+    const timers = sortedStages.slice(1).map((_, index) =>
+      window.setTimeout(
+        () => setVisibleStageCount(index + 2),
+        (index + 1) * STAGE_ENTRANCE_INTERVAL,
+      ),
+    );
+
+    return () => timers.forEach(window.clearTimeout);
+  }, [sortedStages]);
 
   const dealsByStage = useMemo(() => {
     const map = new Map<string, Deal[]>();
@@ -118,7 +131,7 @@ export function PipelineBoard({
           <StageColumn
             key={stage.id}
             stage={stage}
-            entranceDelay={`${stageIndex * 90}ms`}
+            isVisible={stageIndex < visibleStageCount}
             deals={dealsByStage.get(stage.id) ?? []}
             visibleCardFields={visibleCardFields}
             canEditStageColors={canEditStageColors}
@@ -186,7 +199,7 @@ export function PipelineBoard({
 
 function StageColumn({
   stage,
-  entranceDelay,
+  isVisible,
   deals,
   visibleCardFields,
   canEditStageColors,
@@ -195,7 +208,7 @@ function StageColumn({
   onEditDeal,
 }: {
   stage: PipelineStage;
-  entranceDelay: string;
+  isVisible: boolean;
   deals: Deal[];
   visibleCardFields: PipelineCardField[];
   canEditStageColors: boolean;
@@ -211,8 +224,12 @@ function StageColumn({
 
   return (
     <section
-      style={{ animationDelay: entranceDelay, animationFillMode: "backwards" }}
-      className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] animate-in fade-in-0 slide-in-from-right-2 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none"
+      style={isVisible ? undefined : { visibility: "hidden" }}
+      className={`flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none ${
+        isVisible
+          ? "animate-in fade-in-0 slide-in-from-right-2 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
+          : ""
+      }`}
     >
       <header
         className="-mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 rounded-t-xl border-b border-border px-3 py-3 sm:-mx-4 sm:-mt-4 sm:px-4"
