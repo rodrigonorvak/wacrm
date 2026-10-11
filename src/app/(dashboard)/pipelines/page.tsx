@@ -603,7 +603,7 @@ export default function PipelinesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-[0_4px_14px_rgb(15_23_42_/_8%)] xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* Pipeline selector dropdown */}
           <DropdownMenu>
@@ -1063,14 +1063,14 @@ function PipelineDateFilter({
   };
 
   return (
-    <div className="grid gap-1 text-xs text-muted-foreground">
-      Período
+    <div>
       <Popover open={open} onOpenChange={openPicker}>
         <PopoverTrigger
-          className="inline-flex h-8 min-w-44 items-center justify-between gap-2 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground hover:bg-muted"
+          className="inline-flex h-9 min-w-44 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm hover:bg-muted"
         >
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Período:</span>
             {draftFilter === "custom" && draftStart
               ? `${dateLabel(draftStart)}${draftEnd ? ` - ${dateLabel(draftEnd)}` : ""}`
               : DATE_FILTER_LABELS[draftFilter]}

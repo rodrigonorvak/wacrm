@@ -183,7 +183,7 @@ function StageColumn({
   const hiddenCount = deals.length - visibleDeals.length;
 
   return (
-    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
+    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-card p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
       <header className="flex items-center justify-between gap-2 border-b border-border pb-3">
         <h3 className="truncate text-sm font-semibold text-foreground">
           {stage.name}

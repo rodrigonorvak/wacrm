@@ -45,7 +45,7 @@ export function DealCard({
         e.stopPropagation();
         onEdit(deal);
       }}
-      className={`group w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-sm transition-colors ${
+      className={`group w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-[0_2px_8px_rgb(15_23_42_/_7%)] transition-colors ${
         isOverlay
           ? "shadow-lg"
           : "hover:border-primary/40 hover:bg-muted/30"
