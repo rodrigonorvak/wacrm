@@ -48,7 +48,7 @@ interface PipelineBoardProps {
 
 const INITIAL_VISIBLE_DEALS = 6;
 const DEALS_PER_REVEAL = 6;
-const STAGE_ENTRANCE_INTERVAL = 550;
+const STAGE_ENTRANCE_INTERVAL = 423;
 
 export function PipelineBoard({
   stages,
@@ -227,7 +227,7 @@ function StageColumn({
       style={isVisible ? undefined : { visibility: "hidden" }}
       className={`flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none ${
         isVisible
-          ? "animate-in fade-in-0 slide-in-from-right-2 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
+          ? "animate-in fade-in-0 slide-in-from-right-2 duration-[385ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
           : ""
       }`}
     >
