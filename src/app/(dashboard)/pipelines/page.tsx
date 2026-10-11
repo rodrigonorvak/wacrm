@@ -792,7 +792,10 @@ export default function PipelinesPage() {
           </GatedButton>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-muted/50 p-3 shadow-sm sm:p-4">
+        <div
+          style={{ animationFillMode: "backwards" }}
+          className="overflow-hidden rounded-xl border border-border bg-muted/50 p-3 shadow-sm animate-in fade-in-0 slide-in-from-top-1 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:p-4"
+        >
           {viewMode === "kanban" ? (
             <PipelineBoard
               stages={filteredStages}
