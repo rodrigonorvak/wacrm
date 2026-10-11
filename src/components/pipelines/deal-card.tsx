@@ -51,7 +51,7 @@ export function DealCard({
       className={`group w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-[0_2px_8px_rgb(15_23_42_/_7%)] transition-colors ${
         isOverlay
           ? "shadow-lg"
-          : `hover:border-primary/40 hover:bg-muted/30 ${entranceDelay ? "animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none" : ""}`
+          : `hover:border-primary/40 hover:bg-muted/30 ${entranceDelay ? "animate-in fade-in-0 slide-in-from-bottom-1 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none" : ""}`
       }`}
     >
       <div className="min-w-0">

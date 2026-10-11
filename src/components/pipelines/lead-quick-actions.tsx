@@ -101,9 +101,9 @@ export function LeadQuickActions({
         >
           {actions.map((action, index) => {
             const Icon = action.icon;
-            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
+            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in fade-in-0 slide-in-from-bottom-1 duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
             const content = <><span className="truncate">{action.label}</span><Icon className={`size-4 shrink-0 ${action.color}`} /></>;
-            const animationDelay = `${(actions.length - index - 1) * 28}ms`;
+            const animationDelay = `${(actions.length - index - 1) * 35}ms`;
 
             if (action.href && !action.disabled) {
               if (action.external) {

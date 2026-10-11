@@ -630,7 +630,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     <div className="mx-auto w-full max-w-6xl space-y-5">
       <header
         style={{ animationDelay: "20ms" }}
-        className="flex animate-in fade-in-0 slide-in-from-bottom-1 flex-col gap-4 duration-250 ease-out motion-reduce:animate-none sm:flex-row sm:items-end sm:justify-between"
+        className="flex animate-in fade-in-0 slide-in-from-bottom-1 flex-col gap-4 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:flex-row sm:items-end sm:justify-between"
       >
         <div className="min-w-0">
           <Link href={returnTo} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -652,8 +652,8 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
       </header>
 
       <div
-        style={{ animationDelay: "70ms" }}
-        className="grid animate-in fade-in-0 slide-in-from-bottom-1 items-start gap-4 duration-300 ease-out motion-reduce:animate-none lg:grid-cols-[minmax(250px,0.85fr)_minmax(0,1.8fr)]"
+        style={{ animationDelay: "130ms" }}
+        className="grid animate-in fade-in-0 slide-in-from-bottom-1 items-start gap-4 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none lg:grid-cols-[minmax(250px,0.85fr)_minmax(0,1.8fr)]"
       >
         <aside className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="border-b border-border px-4 py-3 text-[11px] font-semibold uppercase text-muted-foreground">

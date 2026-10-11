@@ -59,8 +59,8 @@ export function PipelineList({
             return (
               <li
                 key={deal.id}
-                style={{ animationDelay: `${Math.min(index * 22, 176)}ms` }}
-                className="animate-in fade-in-0 slide-in-from-bottom-1 duration-200 ease-out motion-reduce:animate-none"
+                style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
+                className="animate-in fade-in-0 slide-in-from-bottom-1 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
               >
                 <button
                   type="button"
