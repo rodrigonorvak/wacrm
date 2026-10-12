@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { LogIn, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,14 @@ const MESSAGES = {
 } as const;
 
 export default function AccountStatusPage() {
+  return (
+    <Suspense fallback={null}>
+      <AccountStatusPageInner />
+    </Suspense>
+  );
+}
+
+function AccountStatusPageInner() {
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
   const message = reason && reason in MESSAGES
