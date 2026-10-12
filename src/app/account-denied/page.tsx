@@ -1,14 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { ShieldX } from "lucide-react";
+import { useEffect, useState } from "react";
+import { LoaderCircle, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 const VIDEO_URL =
   "https://agencia.malybo.com.br/wp-content/uploads/2026/09/grok-video-f1bb9f33-811b-4d0c-8fc6-1752a31d7085.mp4";
 
 export default function AccountDeniedPage() {
+  const [redirecting, setRedirecting] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    void supabase.auth.signOut().finally(() => {
+      setRedirecting(false);
+      window.location.replace("/login");
+    });
+  }, []);
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-8">
       <video autoPlay loop muted playsInline aria-hidden="true" className="fixed inset-0 h-full w-full object-cover">
@@ -24,6 +36,12 @@ export default function AccountDeniedPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">
+          {redirecting && (
+            <p className="mb-4 flex items-center justify-center gap-2 text-sm text-gray-300">
+              <LoaderCircle className="size-4 animate-spin" />
+              Redirecionando para o login...
+            </p>
+          )}
           <Link href="/login" className="block">
             <Button variant="outline" className="w-full border-white/20 bg-white/10 text-white hover:bg-white/20">
               Voltar para o login
