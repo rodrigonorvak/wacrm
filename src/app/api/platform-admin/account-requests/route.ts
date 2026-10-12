@@ -20,7 +20,10 @@ export async function GET() {
       console.error("[platform-admin/account-requests] list failed:", error.message);
       return NextResponse.json({ error: "Failed to load account requests" }, { status: 500 });
     }
-    return NextResponse.json({ requests: data ?? [] });
+    const completeRequests = (data ?? []).filter(
+      (accountRequest) => accountRequest.company.trim() && accountRequest.phone.trim(),
+    );
+    return NextResponse.json({ requests: completeRequests });
   } catch (error) {
     return toErrorResponse(error);
   }

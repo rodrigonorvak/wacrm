@@ -22,6 +22,12 @@ export default function CompleteSignupPage() {
   useEffect(() => {
     void fetch("/api/account-creation-request", { cache: "no-store" })
       .then(async (response) => {
+        const contentType = response.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+          throw new Error(
+            "A proteção da Vercel ainda está bloqueando a API. Desative o Vercel Authentication para o ambiente de produção.",
+          );
+        }
         if (!response.ok) throw new Error("Não foi possível carregar seu cadastro.");
         return response.json() as Promise<{
           request: { email: string; full_name: string; company: string; phone: string } | null;
@@ -50,6 +56,12 @@ export default function CompleteSignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullName, company, phone }),
       });
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          "A proteção da Vercel ainda está bloqueando a API. Desative o Vercel Authentication para o ambiente de produção.",
+        );
+      }
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Não foi possível enviar o pedido.");
       window.location.href = "/account-pending";
