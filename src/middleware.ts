@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
     return withRefreshedCookies(NextResponse.redirect(url))
   }
 
-  const isApprovalPage = ['/signup/complete', '/account-pending', '/account-denied'].some(
+  const isApprovalPage = ['/signup/complete', '/account-pending', '/account-denied', '/account-status'].some(
     path => request.nextUrl.pathname.startsWith(path),
   )
   if (user && !isApprovalPage && !request.nextUrl.pathname.startsWith('/auth/')) {
@@ -84,8 +84,14 @@ export async function middleware(request: NextRequest) {
     }
     if (!profile || profile.access_status !== 'approved') {
       const url = request.nextUrl.clone()
-      url.pathname = '/account-denied'
-      url.search = ''
+      url.pathname = '/account-status'
+      url.search = `?reason=${profile?.access_status === 'suspended'
+        ? 'suspended'
+        : profile?.access_status === 'deleted'
+          ? 'deleted'
+          : profile?.access_status === 'denied'
+            ? 'denied'
+            : 'unavailable'}`
       return withRefreshedCookies(NextResponse.redirect(url))
     }
   }

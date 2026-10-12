@@ -23,7 +23,7 @@ export async function GET(
     const admin = supabaseAdmin()
     const { data: account, error: accountError } = await admin
       .from('accounts')
-      .select('id, name, owner_user_id, created_at, updated_at')
+      .select('id, name, owner_user_id, created_at, updated_at, deleted_at')
       .eq('id', id)
       .maybeSingle()
     if (accountError) {
@@ -71,6 +71,7 @@ export async function GET(
         name: account.name,
         created_at: account.created_at,
         updated_at: account.updated_at,
+        deleted_at: account.deleted_at,
         owner_user_id: account.owner_user_id,
       },
       members: (membersResult.data ?? []).map((member) => ({
@@ -134,10 +135,58 @@ export async function DELETE(
     }
     if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
 
-    const { error } = await admin.from('accounts').delete().eq('id', id)
-    if (error) {
-      console.error('[platform-admin/account] deletion failed:', error.message)
+    const { error: accountError } = await admin
+      .from('accounts')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+    if (accountError) {
+      console.error('[platform-admin/account] deletion failed:', accountError.message)
       return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
+    }
+
+    const { error } = await admin
+      .from('profiles')
+      .update({ access_status: 'deleted' })
+      .eq('account_id', id)
+    if (error) {
+      console.error('[platform-admin/account] profile revocation failed:', error.message)
+      return NextResponse.json({ error: 'Failed to revoke account access' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return toErrorResponse(error)
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const platformAdmin = await requirePlatformAdmin()
+    if (platformAdmin.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Super administrator access required' }, { status: 403 })
+    }
+
+    const { id } = await params
+    if (!UUID_PATTERN.test(id)) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    }
+    const body = (await request.json()) as { action?: unknown }
+    if (body.action !== 'suspend' && body.action !== 'reactivate') {
+      return NextResponse.json({ error: 'Invalid account action' }, { status: 400 })
+    }
+
+    const accessStatus = body.action === 'suspend' ? 'suspended' : 'approved'
+    const admin = supabaseAdmin()
+    const { error: profileError } = await admin
+      .from('profiles')
+      .update({ access_status: accessStatus })
+      .eq('account_id', id)
+    if (profileError) {
+      console.error('[platform-admin/account] account status update failed:', profileError.message)
+      return NextResponse.json({ error: 'Failed to update account access' }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })

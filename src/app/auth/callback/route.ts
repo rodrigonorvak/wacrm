@@ -59,7 +59,15 @@ export async function GET(request: NextRequest) {
   }
 
   if (profile?.access_status === "denied") {
-    return NextResponse.redirect(new URL("/account-denied", requestUrl.origin));
+    return NextResponse.redirect(new URL("/account-status?reason=denied", requestUrl.origin));
+  }
+
+  if (profile?.access_status === "suspended") {
+    return NextResponse.redirect(new URL("/account-status?reason=suspended", requestUrl.origin));
+  }
+
+  if (profile?.access_status === "deleted") {
+    return NextResponse.redirect(new URL("/account-status?reason=deleted", requestUrl.origin));
   }
 
   return NextResponse.redirect(

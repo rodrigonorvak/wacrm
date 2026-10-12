@@ -16,6 +16,7 @@ interface ProfileRow {
   full_name: string | null
   email: string | null
   account_role: string
+  access_status: 'pending' | 'approved' | 'denied' | 'suspended' | 'deleted'
   created_at: string
 }
 
@@ -30,6 +31,7 @@ export async function GET() {
     const { data: accounts, error: accountsError } = await admin
       .from('accounts')
       .select('id, name, owner_user_id, created_at')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(100)
 
@@ -46,7 +48,7 @@ export async function GET() {
 
     const { data: profiles, error: profilesError } = await admin
       .from('profiles')
-      .select('user_id, account_id, full_name, email, account_role, created_at')
+      .select('user_id, account_id, full_name, email, account_role, access_status, created_at')
       .in('account_id', accountIds)
       .order('created_at', { ascending: true })
 
@@ -78,6 +80,9 @@ export async function GET() {
                 email: owner.email,
               }
             : null,
+          access_status: members.some((member) => member.access_status === 'suspended')
+            ? 'suspended'
+            : 'approved',
         }
       }),
       truncated: accountRows.length === 100,

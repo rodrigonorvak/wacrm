@@ -11,6 +11,7 @@ interface PlatformAccount {
   name: string;
   created_at: string;
   member_count: number;
+  access_status: "approved" | "suspended";
   owner: {
     user_id: string;
     full_name: string | null;
@@ -76,6 +77,25 @@ export default function PlatformAdminPage() {
       await loadAccounts();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
+    }
+  }
+
+  async function updateAccount(account: PlatformAccount, action: "suspend" | "reactivate") {
+    const label = action === "suspend" ? "Desativar" : "Reativar";
+    if (!window.confirm(`${label} temporariamente a conta "${account.name}"?`)) return;
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(account.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? `Não foi possível ${label.toLowerCase()} a conta.`);
+      }
+      await loadAccounts();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : `Não foi possível ${label.toLowerCase()} a conta.`);
     }
   }
 
@@ -145,6 +165,7 @@ export default function PlatformAdminPage() {
                     <th className="py-3 pr-4 font-medium">{t("account")}</th>
                     <th className="py-3 pr-4 font-medium">{t("owner")}</th>
                     <th className="py-3 pr-4 font-medium">{t("members")}</th>
+                    <th className="py-3 pr-4 font-medium">Status</th>
                     <th className="py-3 font-medium">{t("created")}</th>
                     <th className="py-3 font-medium">Ações</th>
                   </tr>
@@ -163,18 +184,24 @@ export default function PlatformAdminPage() {
                         )}
                       </td>
                       <td className="py-4 pr-4 tabular-nums">{account.member_count}</td>
+                      <td className="py-4 pr-4 capitalize">{account.access_status === "suspended" ? "Desativada" : "Ativa"}</td>
                       <td className="py-4 text-muted-foreground">
                         {new Date(account.created_at).toLocaleString()}
                       </td>
                       <td className="py-4">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => void deleteAccount(account)}
-                        >
-                          Excluir conta
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void updateAccount(account, account.access_status === "suspended" ? "reactivate" : "suspend")}
+                          >
+                            {account.access_status === "suspended" ? "Reativar" : "Desativar"}
+                          </Button>
+                          <Button type="button" size="sm" variant="destructive" onClick={() => void deleteAccount(account)}>
+                            Excluir conta
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
