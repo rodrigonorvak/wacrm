@@ -71,8 +71,14 @@ export async function middleware(request: NextRequest) {
       .maybeSingle()
 
     if (profile?.access_status === 'pending') {
+      const { data: creationRequest } = await supabase
+        .from('account_creation_requests')
+        .select('company, phone')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      const needsDetails = !creationRequest?.company || !creationRequest?.phone
       const url = request.nextUrl.clone()
-      url.pathname = '/account-pending'
+      url.pathname = needsDetails ? '/signup/complete' : '/account-pending'
       url.search = ''
       return withRefreshedCookies(NextResponse.redirect(url))
     }
@@ -81,6 +87,27 @@ export async function middleware(request: NextRequest) {
       url.pathname = '/account-denied'
       url.search = ''
       return withRefreshedCookies(NextResponse.redirect(url))
+    }
+  }
+
+  if (user && request.nextUrl.pathname === '/account-pending') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('access_status')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (profile?.access_status === 'pending') {
+      const { data: creationRequest } = await supabase
+        .from('account_creation_requests')
+        .select('company, phone')
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (!creationRequest?.company || !creationRequest?.phone) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/signup/complete'
+        url.search = ''
+        return withRefreshedCookies(NextResponse.redirect(url))
+      }
     }
   }
 
