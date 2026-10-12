@@ -18,9 +18,9 @@ export default function AccountDeniedPage() {
       <Card className="relative z-10 w-full max-w-md rounded-3xl border border-white/10 bg-[#1e1e23]/[.82] text-white shadow-2xl backdrop-blur-xl">
         <CardHeader className="items-center px-8 pt-8 text-center">
           <ShieldX className="mb-3 size-12 text-red-300" />
-          <CardTitle className="text-2xl text-white">Pedido não aprovado</CardTitle>
+          <CardTitle className="text-2xl text-white">Acesso indisponível</CardTitle>
           <CardDescription className="text-gray-300">
-            No momento, seu pedido de criação de conta não foi aprovado pela equipe Malybo.
+            Sua conta não tem acesso ativo ao CRM no momento. Entre em contato com a equipe Malybo se precisar de ajuda.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-8">

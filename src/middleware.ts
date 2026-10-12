@@ -82,7 +82,7 @@ export async function middleware(request: NextRequest) {
       url.search = ''
       return withRefreshedCookies(NextResponse.redirect(url))
     }
-    if (profile?.access_status === 'denied') {
+    if (!profile || profile.access_status !== 'approved') {
       const url = request.nextUrl.clone()
       url.pathname = '/account-denied'
       url.search = ''
