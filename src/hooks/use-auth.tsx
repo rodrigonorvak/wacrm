@@ -156,6 +156,25 @@ interface ProfileRow {
   account_role: string | null;
 }
 
+function getGoogleAvatarUrl(user: User | undefined) {
+  if (!user) return null;
+
+  const hasGoogleIdentity =
+    user.app_metadata.provider === "google" ||
+    user.identities?.some((identity) => identity.provider === "google");
+  if (!hasGoogleIdentity) return null;
+
+  const value = user.user_metadata.avatar_url ?? user.user_metadata.picture;
+  if (typeof value !== "string") return null;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * AuthProvider — wrap this around the dashboard layout.
  * Makes ONE getSession() call for the whole tree instead of one per
@@ -183,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Shared across init, auth-state-change listener, and the exposed
   // refreshProfile() callback. Reads the current session's user id and
   // pulls the matching profile row along with its account summary.
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, authUser?: User) => {
     const supabase = createClient();
     setProfileLoading(true);
     setStatusDetail(null);
@@ -270,6 +289,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? data.account_role
           : null;
 
+        const googleAvatarUrl = !data.avatar_url
+          ? getGoogleAvatarUrl(authUser)
+          : null;
+        if (googleAvatarUrl) {
+          const { error: avatarError } = await supabase
+            .from("profiles")
+            .update({ avatar_url: googleAvatarUrl })
+            .eq("user_id", userId);
+          if (avatarError) {
+            console.error("[AuthProvider] Google avatar sync failed:", avatarError.message);
+          } else {
+            data.avatar_url = googleAvatarUrl;
+          }
+        }
+
         setProfile({
           id: data.id,
           full_name: data.full_name,
@@ -338,7 +372,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // (header, sidebar) can render from the user object alone,
           // profile enriches async. Callers that need to branch on
           // profile data gate on `profileLoading` instead.
-          fetchProfile(currentUser.id);
+          fetchProfile(currentUser.id, currentUser);
         } else {
           // No user → no profile to load. Flip profileLoading off so
           // pages that gate on it don't wait forever on the logged-out
@@ -364,7 +398,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (currentUser) {
         if (currentUser.id !== lastFetchedUserIdRef.current) {
-          fetchProfile(currentUser.id);
+          fetchProfile(currentUser.id, currentUser);
         }
       } else {
         lastFetchedUserIdRef.current = null;
@@ -394,8 +428,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!user?.id) return;
-    await fetchProfile(user.id);
-  }, [user?.id, fetchProfile]);
+    await fetchProfile(user.id, user);
+  }, [user, fetchProfile]);
 
   // Derive the role booleans once per profile change rather than on
   // every consumer render. Cheap regardless, but the memo also gives
