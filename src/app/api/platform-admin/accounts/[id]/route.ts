@@ -106,3 +106,42 @@ export async function GET(
     return toErrorResponse(error)
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const platformAdmin = await requirePlatformAdmin()
+    if (platformAdmin.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Super administrator access required' }, { status: 403 })
+    }
+
+    const { id } = await params
+    if (!UUID_PATTERN.test(id)) {
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    }
+
+    const admin = supabaseAdmin()
+    const { data: account, error: lookupError } = await admin
+      .from('accounts')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle()
+    if (lookupError) {
+      console.error('[platform-admin/account] deletion lookup failed:', lookupError.message)
+      return NextResponse.json({ error: 'Failed to load account' }, { status: 500 })
+    }
+    if (!account) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+
+    const { error } = await admin.from('accounts').delete().eq('id', id)
+    if (error) {
+      console.error('[platform-admin/account] deletion failed:', error.message)
+      return NextResponse.json({ error: 'Failed to delete account' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return toErrorResponse(error)
+  }
+}

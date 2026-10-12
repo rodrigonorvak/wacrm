@@ -61,6 +61,24 @@ export default function PlatformAdminPage() {
 
   const memberTotal = accounts.reduce((total, account) => total + account.member_count, 0);
 
+  async function deleteAccount(account: PlatformAccount) {
+    if (!window.confirm(`Excluir a conta "${account.name}" e todos os dados associados? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(account.id)}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Não foi possível excluir a conta.");
+      }
+      await loadAccounts();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível excluir a conta.");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
@@ -128,6 +146,7 @@ export default function PlatformAdminPage() {
                     <th className="py-3 pr-4 font-medium">{t("owner")}</th>
                     <th className="py-3 pr-4 font-medium">{t("members")}</th>
                     <th className="py-3 font-medium">{t("created")}</th>
+                    <th className="py-3 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,6 +165,16 @@ export default function PlatformAdminPage() {
                       <td className="py-4 pr-4 tabular-nums">{account.member_count}</td>
                       <td className="py-4 text-muted-foreground">
                         {new Date(account.created_at).toLocaleString()}
+                      </td>
+                      <td className="py-4">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => void deleteAccount(account)}
+                        >
+                          Excluir conta
+                        </Button>
                       </td>
                     </tr>
                   ))}
