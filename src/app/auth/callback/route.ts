@@ -34,6 +34,34 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("access_status")
+    .eq("user_id", (await supabase.auth.getUser()).data.user?.id ?? "")
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("[auth/callback] profile status lookup failed:", profileError.message);
+    return NextResponse.redirect(
+      new URL("/login?error=Não foi possível carregar o status da conta", requestUrl.origin),
+    );
+  }
+
+  if (profile?.access_status === "pending") {
+    const { data: request } = await supabase
+      .from("account_creation_requests")
+      .select("company, phone")
+      .maybeSingle();
+    const destination = request && (!request.company || !request.phone)
+      ? "/signup/complete"
+      : "/account-pending";
+    return NextResponse.redirect(new URL(destination, requestUrl.origin));
+  }
+
+  if (profile?.access_status === "denied") {
+    return NextResponse.redirect(new URL("/account-denied", requestUrl.origin));
+  }
+
   return NextResponse.redirect(
     new URL(
       safeNextPath(requestUrl.searchParams.get("next")),

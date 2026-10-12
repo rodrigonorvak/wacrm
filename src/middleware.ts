@@ -60,6 +60,30 @@ export async function middleware(request: NextRequest) {
     return withRefreshedCookies(NextResponse.redirect(url))
   }
 
+  const isApprovalPage = ['/signup/complete', '/account-pending', '/account-denied'].some(
+    path => request.nextUrl.pathname.startsWith(path),
+  )
+  if (user && !isApprovalPage && !request.nextUrl.pathname.startsWith('/auth/')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('access_status')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (profile?.access_status === 'pending') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/account-pending'
+      url.search = ''
+      return withRefreshedCookies(NextResponse.redirect(url))
+    }
+    if (profile?.access_status === 'denied') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/account-denied'
+      url.search = ''
+      return withRefreshedCookies(NextResponse.redirect(url))
+    }
+  }
+
   // Auth pages - redirect to dashboard if already logged in.
   // Exception: when an invite token is in the query string we
   // send the already-signed-in user to /join/<token> instead so
@@ -68,7 +92,7 @@ export async function middleware(request: NextRequest) {
   // would silently drop them on /dashboard.
   if (user && (
     request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname === '/signup' ||
+    (request.nextUrl.pathname === '/signup' && !request.nextUrl.pathname.startsWith('/signup/')) ||
     request.nextUrl.pathname === '/forgot-password'
   )) {
     const url = request.nextUrl.clone()

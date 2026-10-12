@@ -85,6 +85,7 @@ export default function PlatformAdminPage() {
 
         <nav className="flex gap-5 border-b border-border text-sm" aria-label="Platform administration">
           <Link href="/admin" aria-current="page" className="border-b-2 border-primary py-3 font-medium text-foreground">{t("accountsPage")}</Link>
+          <Link href="/admin/requests" className="py-3 text-muted-foreground hover:text-foreground">Pedidos de criação</Link>
           <Link href="/admin/users" className="py-3 text-muted-foreground hover:text-foreground">{t("usersPage")}</Link>
         </nav>
 

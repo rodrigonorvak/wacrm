@@ -37,6 +37,8 @@ function SignupPageInner() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,8 @@ function SignupPageInner() {
       options: {
         data: {
           full_name: fullName,
+          company,
+          phone,
         },
         ...(emailRedirectTo ? { emailRedirectTo } : {}),
       },
@@ -98,12 +102,13 @@ function SignupPageInner() {
               <CheckCircle className="h-6 w-6 text-primary" />
             </div>
             <CardTitle className="text-xl text-foreground">
-              Verifique seu e-mail
+              Pedido recebido
             </CardTitle>
               <CardDescription className="text-muted-foreground">
-              Enviamos um link de confirmação para{" "}
-              <span className="text-foreground">{email}</span>. Verifique sua
-              caixa de entrada e clique no link para confirmar sua conta.
+              Seus dados foram recebidos e serão analisados pela equipe da
+              Malybo. Se a confirmação de e-mail estiver ativada, confirme
+              também o endereço{" "}
+              <span className="text-foreground">{email}</span>.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -184,6 +189,39 @@ function SignupPageInner() {
                 className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
               />
             </div>
+
+            {!inviteToken && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="company" className="text-muted-foreground">
+                    Empresa
+                  </Label>
+                  <Input
+                    id="company"
+                    type="text"
+                    placeholder="Nome da empresa"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    required
+                    className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="phone" className="text-muted-foreground">
+                    Telefone
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-primary/20"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="password" className="text-muted-foreground">

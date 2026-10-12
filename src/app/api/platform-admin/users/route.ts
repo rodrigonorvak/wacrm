@@ -19,6 +19,7 @@ interface ProfileSummary {
   full_name: string | null
   account_id: string | null
   account_role: string | null
+  access_status: 'pending' | 'approved' | 'denied' | 'suspended'
 }
 
 export async function GET(request: Request) {
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
 
     const { data: profiles, error: profilesError } = await admin
       .from('profiles')
-      .select('user_id, full_name, account_id, account_role')
+      .select('user_id, full_name, account_id, account_role, access_status')
       .in('user_id', userIds)
     if (profilesError) {
       console.error('[platform-admin/users] profile lookup failed:', profilesError.message)
@@ -92,6 +93,7 @@ export async function GET(request: Request) {
           account_id: profile?.account_id ?? null,
           account_name: profile?.account_id ? accountNameById.get(profile.account_id) ?? null : null,
           account_role: profile?.account_role ?? null,
+          profile_status: profile?.access_status ?? 'pending',
           created_at: user.created_at,
           last_sign_in_at: user.last_sign_in_at ?? null,
           email_confirmed: Boolean(user.email_confirmed_at),

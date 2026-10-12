@@ -17,6 +17,7 @@ interface PlatformUser {
   last_sign_in_at: string | null;
   email_confirmed: boolean;
   access_status: "enabled" | "suspended";
+  profile_status: "pending" | "approved" | "denied" | "suspended";
 }
 
 const PAGE_SIZE = 50;
@@ -70,6 +71,25 @@ export default function PlatformUsersPage() {
 
   const unlinkedCount = users.filter((user) => !user.account_id).length;
 
+  async function updateUser(user: PlatformUser, action: "suspend" | "reactivate" | "delete") {
+    const labels = { suspend: "Suspender", reactivate: "Reativar", delete: "Excluir" };
+    if (!window.confirm(`${labels[action]} este usuário?`)) return;
+    try {
+      const response = await fetch(`/api/platform-admin/users/${encodeURIComponent(user.id)}`, {
+        method: action === "delete" ? "DELETE" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        ...(action === "delete" ? {} : { body: JSON.stringify({ action }) }),
+      });
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Não foi possível atualizar o usuário.");
+      }
+      await loadUsers();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar o usuário.");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
@@ -94,6 +114,7 @@ export default function PlatformUsersPage() {
 
         <nav className="flex gap-5 border-b border-border text-sm" aria-label="Platform administration">
           <Link href="/admin" className="py-3 text-muted-foreground hover:text-foreground">{t("accountsPage")}</Link>
+          <Link href="/admin/requests" className="py-3 text-muted-foreground hover:text-foreground">Pedidos de criação</Link>
           <Link href="/admin/users" aria-current="page" className="border-b-2 border-primary py-3 font-medium text-foreground">{t("usersPage")}</Link>
         </nav>
 
@@ -130,8 +151,10 @@ export default function PlatformUsersPage() {
                     <th className="py-3 pr-4 font-medium">{t("members")}</th>
                     <th className="py-3 pr-4 font-medium">{t("confirmed")}</th>
                     <th className="py-3 pr-4 font-medium">{t("access")}</th>
+                    <th className="py-3 pr-4 font-medium">Status da conta</th>
                     <th className="py-3 pr-4 font-medium">{t("createdAt")}</th>
                     <th className="py-3 font-medium">{t("lastLogin")}</th>
+                    <th className="py-3 font-medium">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -148,8 +171,19 @@ export default function PlatformUsersPage() {
                       <td className="py-4 pr-4">{user.account_role ?? "—"}</td>
                       <td className="py-4 pr-4 text-muted-foreground">{user.email_confirmed ? t("confirmed") : t("unconfirmed")}</td>
                       <td className="py-4 pr-4">{t(user.access_status)}</td>
+                      <td className="py-4 pr-4 capitalize">{user.profile_status}</td>
                       <td className="py-4 pr-4 text-muted-foreground">{formatDate(user.created_at)}</td>
                       <td className="py-4 text-muted-foreground">{formatDate(user.last_sign_in_at)}</td>
+                      <td className="py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {user.access_status === "suspended" ? (
+                            <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "reactivate")}>Reativar</Button>
+                          ) : (
+                            <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "suspend")}>Suspender</Button>
+                          )}
+                          <Button type="button" size="sm" variant="destructive" onClick={() => void updateUser(user, "delete")}>Excluir</Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
