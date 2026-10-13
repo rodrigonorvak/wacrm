@@ -19,7 +19,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#ec008c",
+          background: "#e10c8c",
           borderRadius: "50%",
         }}
       >
@@ -32,7 +32,7 @@ export default function Icon() {
           <circle cx="16" cy="16" r="13" fill="#ffffff" />
           <path
             d="M8 22V10h3.2l4.8 6.2 4.8-6.2H24v12h-3.1v-7.1L16 21l-4.9-6.1V22H8Z"
-            fill="#ec008c"
+            fill="#e10c8c"
           />
         </svg>
       </div>

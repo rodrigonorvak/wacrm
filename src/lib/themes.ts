@@ -69,7 +69,7 @@ export const THEMES: ReadonlyArray<ThemeMeta> = [
     id: "rose",
     name: "Rose",
     tagline: "Bold and modern — D2C, creator-economy, lifestyle.",
-    swatch: "oklch(0.645 0.22 16)",
+    swatch: "#e10c8c",
   },
 ];
 

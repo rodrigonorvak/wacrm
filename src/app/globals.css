@@ -62,7 +62,7 @@
 }
 
 .crm-sidebar {
-  background: linear-gradient(to bottom, #e11d48, #881337);
+  background: linear-gradient(to bottom, #e10c8c, #8f0759);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -80,9 +80,9 @@
   margin-left: 8px;
   border-radius: 16px 0 0 16px;
   background: #ffffff;
-  color: #e11d48;
+  color: #e10c8c;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgb(0 0 0 / 25%), 0 0 15px rgb(225 29 72 / 30%);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 25%), 0 0 15px rgb(225 12 140 / 30%);
 }
 
 .crm-sidebar-item-active::before,
@@ -264,17 +264,17 @@ html[data-theme="amber"] {
 }
 
 html[data-theme="rose"] {
-  --primary: oklch(0.645 0.22 16);
+  --primary: #e10c8c;
   --primary-foreground: oklch(0.985 0 0);
-  --primary-hover: oklch(0.71 0.2 16);
-  --primary-soft: oklch(0.645 0.22 16 / 0.12);
-  --primary-soft-2: oklch(0.645 0.22 16 / 0.22);
-  --ring: oklch(0.645 0.22 16);
-  --chart-1: oklch(0.645 0.22 16);
+  --primary-hover: #ef2da4;
+  --primary-soft: rgb(225 12 140 / 12%);
+  --primary-soft-2: rgb(225 12 140 / 22%);
+  --ring: #e10c8c;
+  --chart-1: #e10c8c;
   --chart-2: oklch(0.7 0.18 340);
-  --sidebar-primary: oklch(0.645 0.22 16);
+  --sidebar-primary: #e10c8c;
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-ring: oklch(0.645 0.22 16);
+  --sidebar-ring: #e10c8c;
 }
 
 @layer base {

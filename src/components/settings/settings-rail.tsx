@@ -83,7 +83,7 @@ export function SettingsRail({
                     'relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
                     'lg:w-full lg:py-2.5',
                     isActive
-                      ? 'bg-[#e11d48] text-white shadow-[0_2px_8px_rgb(225_29_72_/_18%)]'
+                      ? 'bg-[#e10c8c] text-white shadow-[0_2px_8px_rgb(225_12_140_/_18%)]'
                       : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
                   )}
                 >
