@@ -47,6 +47,10 @@ interface DealFormProps {
   onSaved: () => void;
 }
 
+function contactLabel(contact: Contact): string {
+  return contact.name || contact.phone;
+}
+
 export function DealForm({
   open,
   onOpenChange,
@@ -70,7 +74,9 @@ export function DealForm({
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactSearch, setContactSearch] = useState("");
+  const [contactOptions, setContactOptions] = useState<Contact[]>([]);
+  const [searchingContacts, setSearchingContacts] = useState(false);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [linkedConversation, setLinkedConversation] =
     useState<Conversation | null>(null);
@@ -97,6 +103,8 @@ export function DealForm({
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
       setNotes(deal.notes ?? "");
+      setContactSearch(deal.contact ? contactLabel(deal.contact) : "");
+      setContactOptions(deal.contact ? [deal.contact] : []);
     } else {
       setTitle("");
       setValue("");
@@ -105,27 +113,65 @@ export function DealForm({
       setAssignedTo("");
       setExpectedCloseDate("");
       setNotes("");
+      setContactSearch("");
+      setContactOptions([]);
     }
   }, [open, deal, defaultStageId, stages]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Load supporting data once the sheet is open
+  // Account members are few compared with contacts, so load only the
+  // fields this form renders. Contacts are searched separately below.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !accountId) return;
     let cancelled = false;
     (async () => {
-      const [c, p] = await Promise.all([
-        supabase.from("contacts").select("*").order("name"),
-        supabase.from("profiles").select("*").order("full_name"),
-      ]);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, account_id, account_role, created_at")
+        .eq("account_id", accountId)
+        .order("full_name");
       if (cancelled) return;
-      setContacts((c.data ?? []) as Contact[]);
-      setProfiles((p.data ?? []) as Profile[]);
+      setProfiles((data ?? []) as Profile[]);
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, supabase]);
+  }, [open, accountId, supabase]);
+
+  // Searching avoids downloading and rendering the entire contacts table
+  // whenever a deal card is opened. A small delay prevents a request for
+  // every keystroke while still keeping selection responsive.
+  useEffect(() => {
+    if (!open || !accountId || contactId !== "" || contactSearch.trim().length < 2) {
+      setContactOptions((current) =>
+        deal?.contact ? current.filter((contact) => contact.id === deal.contact?.id) : [],
+      );
+      setSearchingContacts(false);
+      return;
+    }
+
+    let cancelled = false;
+    const query = contactSearch.trim().replace(/[(),.%]/g, "");
+    const timeout = window.setTimeout(async () => {
+      if (!query) return;
+      setSearchingContacts(true);
+      const { data } = await supabase
+        .from("contacts")
+        .select("id, user_id, account_id, name, phone, email, company, avatar_url, created_at, updated_at")
+        .eq("account_id", accountId)
+        .or(`name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`)
+        .order("name")
+        .limit(20);
+      if (cancelled) return;
+      setContactOptions((data ?? []) as Contact[]);
+      setSearchingContacts(false);
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [open, accountId, contactId, contactSearch, deal?.contact, supabase]);
 
   // Fetch linked conversation for the selected contact (newest open one).
   // Clearing on no-selection is sync with prop state; the populated
@@ -140,7 +186,7 @@ export function DealForm({
     (async () => {
       const { data } = await supabase
         .from("conversations")
-        .select("*")
+        .select("id, contact_id, status, last_message_at, unread_count, created_at, updated_at")
         .eq("contact_id", contactId)
         .order("last_message_at", { ascending: false })
         .limit(1)
@@ -279,18 +325,47 @@ export function DealForm({
 
             <div className="grid gap-2">
               <Label className="text-muted-foreground">{t("contact")}</Label>
-              <select
-                value={contactId}
-                onChange={(e) => setContactId(e.target.value)}
-                className="h-9 w-full rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              >
-                <option value="">{t("selectContact")}</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name || c.phone}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <Input
+                  value={contactSearch}
+                  onChange={(event) => {
+                    setContactSearch(event.target.value);
+                    setContactId("");
+                  }}
+                  placeholder={t("selectContact")}
+                  className="border-border bg-muted text-foreground"
+                />
+                {searchingContacts && (
+                  <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {contactSearch.trim().length >= 2 && contactId === "" && (
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-popover p-1">
+                  {contactOptions.length > 0 ? (
+                    contactOptions.map((contact) => (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        onClick={() => {
+                          setContactId(contact.id);
+                          setContactSearch(contactLabel(contact));
+                          setContactOptions([contact]);
+                        }}
+                        className="flex w-full flex-col rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        <span className="font-medium text-foreground">{contactLabel(contact)}</span>
+                        {contact.email && (
+                          <span className="text-xs text-muted-foreground">{contact.email}</span>
+                        )}
+                      </button>
+                    ))
+                  ) : !searchingContacts ? (
+                    <p className="px-2.5 py-2 text-sm text-muted-foreground">
+                      {t("selectContact")}
+                    </p>
+                  ) : null}
+                </div>
+              )}
 
               {linkedConversation && (
                 <Link
