@@ -699,13 +699,10 @@ export default function PipelinesPage() {
               )}
             </>
           )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
           <div
             role="group"
             aria-label={tBoard("viewOptions")}
-            className="inline-flex h-9 items-center rounded-lg border border-border bg-background p-0.5"
+            className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border bg-background p-0.5"
           >
             <Button
               type="button"
@@ -730,6 +727,9 @@ export default function PipelinesPage() {
               <List className="size-4" />
             </Button>
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
           <GatedButton
             variant="outline"
             canAct={canEditSettings}
