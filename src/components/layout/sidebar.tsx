@@ -198,7 +198,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               className={cn(
                 "relative flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
                 active
-                  ? "bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
+                  ? "crm-mobile-tab-active bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
                   : "text-white/75 active:bg-white/10",
               )}
             >
@@ -216,7 +216,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             className={cn(
               "flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
               settingsActive
-                ? "bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
+                ? "crm-mobile-tab-active bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
                 : "text-white/75 active:bg-white/10",
             )}
           >
@@ -231,7 +231,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           "transition-transform duration-200 ease-out will-change-transform",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
-          "lg:static lg:z-0 lg:translate-x-0 lg:transition-[width] lg:duration-300",
+          // translate-none / will-change-auto: a transformed ancestor would break
+          // the fixed-attachment wallpaper used by the glass-theme active pill.
+          "lg:static lg:z-0 lg:translate-none lg:will-change-auto lg:transition-[width] lg:duration-300",
           collapsed ? "lg:w-20" : "lg:w-60",
         )}
         aria-label="Primary"
