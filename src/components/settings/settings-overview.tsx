@@ -169,7 +169,7 @@ export function SettingsOverview({
   const RoleIcon = roleMeta?.icon;
 
   const currencyLabel = t('currencyBRL');
-  const { state: glass } = useGlassTheme();
+  const { state: glass } = useGlassTheme(accountId);
   const themeName = glass.active ? 'Vidro Fosco' : 'Padrão';
 
   // Per-tile loading + subtitle. `null` counts render as a graceful

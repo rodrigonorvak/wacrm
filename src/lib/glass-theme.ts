@@ -1,15 +1,19 @@
 /**
  * "Tema Vidro Fosco com Wallpaper" — an installable visual theme.
  *
- * It is device-scoped (localStorage), like the accent color. The theme
- * stays unavailable until it has been installed; installing only flips a
- * flag after a short simulated progress run. When active, `<html>` gets
- * `data-visual="glass"` and the wallpaper is exposed as `--glass-wallpaper`;
- * the rules that consume both live in `globals.css`. The sidebar is
- * intentionally untouched by those rules.
+ * It is stored per CRM account in localStorage. The theme stays unavailable
+ * until it has been installed; installing only flips a flag after a short
+ * simulated progress run. When active, `<html>` gets `data-visual="glass"`
+ * and the wallpaper is exposed as `--glass-wallpaper`; the rules that consume
+ * both live in `globals.css`. The sidebar is intentionally untouched by those
+ * rules.
  */
 
-export const GLASS_STORAGE_KEY = "wacrm.glassTheme";
+const GLASS_STORAGE_PREFIX = "wacrm.glassTheme.";
+
+export function glassStorageKey(accountId: string) {
+  return `${GLASS_STORAGE_PREFIX}${encodeURIComponent(accountId)}`;
+}
 
 export interface GlassWallpaperPreset {
   id: string;
@@ -61,10 +65,10 @@ export const DEFAULT_GLASS_STATE: GlassThemeState = {
   wallpaperCss: GLASS_WALLPAPER_PRESETS[0].css,
 };
 
-export function readGlassState(): GlassThemeState {
-  if (typeof window === "undefined") return DEFAULT_GLASS_STATE;
+export function readGlassState(accountId: string | null): GlassThemeState {
+  if (typeof window === "undefined" || !accountId) return DEFAULT_GLASS_STATE;
   try {
-    const raw = localStorage.getItem(GLASS_STORAGE_KEY);
+    const raw = localStorage.getItem(glassStorageKey(accountId));
     if (!raw) return DEFAULT_GLASS_STATE;
     const parsed = JSON.parse(raw) as Partial<GlassThemeState>;
     const installed = parsed.installed === true;
@@ -99,8 +103,8 @@ export function applyGlassState(state: GlassThemeState) {
 }
 
 /** Throws if the browser refuses to store the value (e.g. quota exceeded). */
-export function writeGlassState(state: GlassThemeState) {
-  localStorage.setItem(GLASS_STORAGE_KEY, JSON.stringify(state));
+export function writeGlassState(accountId: string, state: GlassThemeState) {
+  localStorage.setItem(glassStorageKey(accountId), JSON.stringify(state));
 }
 
 export function customWallpaperCss(dataUrl: string) {

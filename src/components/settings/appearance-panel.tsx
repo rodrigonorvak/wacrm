@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { useAuth } from "@/hooks/use-auth";
 import { useGlassTheme } from "@/hooks/use-glass-theme";
 import {
   GLASS_WALLPAPER_PRESETS,
@@ -46,7 +47,8 @@ const INSTALL_DURATION_MS = 2400;
  */
 export function AppearancePanel() {
   const t = useTranslations("Settings.appearance");
-  const { state, update } = useGlassTheme();
+  const { accountId } = useAuth();
+  const { state, update } = useGlassTheme(accountId);
   const [progress, setProgress] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -190,7 +192,11 @@ export function AppearancePanel() {
       </div>
 
       {state.installed && (
-        <EditGlassThemeDialog open={editing} onOpenChange={setEditing} />
+        <EditGlassThemeDialog
+          accountId={accountId}
+          open={editing}
+          onOpenChange={setEditing}
+        />
       )}
     </section>
   );
@@ -213,13 +219,15 @@ function GlassPreview({ css }: { css: string }) {
 }
 
 function EditGlassThemeDialog({
+  accountId,
   open,
   onOpenChange,
 }: {
+  accountId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { state, update } = useGlassTheme();
+  const { state, update } = useGlassTheme(accountId);
   const [draftId, setDraftId] = useState(state.wallpaperId);
   const [draftCss, setDraftCss] = useState(state.wallpaperCss);
   const [uploading, setUploading] = useState(false);

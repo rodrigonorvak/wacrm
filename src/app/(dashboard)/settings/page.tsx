@@ -44,8 +44,8 @@ export default function SettingsPage() {
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { state: glass } = useGlassTheme();
-  const { defaultCurrency } = useAuth();
+  const { accountId, defaultCurrency } = useAuth();
+  const { state: glass } = useGlassTheme(accountId);
   const t = useTranslations('Settings');
 
   // The URL (`?tab=`) is the single source of truth for the active

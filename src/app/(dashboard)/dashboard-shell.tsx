@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { useGlassTheme } from "@/hooks/use-glass-theme";
+import {
+  applyGlassState,
+  DEFAULT_GLASS_STATE,
+} from "@/lib/glass-theme";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
@@ -13,13 +18,18 @@ import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
 // client components can't export Next's metadata object.
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, accountId } = useAuth();
+  const { state: glassTheme } = useGlassTheme(accountId);
   const router = useRouter();
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  useEffect(() => {
+    applyGlassState(accountId ? glassTheme : DEFAULT_GLASS_STATE);
+  }, [accountId, glassTheme]);
 
   useEffect(() => {
     if (!loading && !user) {
