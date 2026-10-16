@@ -12,6 +12,10 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
 import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
+import {
+  FeatureAccessProvider,
+  PlatformFeatureRouteGuard,
+} from "@/components/platform/feature-access-provider";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -63,7 +67,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
           <AccountAccessAlert />
-          {children}
+          <PlatformFeatureRouteGuard>{children}</PlatformFeatureRouteGuard>
         </main>
       </div>
     </div>
@@ -73,7 +77,9 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardShellInner>{children}</DashboardShellInner>
+      <FeatureAccessProvider>
+        <DashboardShellInner>{children}</DashboardShellInner>
+      </FeatureAccessProvider>
     </AuthProvider>
   );
 }

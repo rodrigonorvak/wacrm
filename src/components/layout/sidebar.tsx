@@ -14,6 +14,7 @@ import {
   Crown,
   GitBranch,
   LayoutDashboard,
+  LockKeyhole,
   LogOut,
   MessageSquare,
   MoreHorizontal,
@@ -84,6 +85,7 @@ interface NavItem {
   href: string;
   labelKey: string;
   icon: typeof LayoutDashboard;
+  feature?: PlatformFeatureKey;
   /**
    * When true, the nav row renders a small "Beta" chip after the label.
    * Purely informational — doesn't affect routing or access.
@@ -97,10 +99,10 @@ const navItems: NavItem[] = [
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
-  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
-  { href: "/automations", labelKey: "automations", icon: Zap },
-  { href: "/flows", labelKey: "flows", icon: Workflow, beta: true },
-  { href: "/agents", labelKey: "aiAgents", icon: Bot },
+  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio, feature: "broadcasts" },
+  { href: "/automations", labelKey: "automations", icon: Zap, feature: "automations" },
+  { href: "/flows", labelKey: "flows", icon: Workflow, feature: "flows", beta: true },
+  { href: "/agents", labelKey: "aiAgents", icon: Bot, feature: "agents" },
 ];
 
 const bottomNavItems = [
@@ -118,11 +120,15 @@ interface SidebarProps {
 }
 
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { usePlatformFeatureAccess } from "@/components/platform/feature-access-provider";
+import type { PlatformFeatureKey } from "@/lib/platform-features";
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
+  const { features, loading: featuresLoading } = usePlatformFeatureAccess();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   const [collapsed, setCollapsed] = useState(false);
@@ -287,47 +293,69 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               const showNotificationBadge =
                 item.href === "/notifications" && unreadNotifications > 0;
 
+              const isFeatureLocked = Boolean(
+                item.feature && (featuresLoading || !features[item.feature]),
+              );
+              const linkClassName = cn(
+                "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
+                collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
+                isActive
+                  ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
+                  : "text-white/70 hover:bg-white/10 hover:text-white",
+                isFeatureLocked && "text-white/45 hover:bg-white/5 hover:text-white/60",
+              );
+              const navContent = (
+                <>
+                  <item.icon className="h-4 w-4" />
+                  <span className={cn("flex-1", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
+                  {isFeatureLocked ? (
+                    <LockKeyhole className={cn("size-3.5 shrink-0", collapsed ? "lg:hidden" : "")} />
+                  ) : item.beta && !collapsed ? (
+                    <span
+                      aria-label={t("beta")}
+                      className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
+                    >
+                      {t("beta")}
+                    </span>
+                  ) : null}
+                  {showUnreadDot && !collapsed && (
+                    <span
+                      aria-label={t("unreadConversations", { count: totalUnread })}
+                      className="relative flex h-2 w-2"
+                    >
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                    </span>
+                  )}
+                  {showNotificationBadge && !collapsed && (
+                    <span
+                      aria-label={t("unreadNotifications", { count: unreadNotifications })}
+                      className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+                    >
+                      {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                    </span>
+                  )}
+                </>
+              );
+
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      // Taller on mobile so fingers can hit the row reliably (≥44px).
-                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
-                      collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
-                      isActive
-                        ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
-                        : "text-white/70 hover:bg-white/10 hover:text-white",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className={cn("flex-1", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
-                    {item.beta && !collapsed && (
-                      <span
-                        aria-label={t("beta")}
-                        className="rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300"
-                      >
-                        {t("beta")}
-                      </span>
-                    )}
-                    {showUnreadDot && !collapsed && (
-                      <span
-                        aria-label={t("unreadConversations", { count: totalUnread })}
-                        className="relative flex h-2 w-2"
-                      >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                      </span>
-                    )}
-                    {showNotificationBadge && !collapsed && (
-                      <span
-                        aria-label={t("unreadNotifications", { count: unreadNotifications })}
-                        className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-                      >
-                        {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                      </span>
-                    )}
-                  </Link>
+                  {isFeatureLocked ? (
+                    <button
+                      type="button"
+                      title="Essa função ainda não foi liberada ou está em manutenção"
+                      onClick={() =>
+                        toast.info("Essa função ainda não foi liberada ou está em manutenção")
+                      }
+                      className={linkClassName}
+                    >
+                      {navContent}
+                    </button>
+                  ) : (
+                    <Link href={item.href} className={linkClassName}>
+                      {navContent}
+                    </Link>
+                  )}
                 </li>
               );
             })}

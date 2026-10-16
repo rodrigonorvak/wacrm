@@ -3,8 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
+import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, UnlockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_PLATFORM_FEATURE_ACCESS,
+  PLATFORM_FEATURES,
+  type PlatformFeatureAccess,
+  type PlatformFeatureKey,
+} from "@/lib/platform-features";
 
 interface PlatformAccount {
   id: string;
@@ -26,6 +32,12 @@ export default function PlatformAdminPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [featureAccess, setFeatureAccess] = useState<PlatformFeatureAccess>(
+    DEFAULT_PLATFORM_FEATURE_ACCESS,
+  );
+  const [featuresLoading, setFeaturesLoading] = useState(true);
+  const [featuresFailed, setFeaturesFailed] = useState(false);
+  const [updatingFeature, setUpdatingFeature] = useState<PlatformFeatureKey | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -59,6 +71,51 @@ export default function PlatformAdminPage() {
   useEffect(() => {
     void loadAccounts();
   }, [loadAccounts]);
+
+  const loadFeatures = useCallback(async () => {
+    setFeaturesLoading(true);
+    setFeaturesFailed(false);
+    try {
+      const response = await fetch("/api/platform-admin/features", { cache: "no-store" });
+      if (!response.ok) throw new Error("Não foi possível carregar as liberações dos módulos.");
+      const body = (await response.json()) as {
+        features: { feature_key: PlatformFeatureKey; enabled: boolean }[];
+      };
+      const next = { ...DEFAULT_PLATFORM_FEATURE_ACCESS };
+      for (const item of body.features) {
+        if (item.feature_key in next) next[item.feature_key] = item.enabled;
+      }
+      setFeatureAccess(next);
+    } catch {
+      setFeaturesFailed(true);
+    } finally {
+      setFeaturesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadFeatures();
+  }, [loadFeatures]);
+
+  async function updateFeature(feature: PlatformFeatureKey, enabled: boolean) {
+    setUpdatingFeature(feature);
+    try {
+      const response = await fetch("/api/platform-admin/features", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature, enabled }),
+      });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error ?? "Não foi possível atualizar o acesso ao módulo.");
+      }
+      setFeatureAccess((current) => ({ ...current, [feature]: enabled }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar o acesso ao módulo.");
+    } finally {
+      setUpdatingFeature(null);
+    }
+  }
 
   const memberTotal = accounts.reduce((total, account) => total + account.member_count, 0);
 
@@ -126,6 +183,57 @@ export default function PlatformAdminPage() {
           <Link href="/admin/requests" className="py-3 text-muted-foreground hover:text-foreground">Pedidos de criação</Link>
           <Link href="/admin/users" className="py-3 text-muted-foreground hover:text-foreground">{t("usersPage")}</Link>
         </nav>
+
+        <section className="border-b border-border py-5">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold">Acesso aos módulos</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Controle global. Módulos bloqueados ficam com cadeado para todos os usuários.
+            </p>
+          </div>
+          {featuresFailed ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+              <span>Não foi possível carregar as liberações dos módulos.</span>
+              <Button type="button" size="sm" variant="outline" onClick={() => void loadFeatures()}>
+                <RefreshCw className="mr-2 size-4" />
+                Tentar novamente
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PLATFORM_FEATURES.map((feature) => {
+                const enabled = featureAccess[feature.key];
+                const busy = featuresLoading || updatingFeature !== null;
+                const StateIcon = enabled ? UnlockKeyhole : LockKeyhole;
+                return (
+                  <label
+                    key={feature.key}
+                    className="flex min-h-14 items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <StateIcon className={enabled ? "size-4 shrink-0 text-emerald-600" : "size-4 shrink-0 text-muted-foreground"} />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{feature.label}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {featuresLoading ? "Carregando..." : enabled ? "Liberado" : "Bloqueado"}
+                        </span>
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label={`Liberar ${feature.label}`}
+                      checked={enabled}
+                      disabled={busy || featuresFailed}
+                      onChange={(event) => void updateFeature(feature.key, event.target.checked)}
+                      className="size-5 shrink-0 accent-primary"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="grid grid-cols-2 gap-6 border-b border-border py-5 sm:grid-cols-3">
           <div>
