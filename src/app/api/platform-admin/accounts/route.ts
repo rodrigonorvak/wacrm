@@ -57,6 +57,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to load account summaries' }, { status: 500 })
     }
 
+    const { data: featureRows } = await admin
+      .from('account_feature_access')
+      .select('account_id, feature_key, enabled')
+      .in('account_id', accountIds)
+    const featuresByAccount = new Map<string, Record<string, boolean>>()
+    for (const row of featureRows ?? []) {
+      const current = featuresByAccount.get(row.account_id) ?? {}
+      current[row.feature_key] = row.enabled
+      featuresByAccount.set(row.account_id, current)
+    }
+
     const membersByAccount = new Map<string, ProfileRow[]>()
     for (const profile of (profiles ?? []) as ProfileRow[]) {
       const members = membersByAccount.get(profile.account_id) ?? []
@@ -73,6 +84,7 @@ export async function GET() {
           name: account.name,
           created_at: account.created_at,
           member_count: members.length,
+          features: featuresByAccount.get(account.id) ?? {},
           owner: owner
             ? {
                 user_id: owner.user_id,

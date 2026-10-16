@@ -35,7 +35,7 @@ export async function GET(
     const [membersResult, whatsappResult, metaResult, contactsResult, conversationsResult] = await Promise.all([
       admin
         .from('profiles')
-        .select('user_id, full_name, email, account_role, created_at')
+        .select('user_id, full_name, email, account_role, access_status, created_at')
         .eq('account_id', id)
         .order('created_at', { ascending: true }),
       admin
@@ -73,6 +73,9 @@ export async function GET(
         updated_at: account.updated_at,
         deleted_at: account.deleted_at,
         owner_user_id: account.owner_user_id,
+        access_status: (membersResult.data ?? []).some((member) => member.access_status === 'suspended')
+          ? 'suspended'
+          : 'approved',
       },
       members: (membersResult.data ?? []).map((member) => ({
         user_id: member.user_id,

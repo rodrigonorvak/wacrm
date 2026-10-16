@@ -15,6 +15,13 @@ export const DEFAULT_PLATFORM_FEATURE_ACCESS: PlatformFeatureAccess = {
   agents: false,
 };
 
+export const ALL_PLATFORM_FEATURES_ENABLED: PlatformFeatureAccess = {
+  broadcasts: true,
+  automations: true,
+  flows: true,
+  agents: true,
+};
+
 export function isPlatformFeatureKey(value: unknown): value is PlatformFeatureKey {
   return PLATFORM_FEATURES.some((feature) => feature.key === value);
 }

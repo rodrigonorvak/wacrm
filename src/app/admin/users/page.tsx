@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
@@ -91,14 +90,10 @@ export default function PlatformUsersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
-          <div>
-            <p className="text-xs font-semibold uppercase text-primary">CRM Malybo</p>
-            <h1 className="mt-2 text-2xl font-semibold">{t("usersPage")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("description")}</p>
-          </div>
+    <div>
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+          <h2 className="text-lg font-semibold">{t("usersPage")}</h2>
           <Button
             type="button"
             variant="outline"
@@ -110,14 +105,7 @@ export default function PlatformUsersPage() {
             {loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
             <span>{t("refresh")}</span>
           </Button>
-        </header>
-
-        <nav className="flex gap-5 border-b border-border text-sm" aria-label="Platform administration">
-          <Link href="/admin" className="py-3 text-muted-foreground hover:text-foreground">{t("accountsPage")}</Link>
-          <Link href="/admin/requests" className="py-3 text-muted-foreground hover:text-foreground">Pedidos de criação</Link>
-          <Link href="/admin/users" aria-current="page" className="border-b-2 border-primary py-3 font-medium text-foreground">{t("usersPage")}</Link>
-        </nav>
-
+        </div>
         <section className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-border py-5">
           <div>
             <p className="text-xs text-muted-foreground">{t("usersPage")}</p>
@@ -200,6 +188,6 @@ export default function PlatformUsersPage() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

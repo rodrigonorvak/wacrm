@@ -4,8 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
+import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, UnlockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_PLATFORM_FEATURE_ACCESS,
+  PLATFORM_FEATURES,
+  type PlatformFeatureAccess,
+  type PlatformFeatureKey,
+} from "@/lib/platform-features";
 
 interface AccountDetail {
   account: {
@@ -14,6 +20,7 @@ interface AccountDetail {
     created_at: string;
     updated_at: string;
     owner_user_id: string;
+    access_status: "approved" | "suspended";
   };
   members: Array<{
     user_id: string;
@@ -64,6 +71,9 @@ export default function PlatformAccountPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [features, setFeatures] = useState<PlatformFeatureAccess>(DEFAULT_PLATFORM_FEATURE_ACCESS);
+  const [featuresFailed, setFeaturesFailed] = useState(false);
+  const [updatingFeature, setUpdatingFeature] = useState<PlatformFeatureKey | null>(null);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -93,15 +103,83 @@ export default function PlatformAccountPage() {
     void loadDetail();
   }, [loadDetail]);
 
+  const loadFeatures = useCallback(async () => {
+    setFeaturesFailed(false);
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(accountId)}/features`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("features");
+      const body = (await response.json()) as { features: PlatformFeatureAccess };
+      setFeatures({ ...DEFAULT_PLATFORM_FEATURE_ACCESS, ...body.features });
+    } catch {
+      setFeaturesFailed(true);
+    }
+  }, [accountId]);
+
+  useEffect(() => {
+    void loadFeatures();
+  }, [loadFeatures]);
+
+  async function updateFeature(feature: PlatformFeatureKey, enabled: boolean) {
+    setUpdatingFeature(feature);
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(accountId)}/features`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feature, enabled }),
+      });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error ?? "Não foi possível atualizar a permissão.");
+      }
+      setFeatures((current) => ({ ...current, [feature]: enabled }));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar a permissão.");
+    } finally {
+      setUpdatingFeature(null);
+    }
+  }
+
+  async function toggleAccount() {
+    if (!detail) return;
+    const action = detail.account.access_status === "suspended" ? "reactivate" : "suspend";
+    const label = action === "suspend" ? "Desativar" : "Reativar";
+    if (!window.confirm(`${label} a conta "${detail.account.name}"?`)) return;
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(accountId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error ?? "Não foi possível atualizar a conta.");
+      }
+      await loadDetail();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar a conta.");
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
-          <div>
-            <p className="text-xs font-semibold uppercase text-primary">CRM Malybo</p>
-            <h1 className="mt-2 text-2xl font-semibold">{detail?.account.name ?? t("account")}</h1>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">{accountId}</p>
-          </div>
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-4 pb-5">
+        <div>
+          <Link href="/admin" className="text-xs text-muted-foreground hover:text-foreground">← Voltar para contas</Link>
+          <h2 className="mt-2 text-xl font-semibold">{detail?.account.name ?? t("account")}</h2>
+          {detail && (
+            <span className={detail.account.access_status === "suspended" ? "mt-1 inline-block rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive" : "mt-1 inline-block rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"}>
+              {detail.account.access_status === "suspended" ? "Desativada" : "Ativa"}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {detail && (
+            <Button type="button" variant="outline" onClick={() => void toggleAccount()}>
+              {detail.account.access_status === "suspended" ? "Reativar conta" : "Desativar conta"}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -113,14 +191,10 @@ export default function PlatformAccountPage() {
             {loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
             <span>{t("refresh")}</span>
           </Button>
-        </header>
+        </div>
+      </div>
 
-        <nav className="flex gap-5 border-b border-border text-sm" aria-label="Platform administration">
-          <Link href="/admin" className="py-3 text-muted-foreground hover:text-foreground">{t("accountsPage")}</Link>
-          <Link href="/admin/users" className="py-3 text-muted-foreground hover:text-foreground">{t("usersPage")}</Link>
-          <Link href={`/admin/accounts/${encodeURIComponent(accountId)}`} aria-current="page" className="border-b-2 border-primary py-3 font-medium text-foreground">{t("account")}</Link>
-        </nav>
-
+      <div>
         {denied ? (
           <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
             <ShieldAlert className="size-8 text-amber-500" />
@@ -139,6 +213,45 @@ export default function PlatformAccountPage() {
               <div><p className="text-xs text-muted-foreground">{t("contacts")}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{detail.usage_summary.contacts}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("conversations")}</p><p className="mt-1 text-2xl font-semibold tabular-nums">{detail.usage_summary.conversations}</p></div>
               <div><p className="text-xs text-muted-foreground">{t("created")}</p><p className="mt-1 text-sm">{formatDate(detail.account.created_at)}</p></div>
+            </section>
+
+            <section className="border-b border-border py-6">
+              <h2 className="text-sm font-semibold">Permissões do CRM</h2>
+              <p className="mb-3 mt-1 text-xs text-muted-foreground">
+                Módulos bloqueados aparecem com cadeado para esta conta.
+              </p>
+              {featuresFailed ? (
+                <p className="text-sm text-destructive">
+                  Não foi possível carregar as permissões. Confirme que a migration 060 foi executada no Supabase.
+                </p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {PLATFORM_FEATURES.map((feature) => {
+                    const enabled = features[feature.key];
+                    const StateIcon = enabled ? UnlockKeyhole : LockKeyhole;
+                    return (
+                      <label key={feature.key} className="flex min-h-14 items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
+                        <span className="flex min-w-0 items-center gap-3">
+                          <StateIcon className={enabled ? "size-4 shrink-0 text-emerald-600" : "size-4 shrink-0 text-muted-foreground"} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium">{feature.label}</span>
+                            <span className="block text-xs text-muted-foreground">{enabled ? "Liberado" : "Bloqueado"}</span>
+                          </span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          aria-label={`Liberar ${feature.label}`}
+                          checked={enabled}
+                          disabled={updatingFeature !== null}
+                          onChange={(event) => void updateFeature(feature.key, event.target.checked)}
+                          className="size-5 shrink-0 accent-primary"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </section>
 
             <section className="border-b border-border py-6">
@@ -178,6 +291,6 @@ export default function PlatformAccountPage() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }
