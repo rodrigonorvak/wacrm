@@ -1,8 +1,9 @@
 "use client";
 
 import type { Deal } from "@/types";
-import { CalendarDays, ExternalLink, Pencil, Tag } from "lucide-react";
+import { CalendarClock, CalendarDays, ExternalLink, Pencil, Tag } from "lucide-react";
 import { useLocale } from "next-intl";
+import { formatScheduledDate } from "@/lib/schedule-date";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +19,7 @@ interface DealCardProps {
   visibleFields?: DealCardField[];
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
+  onEditSchedule?: (deal: Deal) => void;
   isOverlay?: boolean;
 }
 
@@ -27,9 +29,11 @@ export function DealCard({
   visibleFields = ["company"],
   onEdit,
   onEditLabels,
+  onEditSchedule,
   isOverlay,
 }: DealCardProps) {
   const locale = useLocale();
+  const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale);
   const createdAt = new Date(deal.created_at);
   const createdAtLabel = Number.isNaN(createdAt.getTime())
     ? null
@@ -78,6 +82,12 @@ export function DealCard({
             <Tag className="size-4" />
             Editar etiquetas
           </DropdownMenuItem>
+          {onEditSchedule && (
+            <DropdownMenuItem onClick={() => onEditSchedule(deal)} className="cursor-pointer">
+              <CalendarClock className="size-4" />
+              {scheduledLabel ? "Alterar data" : "Inserir data"}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     )}
@@ -127,6 +137,15 @@ export function DealCard({
         <div className="mt-2 flex items-center gap-1.5 border-t border-border/70 pt-2 text-[11px] text-muted-foreground">
           <CalendarDays className="size-3.5 shrink-0" />
           <time dateTime={deal.created_at}>{createdAtLabel}</time>
+        </div>
+      )}
+      {scheduledLabel && (
+        <div
+          title="Agendamento"
+          className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white"
+        >
+          <CalendarClock className="size-3.5 shrink-0" />
+          <time dateTime={deal.scheduled_date ?? undefined}>{scheduledLabel}</time>
         </div>
       )}
     </button>

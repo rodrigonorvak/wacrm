@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCan } from "@/hooks/use-can";
 import type { ContactTag, Deal, DealLabel, MessageTemplate, PipelineStage } from "@/types";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
+import { DealScheduleDialog } from "@/components/pipelines/deal-schedule-dialog";
+import { formatScheduledDate } from "@/lib/schedule-date";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { LeadQuickActions } from "@/components/pipelines/lead-quick-actions";
 import { DealForm } from "@/components/pipelines/deal-form";
@@ -35,6 +37,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft,
   Building2,
+  CalendarClock,
   CalendarDays,
   History,
   Mail,
@@ -169,6 +172,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [savingServiceStep, setSavingServiceStep] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [dealFormOpen, setDealFormOpen] = useState(false);
   const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [deletingLead, setDeletingLead] = useState(false);
@@ -726,6 +730,12 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="size-4" /> Criado em {formatDate(deal.created_at)}
           </p>
+          {deal.scheduled_date && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-blue-600 px-2 py-0.5 text-sm font-semibold text-white">
+              <CalendarClock className="size-4" /> Agendado para{" "}
+              {formatScheduledDate(deal.scheduled_date, "pt-BR")}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" onClick={() => setDealFormOpen(true)}>
@@ -1181,6 +1191,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         }}
         onServiceSteps={() => void openServiceSteps()}
         onEditLabels={() => setLabelsDialogOpen(true)}
+        onEditSchedule={() => setScheduleDialogOpen(true)}
         onDeleteLead={() => setDeleteDialogOpen(true)}
       />
 
@@ -1192,6 +1203,16 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         selected={deal.labels ?? []}
         canEdit={canManageLead}
         onChange={(_, labels) => setDeal((current) => (current ? { ...current, labels } : current))}
+      />
+      <DealScheduleDialog
+        open={scheduleDialogOpen}
+        onOpenChange={setScheduleDialogOpen}
+        dealId={deal.id}
+        value={deal.scheduled_date}
+        canEdit={canManageLead}
+        onChange={(_, scheduledDate) =>
+          setDeal((current) => (current ? { ...current, scheduled_date: scheduledDate } : current))
+        }
       />
     </div>
     </div>

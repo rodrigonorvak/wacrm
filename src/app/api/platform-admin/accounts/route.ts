@@ -57,7 +57,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to load account summaries' }, { status: 500 })
     }
 
-    const { data: featureRows } = await admin
+    const { data: featureRows, error: featuresError } = await admin
       .from('account_feature_access')
       .select('account_id, feature_key, enabled')
       .in('account_id', accountIds)
@@ -98,6 +98,7 @@ export async function GET() {
         }
       }),
       truncated: accountRows.length === 100,
+      features_error: Boolean(featuresError),
     })
   } catch (error) {
     return toErrorResponse(error)

@@ -472,6 +472,8 @@ export interface Deal {
   currency?: string;
   notes?: string;
   expected_close_date?: string;
+  /** Single-day appointment (YYYY-MM-DD). */
+  scheduled_date?: string | null;
   status?: DealStatus;
   created_at: string;
   updated_at?: string;

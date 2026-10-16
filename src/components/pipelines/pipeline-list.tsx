@@ -1,7 +1,8 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
+import { CalendarClock, CalendarDays } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { formatScheduledDate } from "@/lib/schedule-date";
 import type { Deal, PipelineStage } from "@/types";
 import type { PipelineCardField } from "@/lib/pipelines/card-fields";
 
@@ -37,7 +38,7 @@ export function PipelineList({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_120px] gap-3 border-b border-border bg-muted/70 px-4 py-3 text-xs font-semibold text-muted-foreground sm:grid">
+      <div className="hidden grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_150px] gap-3 border-b border-border bg-muted/70 px-4 py-3 text-xs font-semibold text-muted-foreground sm:grid">
         <span>{t("deal")}</span>
         <span>{t("stage")}</span>
         <span>{t("createdAt")}</span>
@@ -59,6 +60,7 @@ export function PipelineList({
                   year: "numeric",
                 });
             const details = getDetails(deal);
+            const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale);
 
             return (
               <li
@@ -69,7 +71,7 @@ export function PipelineList({
                 <button
                   type="button"
                   onClick={() => onEditDeal(deal)}
-                  className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_120px] sm:items-center sm:gap-3"
+                  className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_150px] sm:items-center sm:gap-3"
                 >
                   <span className="min-w-0">
                     {(deal.labels?.length ?? 0) > 0 && (
@@ -106,10 +108,16 @@ export function PipelineList({
                     ) : null}
                     <span className="truncate">{stage?.name ?? "—"}</span>
                   </span>
-                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                     <span className="sm:hidden">{t("createdAt")}:</span>
                     {dateLabel && <CalendarDays className="size-3.5 shrink-0" />}
                     {dateLabel ?? "—"}
+                    {scheduledLabel && (
+                      <span className="ml-1 inline-flex items-center gap-1 rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                        <CalendarClock className="size-3" />
+                        {scheduledLabel}
+                      </span>
+                    )}
                   </span>
                 </button>
               </li>

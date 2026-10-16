@@ -45,6 +45,7 @@ interface PipelineBoardProps {
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
+  onEditSchedule?: (deal: Deal) => void;
 }
 
 const INITIAL_VISIBLE_DEALS = 6;
@@ -61,6 +62,7 @@ export function PipelineBoard({
   onAddDeal,
   onEditDeal,
   onEditLabels,
+  onEditSchedule,
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [visibleStageCount, setVisibleStageCount] = useState(1);
@@ -141,6 +143,7 @@ export function PipelineBoard({
             onAddDeal={onAddDeal}
             onEditDeal={onEditDeal}
             onEditLabels={onEditLabels}
+            onEditSchedule={onEditSchedule}
           />
         ))}
       </div>
@@ -210,6 +213,7 @@ function StageColumn({
   onAddDeal,
   onEditDeal,
   onEditLabels,
+  onEditSchedule,
 }: {
   stage: PipelineStage;
   isVisible: boolean;
@@ -220,6 +224,7 @@ function StageColumn({
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
+  onEditSchedule?: (deal: Deal) => void;
 }) {
   const t = useTranslations("Pipelines.board");
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -315,6 +320,7 @@ function StageColumn({
               visibleCardFields={visibleCardFields}
               onEdit={onEditDeal}
               onEditLabels={onEditLabels}
+              onEditSchedule={onEditSchedule}
             />
           ))
         )}
@@ -362,12 +368,14 @@ function DraggableDealCard({
   visibleCardFields,
   onEdit,
   onEditLabels,
+  onEditSchedule,
 }: {
   deal: Deal;
   entranceDelay: string;
   visibleCardFields: PipelineCardField[];
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
+  onEditSchedule?: (deal: Deal) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: deal.id,
@@ -386,6 +394,7 @@ function DraggableDealCard({
         visibleFields={visibleCardFields}
         onEdit={onEdit}
         onEditLabels={onEditLabels}
+        onEditSchedule={onEditSchedule}
       />
     </div>
   );

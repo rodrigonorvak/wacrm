@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { PLATFORM_FEATURES } from "@/lib/platform-features";
 
 interface PlatformAccount {
@@ -28,6 +29,8 @@ export default function PlatformAdminPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [featuresError, setFeaturesError] = useState(false);
+  const [saving, setSaving] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -43,7 +46,12 @@ export default function PlatformAdminPage() {
         setFailed(true);
         return;
       }
-      const data = (await response.json()) as { accounts: PlatformAccount[]; truncated: boolean };
+      const data = (await response.json()) as {
+        accounts: PlatformAccount[];
+        truncated: boolean;
+        features_error?: boolean;
+      };
+      setFeaturesError(Boolean(data.features_error));
       setAccounts(data.accounts);
       setTruncated(data.truncated);
     } catch {
@@ -59,6 +67,34 @@ export default function PlatformAdminPage() {
 
   const memberTotal = accounts.reduce((total, account) => total + account.member_count, 0);
   const suspendedTotal = accounts.filter((account) => account.access_status === "suspended").length;
+
+  async function toggleFeature(account: PlatformAccount, feature: string, enabled: boolean) {
+    const savingKey = `${account.id}:${feature}`;
+    setSaving(savingKey);
+    try {
+      const response = await fetch(
+        `/api/platform-admin/accounts/${encodeURIComponent(account.id)}/features`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feature, enabled }),
+        },
+      );
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Não foi possível atualizar a permissão.");
+      }
+      setAccounts((current) =>
+        current.map((item) =>
+          item.id === account.id ? { ...item, features: { ...item.features, [feature]: enabled } } : item,
+        ),
+      );
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar a permissão.");
+    } finally {
+      setSaving(null);
+    }
+  }
 
   async function updateAccount(account: PlatformAccount, action: "suspend" | "reactivate") {
     const label = action === "suspend" ? "Desativar" : "Reativar";
@@ -105,6 +141,13 @@ export default function PlatformAdminPage() {
         ))}
       </section>
 
+      {featuresError && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          A tabela de permissões não foi encontrada. Aplique a migration 060_account_feature_access.sql no Supabase para
+          poder liberar módulos.
+        </p>
+      )}
+
       {denied ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
           <ShieldAlert className="size-8 text-amber-500" />
@@ -122,13 +165,17 @@ export default function PlatformAdminPage() {
       ) : (
         <>
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
               <thead className="bg-muted/40">
                 <tr className="text-xs text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Conta</th>
                   <th className="px-4 py-3 font-medium">Responsável</th>
                   <th className="px-4 py-3 font-medium">Usuários</th>
-                  <th className="px-4 py-3 font-medium">Módulos liberados</th>
+                  {PLATFORM_FEATURES.map((feature) => (
+                    <th key={feature.key} className="px-3 py-3 text-center font-medium">
+                      {feature.label}
+                    </th>
+                  ))}
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Ações</th>
                 </tr>
@@ -136,7 +183,6 @@ export default function PlatformAdminPage() {
               <tbody>
                 {accounts.map((account) => {
                   const suspended = account.access_status === "suspended";
-                  const enabled = PLATFORM_FEATURES.filter((feature) => account.features[feature.key]);
                   return (
                     <tr key={account.id} className="border-t border-border/70 align-top">
                       <td className="px-4 py-3">
@@ -157,19 +203,16 @@ export default function PlatformAdminPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 tabular-nums">{account.member_count}</td>
-                      <td className="px-4 py-3">
-                        {enabled.length === 0 ? (
-                          <span className="text-xs text-muted-foreground">Nenhum</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {enabled.map((feature) => (
-                              <span key={feature.key} className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-                                {feature.label}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
+                      {PLATFORM_FEATURES.map((feature) => (
+                        <td key={feature.key} className="px-3 py-3 text-center">
+                          <Switch
+                            aria-label={`${feature.label} — ${account.name}`}
+                            checked={Boolean(account.features[feature.key])}
+                            disabled={saving === `${account.id}:${feature.key}`}
+                            onCheckedChange={(checked) => void toggleFeature(account, feature.key, checked)}
+                          />
+                        </td>
+                      ))}
                       <td className="px-4 py-3">
                         <span className={suspended ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive" : "rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"}>
                           {suspended ? "Desativada" : "Ativa"}
@@ -177,12 +220,6 @@ export default function PlatformAdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
-                          <Link
-                            href={`/admin/accounts/${encodeURIComponent(account.id)}`}
-                            className={buttonVariants({ variant: "outline", size: "sm" })}
-                          >
-                            Gerenciar
-                          </Link>
                           <Button
                             type="button"
                             size="sm"

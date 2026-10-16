@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Pipeline, PipelineStage, Deal, DealLabel, DealCustomFieldValue } from "@/types";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
+import { DealScheduleDialog } from "@/components/pipelines/deal-schedule-dialog";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineList } from "@/components/pipelines/pipeline-list";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
 import { DealForm } from "@/components/pipelines/deal-form";
+import { AddContactsDialog } from "@/components/pipelines/add-contacts-dialog";
 import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
@@ -137,6 +139,7 @@ export default function PipelinesPage() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [labelsDealId, setLabelsDealId] = useState<string | null>(null);
+  const [scheduleDealId, setScheduleDealId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("max");
   const [customStartDate, setCustomStartDate] = useState("");
@@ -156,6 +159,7 @@ export default function PipelinesPage() {
   // Deal form state is lifted here so both the top-bar "Add Deal" and
   // the per-column "+" trigger the same Sheet.
   const [dealFormOpen, setDealFormOpen] = useState(false);
+  const [pickContactsOpen, setPickContactsOpen] = useState(false);
   const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [defaultStageId, setDefaultStageId] = useState<string>("");
@@ -469,9 +473,12 @@ export default function PipelinesPage() {
     (stageId?: string) => {
       setEditingDeal(null);
       setDefaultStageId(stageId ?? stages[0]?.id ?? "");
-      setDealFormOpen(true);
+      const isManual =
+        pipelines.find((pipeline) => pipeline.id === selectedPipelineId)?.pipeline_type !== "integrated";
+      if (isManual) setPickContactsOpen(true);
+      else setDealFormOpen(true);
     },
-    [stages],
+    [stages, pipelines, selectedPipelineId],
   );
 
   const handleEditDeal = useCallback((deal: Deal) => {
@@ -846,6 +853,7 @@ export default function PipelinesPage() {
               onAddDeal={handleAddDeal}
               onEditDeal={handleEditDeal}
               onEditLabels={canCreateDeals ? (deal) => setLabelsDealId(deal.id) : undefined}
+              onEditSchedule={canCreateDeals ? (deal) => setScheduleDealId(deal.id) : undefined}
             />
           ) : (
             <PipelineList
@@ -869,6 +877,21 @@ export default function PipelinesPage() {
         canEdit={canCreateDeals}
         onChange={(dealId, labels) =>
           setDeals((prev) => prev.map((deal) => (deal.id === dealId ? { ...deal, labels } : deal)))
+        }
+      />
+
+      <DealScheduleDialog
+        open={scheduleDealId !== null}
+        onOpenChange={(open) => {
+          if (!open) setScheduleDealId(null);
+        }}
+        dealId={scheduleDealId ?? ""}
+        value={deals.find((deal) => deal.id === scheduleDealId)?.scheduled_date}
+        canEdit={canCreateDeals}
+        onChange={(dealId, scheduledDate) =>
+          setDeals((prev) =>
+            prev.map((deal) => (deal.id === dealId ? { ...deal, scheduled_date: scheduledDate } : deal)),
+          )
         }
       />
 
@@ -1056,6 +1079,20 @@ export default function PipelinesPage() {
       )}
 
       {/* Deal Form (Sheet) */}
+      <AddContactsDialog
+        open={pickContactsOpen}
+        onOpenChange={setPickContactsOpen}
+        accountId={accountId}
+        userId={user?.id ?? null}
+        pipelineId={selectedPipelineId}
+        stageId={defaultStageId}
+        stageName={stages.find((stage) => stage.id === defaultStageId)?.name}
+        onCreateNew={() => {
+          setPickContactsOpen(false);
+          setDealFormOpen(true);
+        }}
+        onAdded={refreshDeals}
+      />
       <DealForm
         open={dealFormOpen}
         onOpenChange={setDealFormOpen}

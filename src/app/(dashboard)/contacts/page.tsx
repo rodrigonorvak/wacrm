@@ -65,6 +65,7 @@ const PAGE_SIZE = 25;
 
 interface ContactWithTags extends Contact {
   tags?: Tag[];
+  pipelines?: { id: string; name: string; stage?: string }[];
 }
 
 export default function ContactsPage() {
@@ -209,11 +210,31 @@ export default function ContactsPage() {
       tagsByContact[ct.contact_id].push(ct.tag_id);
     });
 
+    const { data: dealRows } = await supabase
+      .from('deals')
+      .select('contact_id, pipeline:pipelines(id, name), stage:pipeline_stages(name)')
+      .in('contact_id', contactIds);
+    if (seq !== fetchSeq.current) return;
+
+    const pipelinesByContact: Record<string, { id: string; name: string; stage?: string }[]> = {};
+    for (const row of (dealRows ?? []) as unknown as Array<{
+      contact_id: string;
+      pipeline: { id: string; name: string } | null;
+      stage: { name: string } | null;
+    }>) {
+      if (!row.pipeline) continue;
+      const list = (pipelinesByContact[row.contact_id] ??= []);
+      if (!list.some((p) => p.id === row.pipeline!.id)) {
+        list.push({ id: row.pipeline.id, name: row.pipeline.name, stage: row.stage?.name });
+      }
+    }
+
     const enriched: ContactWithTags[] = contactRows.map((c) => ({
       ...c,
       tags: (tagsByContact[c.id] ?? [])
         .map((tid) => tagsMap[tid])
         .filter(Boolean),
+      pipelines: pipelinesByContact[c.id] ?? [],
     }));
 
     setContacts(enriched);
@@ -411,6 +432,7 @@ export default function ContactsPage() {
       }
       setSelected(new Set());
       setBulkPipelineOpen(false);
+      void fetchContacts();
     } catch (error) {
       console.error('Failed to add contacts to manual pipeline:', error);
       toast.error(error instanceof Error ? error.message : 'Não foi possível enviar os contatos para o funil.');
@@ -661,6 +683,7 @@ export default function ContactsPage() {
               <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.email')}</TableHead>
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.company')}</TableHead>
               <TableHead className="text-muted-foreground hidden md:table-cell">{t('tableColumns.tags')}</TableHead>
+              <TableHead className="text-muted-foreground hidden md:table-cell">Funis</TableHead>
               <TableHead className="text-muted-foreground hidden lg:table-cell">{t('tableColumns.createdAt')}</TableHead>
               <TableHead className="text-muted-foreground w-12" />
             </TableRow>
@@ -668,7 +691,7 @@ export default function ContactsPage() {
           <TableBody>
             {loading ? (
               <TableRow className="border-border">
-                <TableCell colSpan={8} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="size-6 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">{t('loading')}</p>
@@ -677,7 +700,7 @@ export default function ContactsPage() {
               </TableRow>
             ) : contacts.length === 0 ? (
               <TableRow className="border-border">
-                <TableCell colSpan={8} className="text-center py-12">
+                <TableCell colSpan={9} className="text-center py-12">
                   <div className="flex flex-col items-center gap-2">
                     <Users className="size-8 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
@@ -749,6 +772,23 @@ export default function ContactsPage() {
                         <span className="text-[10px] text-muted-foreground">
                           +{contact.tags.length - 3}
                         </span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {contact.pipelines && contact.pipelines.length > 0 ? (
+                        contact.pipelines.map((pipeline) => (
+                          <span
+                            key={pipeline.id}
+                            title={pipeline.stage ? `Etapa: ${pipeline.stage}` : undefined}
+                            className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:text-blue-400"
+                          >
+                            {pipeline.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
                       )}
                     </div>
                   </TableCell>

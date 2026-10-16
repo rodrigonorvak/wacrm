@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   AlarmClock,
+  CalendarClock,
   ClipboardList,
   MessageCircle,
   Phone,
@@ -27,6 +28,7 @@ interface LeadQuickActionsProps {
   onEditInformation: () => void;
   onServiceSteps: () => void;
   onEditLabels: () => void;
+  onEditSchedule: () => void;
   onDeleteLead: () => void;
 }
 
@@ -54,6 +56,7 @@ export function LeadQuickActions({
   onEditInformation,
   onServiceSteps,
   onEditLabels,
+  onEditSchedule,
   onDeleteLead,
 }: LeadQuickActionsProps) {
   const [expanded, setExpanded] = useState(false);
@@ -71,6 +74,7 @@ export function LeadQuickActions({
     { label: "Editar Informações", icon: SquarePen, color: "text-violet-600", onClick: onEditInformation, disabled: !canManageLead },
     { label: "Etapas de Atendimento", icon: ClipboardList, color: "text-indigo-600", onClick: onServiceSteps },
     { label: "Editar Etiquetas", icon: Tag, color: "text-pink-600", onClick: onEditLabels, disabled: !canManageLead },
+    { label: "Inserir Data", icon: CalendarClock, color: "text-blue-600", onClick: onEditSchedule, disabled: !canManageLead },
     { label: "Excluir Lead", icon: Trash2, color: "text-red-600", onClick: onDeleteLead, disabled: !canManageLead },
     {
       label: "Ligar - Telefone Principal",
