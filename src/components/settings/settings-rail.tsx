@@ -18,8 +18,7 @@ const RAIL_DESKTOP_MIN_PX = 1024;
 
 /**
  * The settings left rail — grouped, vertical on desktop and a
- * horizontal scroller on narrow screens (mirrors the mockup's ≤920px
- * behaviour). The active item auto-scrolls into view when the rail is
+ * horizontal scroller on narrow screens. The active item auto-scrolls into view when the rail is
  * horizontal so a deep-linked section is never off-screen.
  */
 export function SettingsRail({
@@ -50,7 +49,7 @@ export function SettingsRail({
     <nav
       aria-label={t('sectionsAriaLabel')}
       className={cn(
-        'flex w-full gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex w-full gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         'lg:sticky lg:top-0 lg:flex-col lg:overflow-visible',
       )}
     >
@@ -61,10 +60,10 @@ export function SettingsRail({
         return (
           <div
             key={group}
-            className="flex shrink-0 gap-1 lg:mb-2 lg:flex-col lg:gap-1 lg:border-b lg:border-border lg:pb-3 last:lg:mb-0 last:lg:border-b-0 last:lg:pb-0"
+            className="flex shrink-0 gap-1 lg:mb-5 lg:flex-col lg:gap-0.5 last:lg:mb-0"
           >
             {label ? (
-              <div className="hidden px-3 pt-3.5 pb-1.5 text-[11px] font-semibold tracking-[0.09em] text-muted-foreground uppercase lg:block">
+              <div className="hidden px-3 pt-4 pb-2 text-[11px] font-semibold tracking-[0.045em] text-[#737780] uppercase lg:block">
                 {t(`groups.${group}`)}
               </div>
             ) : null}
@@ -80,20 +79,20 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'relative flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap transition-colors',
-                    'lg:w-full lg:py-2.5',
+                    'relative flex min-h-9 shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-medium whitespace-nowrap transition-colors duration-150',
+                    'lg:w-full lg:py-2',
                     isActive
-                      ? 'bg-[#e10c8c] text-white shadow-[0_2px_8px_rgb(225_12_140_/_18%)]'
-                      : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                      ? 'bg-primary/10 text-primary shadow-[0_1px_3px_rgb(15_23_42_/_7%)]'
+                      : 'text-[#4b5563] hover:bg-white/65 hover:text-foreground',
                   )}
                 >
-                  <Icon className={cn('size-4 shrink-0', isActive && 'text-white')} />
+                  <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-[#727780]')} />
                   <span className="flex-1">{t(`sections.${s}`)}</span>
                   {hints?.[s] != null ? (
                     <span
                       className={cn(
                         'hidden items-center gap-1.5 text-xs lg:inline-flex',
-                        isActive ? 'text-white/85' : 'text-muted-foreground',
+                        isActive ? 'text-primary/80' : 'text-muted-foreground',
                       )}
                     >
                       {hints[s]}

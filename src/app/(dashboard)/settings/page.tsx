@@ -101,20 +101,15 @@ function SettingsPageInner() {
   };
 
   return (
-    <div className="settings-workspace -m-4 min-h-full bg-muted/40 p-3 sm:-m-6 sm:p-4 lg:p-5">
-      <div className="grid min-h-full gap-3 lg:grid-cols-[216px_minmax(0,1fr)] xl:gap-5">
-        <aside className="min-w-0 rounded-xl border border-border bg-background shadow-[0_2px_10px_rgb(15_23_42_/_5%)]">
-          <div className="flex h-12 items-center rounded-t-xl border-b border-border px-5">
-            <span className="text-xs font-semibold uppercase text-foreground">
-              {t('pageTitle')}
-            </span>
-          </div>
-          <div className="p-3">
+    <div className="settings-workspace -m-4 min-h-full bg-background sm:-m-6">
+      <div className="grid min-h-full lg:grid-cols-[216px_minmax(0,1fr)]">
+        <aside className="min-w-0 border-b border-border/70 bg-[#f3f4f6] shadow-[0_1px_3px_rgb(15_23_42_/_4%)] lg:border-r lg:border-b-0 lg:shadow-[1px_0_3px_rgb(15_23_42_/_5%)]">
+          <div className="p-2.5 sm:p-3 lg:sticky lg:top-0 lg:p-3">
             <SettingsRail active={section} onSelect={go} hints={hints} />
           </div>
         </aside>
 
-        <div className="min-h-[420px] min-w-0 rounded-xl border border-border bg-background px-4 py-5 shadow-[0_2px_10px_rgb(15_23_42_/_5%)] sm:px-6 sm:py-6 lg:min-h-full">
+        <div className="min-h-[420px] min-w-0 bg-background px-4 py-5 sm:px-6 sm:py-6 lg:min-h-full lg:px-7 lg:py-7">
           {section === 'overview' && (
             <div className="mb-6 border-b border-border pb-4">
               <h1 className="text-lg font-semibold text-foreground">
