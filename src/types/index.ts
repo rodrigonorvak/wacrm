@@ -478,7 +478,28 @@ export interface Deal {
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;
+  pipeline?: Pick<Pipeline, "pipeline_type">;
   labels?: DealLabel[];
+  custom_values?: DealCustomFieldValue[];
+}
+
+export interface PipelineCustomField {
+  id: string;
+  account_id: string;
+  pipeline_id: string;
+  field_name: string;
+  show_on_card: boolean;
+  position: number;
+}
+
+export interface DealCustomFieldValue {
+  id?: string;
+  account_id?: string;
+  pipeline_id?: string;
+  deal_id?: string;
+  field_id: string;
+  value: string | null;
+  field?: Pick<PipelineCustomField, "field_name" | "show_on_card">;
 }
 
 export interface DealLabel {

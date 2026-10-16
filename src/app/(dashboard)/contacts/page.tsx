@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { Contact, Tag, ContactTag } from '@/types';
+import type { Pipeline, PipelineStage } from '@/types';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -49,6 +51,7 @@ import {
   SlidersHorizontal,
   Filter,
   X,
+  GitBranch,
 } from 'lucide-react';
 import { ContactForm } from '@/components/contacts/contact-form';
 import { ContactDetailView } from '@/components/contacts/contact-detail-view';
@@ -67,6 +70,7 @@ interface ContactWithTags extends Contact {
 export default function ContactsPage() {
   const t = useTranslations('Contacts.page');
   const supabase = createClient();
+  const { accountId, user } = useAuth();
   const canEdit = useCan('send-messages');
   const canEditSettings = useCan('edit-settings');
 
@@ -93,6 +97,13 @@ export default function ContactsPage() {
   // Bulk selection (page-scoped — only the loaded rows are selectable)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkPipelineOpen, setBulkPipelineOpen] = useState(false);
+  const [manualPipelines, setManualPipelines] = useState<Pipeline[]>([]);
+  const [manualStages, setManualStages] = useState<PipelineStage[]>([]);
+  const [targetPipelineId, setTargetPipelineId] = useState('');
+  const [targetStageId, setTargetStageId] = useState('');
+  const [loadingManualPipelines, setLoadingManualPipelines] = useState(false);
+  const [sendingToPipeline, setSendingToPipeline] = useState(false);
 
   // All tags for display
   const [tagsMap, setTagsMap] = useState<Record<string, Tag>>({});
@@ -309,9 +320,103 @@ export default function ContactsPage() {
       setSelected(new Set());
       fetchContacts();
     }
-
     setDeleting(false);
     setBulkDeleteOpen(false);
+  }
+
+  async function openBulkPipelinePicker() {
+    if (!accountId) {
+      toast.error('Sua conta não está carregada. Tente novamente.');
+      return;
+    }
+    setLoadingManualPipelines(true);
+    const { data, error } = await supabase
+      .from('pipelines')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('pipeline_type', 'standard')
+      .order('created_at');
+    setLoadingManualPipelines(false);
+    if (error) {
+      toast.error('Não foi possível carregar os funis manuais.');
+      return;
+    }
+    const pipelines = (data ?? []) as Pipeline[];
+    setManualPipelines(pipelines);
+    setTargetPipelineId(pipelines[0]?.id ?? '');
+    setTargetStageId('');
+    setManualStages([]);
+    setBulkPipelineOpen(true);
+  }
+
+  useEffect(() => {
+    if (!bulkPipelineOpen || !targetPipelineId) return;
+    let cancelled = false;
+    void supabase
+      .from('pipeline_stages')
+      .select('*')
+      .eq('pipeline_id', targetPipelineId)
+      .order('position')
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          toast.error('Não foi possível carregar as etapas do funil.');
+          setManualStages([]);
+          return;
+        }
+        const stages = (data ?? []) as PipelineStage[];
+        setManualStages(stages);
+        setTargetStageId(stages[0]?.id ?? '');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bulkPipelineOpen, targetPipelineId, supabase]);
+
+  async function handleBulkSendToPipeline() {
+    const contactIds = [...selected];
+    if (contactIds.length === 0 || !targetPipelineId || !targetStageId || !accountId || !user) return;
+    setSendingToPipeline(true);
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('deals')
+        .select('contact_id')
+        .eq('account_id', accountId)
+        .eq('pipeline_id', targetPipelineId)
+        .in('contact_id', contactIds);
+      if (existingError) throw existingError;
+      const alreadyAdded = new Set((existing ?? []).map((deal) => deal.contact_id));
+      const contactsToAdd = contacts.filter((contact) =>
+        contactIds.includes(contact.id) && !alreadyAdded.has(contact.id));
+      if (contactsToAdd.length > 0) {
+        const rows = contactsToAdd.map((contact) => ({
+          user_id: user.id,
+          account_id: accountId,
+          pipeline_id: targetPipelineId,
+          stage_id: targetStageId,
+          contact_id: contact.id,
+          title: contact.name?.trim() || contact.phone || 'Novo lead',
+          value: 0,
+          currency: 'BRL',
+          status: 'open',
+        }));
+        const { error } = await supabase.from('deals').insert(rows);
+        if (error) throw error;
+      }
+      const skipped = contactIds.length - contactsToAdd.length;
+      if (contactsToAdd.length > 0) {
+        toast.success(`${contactsToAdd.length} contato(s) enviado(s) para o funil.${skipped ? ` ${skipped} já estavam nele.` : ''}`);
+      } else {
+        toast.info('Todos os contatos selecionados já estavam neste funil.');
+      }
+      setSelected(new Set());
+      setBulkPipelineOpen(false);
+    } catch (error) {
+      console.error('Failed to add contacts to manual pipeline:', error);
+      toast.error(error instanceof Error ? error.message : 'Não foi possível enviar os contatos para o funil.');
+    } finally {
+      setSendingToPipeline(false);
+    }
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -513,16 +618,26 @@ export default function ContactsPage() {
             >
               {t('clearSelection')}
             </Button>
-            <GatedButton
-              variant="destructive"
-              size="sm"
-              canAct={canEdit}
-              gateReason="delete contacts"
-              onClick={() => setBulkDeleteOpen(true)}
-            >
-              <Trash2 className="size-4" />
-              {t('deleteSelected')}
-            </GatedButton>
+              <GatedButton
+                size="sm"
+                canAct={canEdit}
+                gateReason="add contacts to a pipeline"
+                onClick={() => void openBulkPipelinePicker()}
+                disabled={loadingManualPipelines}
+              >
+                {loadingManualPipelines ? <Loader2 className="size-4 animate-spin" /> : <GitBranch className="size-4" />}
+                Enviar para funil
+              </GatedButton>
+              <GatedButton
+                variant="destructive"
+                size="sm"
+                canAct={canEdit}
+                gateReason="delete contacts"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                {t('deleteSelected')}
+              </GatedButton>
           </div>
         </div>
       )}
@@ -597,14 +712,14 @@ export default function ContactsPage() {
                     <Checkbox
                       checked={selected.has(contact.id)}
                       onCheckedChange={() => toggleSelect(contact.id)}
-                      aria-label={`Select ${contact.name || contact.phone}`}
+                      aria-label={`Select ${contact.name || contact.phone || 'contact'}`}
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
                     {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">
-                    {contact.phone}
+                    {contact.phone || '—'}
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden md:table-cell text-sm">
                     {contact.email || <span className="text-muted-foreground">-</span>}
@@ -823,6 +938,68 @@ export default function ContactsPage() {
             >
               {deleting && <Loader2 className="size-4 animate-spin" />}
               {t('deleteBtn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkPipelineOpen} onOpenChange={setBulkPipelineOpen}>
+        <DialogContent className="bg-popover border-border text-popover-foreground sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">Enviar contatos para um funil manual</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {selected.size} contato(s) selecionado(s). Funis integrados não aparecem aqui.
+              Contatos que já estão no funil escolhido serão ignorados.
+            </DialogDescription>
+          </DialogHeader>
+          {manualPipelines.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+              Não há funis manuais disponíveis. Crie um funil do tipo Manual na página de Pipelines.
+            </p>
+          ) : (
+            <div className="grid gap-4">
+              <label className="grid gap-2 text-sm">
+                Funil
+                <select
+                  value={targetPipelineId}
+                  onChange={(event) => {
+                    setTargetPipelineId(event.target.value);
+                    setTargetStageId('');
+                    setManualStages([]);
+                  }}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-foreground"
+                >
+                  {manualPipelines.map((pipeline) => (
+                    <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm">
+                Etapa inicial
+                <select
+                  value={targetStageId}
+                  onChange={(event) => setTargetStageId(event.target.value)}
+                  disabled={manualStages.length === 0}
+                  className="h-10 rounded-md border border-border bg-background px-3 text-foreground disabled:opacity-50"
+                >
+                  {manualStages.map((stage) => (
+                    <option key={stage.id} value={stage.id}>{stage.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setBulkPipelineOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleBulkSendToPipeline()}
+              disabled={sendingToPipeline || !targetPipelineId || !targetStageId}
+            >
+              {sendingToPipeline && <Loader2 className="size-4 animate-spin" />}
+              Enviar contatos
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -10,7 +10,9 @@ import type {
   Contact,
   Conversation,
   Deal,
+  DealCustomFieldValue,
   DealStatus,
+  PipelineCustomField,
   PipelineStage,
   Profile,
 } from "@/types";
@@ -29,11 +31,13 @@ import {
   Check,
   X,
   Trash2,
+  Plus,
   MessageSquare,
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
+import { findExistingContact } from "@/lib/contacts/dedupe";
 
 interface DealFormProps {
   open: boolean;
@@ -42,6 +46,7 @@ interface DealFormProps {
   pipelineId: string;
   stages: PipelineStage[];
   defaultStageId?: string;
+  allowCreateContact?: boolean;
   visibleCardFields: PipelineCardField[];
   onVisibleCardFieldsChange: (fields: PipelineCardField[]) => void;
   onSaved: () => void;
@@ -58,6 +63,7 @@ export function DealForm({
   pipelineId,
   stages,
   defaultStageId,
+  allowCreateContact = false,
   visibleCardFields,
   onVisibleCardFieldsChange,
   onSaved,
@@ -69,10 +75,19 @@ export function DealForm({
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [contactId, setContactId] = useState("");
+  const [contactMode, setContactMode] = useState<"existing" | "new">("existing");
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
+  const [newContactEmail, setNewContactEmail] = useState("");
   const [stageId, setStageId] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [customFields, setCustomFields] = useState<
+    Array<{ field: PipelineCustomField; value: string }>
+  >([]);
+  const [newCustomFieldName, setNewCustomFieldName] = useState("");
+  const [creatingCustomField, setCreatingCustomField] = useState(false);
 
   const [contactSearch, setContactSearch] = useState("");
   const [contactOptions, setContactOptions] = useState<Contact[]>([]);
@@ -99,6 +114,10 @@ export function DealForm({
       // contact_id is nullable when the contact has been deleted
       // (migration 004: ON DELETE SET NULL). "" means "no selection".
       setContactId(deal.contact_id ?? "");
+      setContactMode("existing");
+      setNewContactName("");
+      setNewContactPhone("");
+      setNewContactEmail("");
       setStageId(deal.stage_id);
       setAssignedTo(deal.assigned_to ?? "");
       setExpectedCloseDate(deal.expected_close_date ?? "");
@@ -109,6 +128,10 @@ export function DealForm({
       setTitle("");
       setValue("");
       setContactId("");
+      setContactMode(allowCreateContact ? "new" : "existing");
+      setNewContactName("");
+      setNewContactPhone("");
+      setNewContactEmail("");
       setStageId(defaultStageId || stages[0]?.id || "");
       setAssignedTo("");
       setExpectedCloseDate("");
@@ -116,7 +139,7 @@ export function DealForm({
       setContactSearch("");
       setContactOptions([]);
     }
-  }, [open, deal, defaultStageId, stages]);
+  }, [open, deal, defaultStageId, stages, allowCreateContact]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Account members are few compared with contacts, so load only the
@@ -137,6 +160,45 @@ export function DealForm({
       cancelled = true;
     };
   }, [open, accountId, supabase]);
+
+  useEffect(() => {
+    if (!open || !accountId || !pipelineId) return;
+    let cancelled = false;
+    void (async () => {
+      const { data: fields, error: fieldsError } = await supabase
+        .from("pipeline_custom_fields")
+        .select("id, account_id, pipeline_id, field_name, show_on_card, position")
+        .eq("pipeline_id", pipelineId)
+        .order("position");
+      if (fieldsError) {
+        console.error("Failed to load pipeline custom fields:", fieldsError.message);
+        toast.error("Não foi possível carregar as informações extras. Confira se a migration 061 foi aplicada.");
+        return;
+      }
+      let values: DealCustomFieldValue[] = [];
+      if (deal) {
+        const { data, error } = await supabase
+          .from("deal_custom_field_values")
+          .select("field_id, value")
+          .eq("deal_id", deal.id);
+        if (error) {
+          console.error("Failed to load deal custom values:", error.message);
+          toast.error("Não foi possível carregar os dados extras deste lead.");
+          return;
+        }
+        values = (data ?? []) as DealCustomFieldValue[];
+      }
+      if (cancelled) return;
+      const valuesByField = new Map(values.map((item) => [item.field_id, item.value ?? ""]));
+      setCustomFields((fields ?? []).map((field) => ({
+        field: field as PipelineCustomField,
+        value: valuesByField.get(field.id) ?? "",
+      })));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, accountId, pipelineId, deal, supabase]);
 
   // Searching avoids downloading and rendering the entire contacts table
   // whenever a deal card is opened. A small delay prevents a request for
@@ -200,7 +262,8 @@ export function DealForm({
   }, [open, contactId, supabase]);
 
   async function handleSave() {
-    if (!title.trim() || !contactId || !stageId) {
+    if (!title.trim() || !stageId || (contactMode === "existing" && !contactId) ||
+      (contactMode === "new" && !newContactName.trim())) {
       toast.error(t("toastRequired"));
       return;
     }
@@ -210,6 +273,8 @@ export function DealForm({
       return;
     }
     setSaving(true);
+    let savedDealId = deal?.id ?? null;
+    let customSaveFailed = false;
 
     const payload = {
       title: title.trim(),
@@ -234,6 +299,7 @@ export function DealForm({
         setSaving(false);
         return;
       }
+      savedDealId = deal.id;
     } else {
       const {
         data: { session },
@@ -249,20 +315,142 @@ export function DealForm({
         setSaving(false);
         return;
       }
-      const { error } = await supabase
+      let selectedContactId = contactId;
+      if (contactMode === "new") {
+        const phone = newContactPhone.trim();
+        if (phone) {
+          const duplicate = await findExistingContact(supabase, accountId, phone);
+          if (duplicate) {
+            const { data: existingContact, error: lookupError } = await supabase
+              .from("contacts")
+              .select("id, user_id, account_id, name, phone, email, company, avatar_url, created_at, updated_at")
+              .eq("id", duplicate.id)
+              .single();
+            if (lookupError || !existingContact) {
+              toast.error("Não foi possível carregar o contato existente.");
+              setSaving(false);
+              return;
+            }
+            setContactMode("existing");
+            setContactId(existingContact.id);
+            setContactSearch(contactLabel(existingContact as Contact));
+            setContactOptions([existingContact as Contact]);
+            toast.error("Já existe um contato com esse telefone. Confirme o contato selecionado e salve novamente.");
+            setSaving(false);
+            return;
+          }
+        }
+        const { data: contact, error: contactError } = await supabase
+          .from("contacts")
+          .insert({
+            user_id: user.id,
+            account_id: accountId,
+            name: newContactName.trim(),
+            phone,
+            email: newContactEmail.trim() || null,
+          })
+          .select("id")
+          .single();
+        if (contactError || !contact) {
+          toast.error(contactError?.code === "23505"
+            ? "Já existe um contato com esse telefone."
+            : "Não foi possível criar o contato.");
+          setSaving(false);
+          return;
+        }
+        selectedContactId = contact.id;
+      }
+      const { data: createdDeal, error } = await supabase
         .from("deals")
-        .insert({ ...payload, user_id: user.id, account_id: accountId, status: "open" });
+        .insert({ ...payload, contact_id: selectedContactId, user_id: user.id, account_id: accountId, status: "open" })
+        .select("id")
+        .single();
       if (error) {
         toast.error(t("toastFailedCreate"));
         setSaving(false);
         return;
       }
+      savedDealId = createdDeal.id;
+    }
+
+    if (savedDealId && customFields.length > 0) {
+      const { error } = await supabase.from("deal_custom_field_values").upsert(
+        customFields.map(({ field, value }) => ({
+          account_id: accountId,
+          pipeline_id: pipelineId,
+          deal_id: savedDealId,
+          field_id: field.id,
+          value: value.trim() || null,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "deal_id,field_id" },
+      );
+      if (error) {
+        console.error("Failed to save deal custom fields:", error.message);
+        customSaveFailed = true;
+      }
     }
 
     setSaving(false);
-    toast.success(deal ? t("toastUpdated") : t("toastCreated"));
+    if (customSaveFailed) {
+      toast.warning("O negócio foi salvo, mas não foi possível salvar as informações extras.");
+    } else {
+      toast.success(deal ? t("toastUpdated") : t("toastCreated"));
+    }
     onOpenChange(false);
     onSaved();
+  }
+
+  async function addCustomField() {
+    const fieldName = newCustomFieldName.trim();
+    if (!fieldName || !accountId) return;
+    setCreatingCustomField(true);
+    const { data, error } = await supabase
+      .from("pipeline_custom_fields")
+      .insert({
+        account_id: accountId,
+        pipeline_id: pipelineId,
+        field_name: fieldName,
+        position: customFields.length,
+      })
+      .select("id, account_id, pipeline_id, field_name, show_on_card, position")
+      .single();
+    setCreatingCustomField(false);
+    if (error || !data) {
+      toast.error(error?.code === "23505" ? "Esse campo já existe neste funil." : "Não foi possível adicionar o campo.");
+      return;
+    }
+    setCustomFields((current) => [...current, { field: data as PipelineCustomField, value: "" }]);
+    setNewCustomFieldName("");
+  }
+
+  async function toggleCustomFieldVisibility(field: PipelineCustomField, visible: boolean) {
+    const { error } = await supabase
+      .from("pipeline_custom_fields")
+      .update({ show_on_card: visible })
+      .eq("id", field.id)
+      .eq("pipeline_id", pipelineId);
+    if (error) {
+      toast.error("Não foi possível alterar a exibição deste campo.");
+      return;
+    }
+    setCustomFields((current) => current.map((item) => item.field.id === field.id
+      ? { ...item, field: { ...item.field, show_on_card: visible } }
+      : item));
+  }
+
+  async function deleteCustomField(field: PipelineCustomField) {
+    if (!window.confirm(`Excluir o campo "${field.field_name}" deste funil e os valores associados?`)) return;
+    const { error } = await supabase
+      .from("pipeline_custom_fields")
+      .delete()
+      .eq("id", field.id)
+      .eq("pipeline_id", pipelineId);
+    if (error) {
+      toast.error("Não foi possível excluir este campo.");
+      return;
+    }
+    setCustomFields((current) => current.filter((item) => item.field.id !== field.id));
   }
 
   async function handleStatusChange(status: DealStatus) {
@@ -324,7 +512,67 @@ export function DealForm({
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-muted-foreground">{t("contact")}</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label className="text-muted-foreground">{t("contact")}</Label>
+                {allowCreateContact && !deal && (
+                  <div className="flex rounded-md border border-border p-0.5 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setContactMode("new")}
+                      className={`rounded px-2 py-1 ${contactMode === "new" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      Novo contato
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setContactMode("existing")}
+                      className={`rounded px-2 py-1 ${contactMode === "existing" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+                    >
+                      Existente
+                    </button>
+                  </div>
+                )}
+              </div>
+              {contactMode === "new" && !deal ? (
+                <div className="grid gap-3 rounded-md border border-border p-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="deal-contact-name">Nome <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="deal-contact-name"
+                      value={newContactName}
+                      onChange={(event) => {
+                        setNewContactName(event.target.value);
+                        if (!title.trim()) setTitle(event.target.value);
+                      }}
+                      placeholder="Nome da pessoa"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="deal-contact-phone">Telefone <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
+                    <Input
+                      id="deal-contact-phone"
+                      value={newContactPhone}
+                      onChange={(event) => setNewContactPhone(event.target.value)}
+                      placeholder="Telefone informado manualmente"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Este número será salvo no contato; não significa que exista uma conversa do WhatsApp.
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="deal-contact-email">E-mail <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
+                    <Input
+                      id="deal-contact-email"
+                      type="email"
+                      value={newContactEmail}
+                      onChange={(event) => setNewContactEmail(event.target.value)}
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
               <div className="relative">
                 <Input
                   value={contactSearch}
@@ -375,6 +623,8 @@ export function DealForm({
                   <MessageSquare className="h-3 w-3" />
                   {t("linkToConversation")}
                 </Link>
+              )}
+                </>
               )}
             </div>
 
@@ -453,6 +703,70 @@ export function DealForm({
                 className="min-h-[100px] border-border bg-muted text-foreground"
               />
             </div>
+
+            <fieldset className="grid gap-3 rounded-lg border border-border p-3">
+              <legend className="px-1 text-sm font-medium text-foreground">
+                Informações adicionais deste funil
+              </legend>
+              <p className="-mt-2 text-xs text-muted-foreground">
+                Os campos são exclusivos deste funil. Marque quais devem aparecer no card fechado.
+              </p>
+              {customFields.map(({ field, value: fieldValue }, index) => (
+                <div key={field.id} className="grid gap-2 rounded-md bg-muted/40 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor={`deal-custom-${field.id}`} className="min-w-0 truncate text-sm">
+                      {field.field_name}
+                    </Label>
+                    <button
+                      type="button"
+                      onClick={() => void deleteCustomField(field)}
+                      className="rounded p-1 text-muted-foreground hover:text-destructive"
+                      aria-label={`Excluir campo ${field.field_name}`}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                  <Input
+                    id={`deal-custom-${field.id}`}
+                    value={fieldValue}
+                    onChange={(event) => setCustomFields((current) => current.map((item, itemIndex) =>
+                      itemIndex === index ? { ...item, value: event.target.value } : item))}
+                    placeholder={`Informar ${field.field_name.toLowerCase()}`}
+                  />
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={field.show_on_card}
+                      onCheckedChange={(checked) => void toggleCustomFieldVisibility(field, checked === true)}
+                    />
+                    Mostrar no card fechado
+                  </label>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <Input
+                  value={newCustomFieldName}
+                  onChange={(event) => setNewCustomFieldName(event.target.value)}
+                  placeholder="Nome da nova informação"
+                  aria-label="Nome da nova informação"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void addCustomField();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void addCustomField()}
+                  disabled={creatingCustomField || !newCustomFieldName.trim()}
+                  aria-label="Adicionar informação"
+                  title="Adicionar informação"
+                >
+                  {creatingCustomField ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                </Button>
+              </div>
+            </fieldset>
 
             {deal && (
               <fieldset className="grid gap-3 rounded-lg border border-border p-3">

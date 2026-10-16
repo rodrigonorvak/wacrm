@@ -33,12 +33,7 @@ export function parseTagCell(value: string | undefined): string[] {
 
 export interface ParseContactCsvResult {
   rows: ParsedContactRow[];
-  /**
-   * True when the CSV header includes the required `phone` column.
-   * `rows` is empty both when the column is missing and when the file
-   * simply has no usable data rows; callers that need to tell those
-   * apart (to pick the right error message) read this flag.
-   */
+  /** True when a phone column has been mapped; phone values are optional. */
   hasPhoneColumn: boolean;
   /** True when the CSV header includes a `tags` column. */
   hasTagsColumn: boolean;
@@ -46,9 +41,52 @@ export interface ParseContactCsvResult {
   hasCompanyColumn: boolean;
 }
 
-export function parseContactCsv(text: string): ParseContactCsvResult {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) {
+export type ContactCsvField = 'phone' | 'name' | 'email' | 'company' | 'tags';
+export type ContactCsvMapping = Partial<Record<ContactCsvField, number>>;
+
+export interface ContactCsvDocument {
+  headers: string[];
+  records: string[][];
+  delimiter: string;
+}
+
+export function parseContactCsvDocument(text: string): ContactCsvDocument {
+  const lines = text.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
+  if (lines.length === 0 || !lines[0]) {
+    return { headers: [], records: [], delimiter: ',' };
+  }
+  const delimiter = detectDelimiter(lines[0]);
+  const headers = parseCsvLine(lines[0], delimiter).map(cleanCell);
+  return {
+    headers,
+    records: lines.slice(1).filter((line) => line.trim()).map((line) => parseCsvLine(line, delimiter)),
+    delimiter,
+  };
+}
+
+export function suggestContactCsvMapping(headers: string[]): ContactCsvMapping {
+  const normalized = headers.map(normalizeHeader);
+  const aliases: Record<ContactCsvField, string[]> = {
+    phone: ['phone', 'phonenumber', 'contactphone', 'telefone', 'telefonoprincipal', 'numerodetelefone', 'numerodocelular', 'celular', 'whatsapp', 'mobile', 'mobilephone', 'fone', 'telephone', 'numero'],
+    name: ['name', 'nome', 'fullname', 'nomecompleto', 'nomedocontato', 'contactname', 'contact', 'client', 'cliente'],
+    email: ['email', 'emailaddress', 'e-mail', 'correioeletronico', 'mail'],
+    company: ['company', 'empresa', 'organizacao', 'organization', 'companhia', 'business'],
+    tags: ['tags', 'tag', 'etiquetas', 'etiqueta', 'marcadores'],
+  };
+  return Object.fromEntries(
+    Object.entries(aliases).flatMap(([field, candidates]) => {
+      const index = normalized.findIndex((header) => candidates.includes(header));
+      return index < 0 ? [] : [[field, index]];
+    }),
+  ) as ContactCsvMapping;
+}
+
+export function parseContactCsv(
+  text: string,
+  mapping?: ContactCsvMapping,
+): ParseContactCsvResult {
+  const document = parseContactCsvDocument(text);
+  if (document.headers.length === 0 || document.records.length === 0) {
     return {
       rows: [],
       hasPhoneColumn: false,
@@ -57,12 +95,14 @@ export function parseContactCsv(text: string): ParseContactCsvResult {
     };
   }
 
-  const headers = lines[0]
-    .split(',')
-    .map((h) => h.trim().toLowerCase().replace(/["']/g, ''));
+  const selectedMapping = mapping ?? suggestContactCsvMapping(document.headers);
+  const phoneIdx = selectedMapping.phone ?? -1;
+  const nameIdx = selectedMapping.name ?? -1;
+  const emailIdx = selectedMapping.email ?? -1;
+  const companyIdx = selectedMapping.company ?? -1;
+  const tagsIdx = selectedMapping.tags ?? -1;
 
-  const phoneIdx = headers.indexOf('phone');
-  if (phoneIdx === -1) {
+  if (nameIdx === -1 && phoneIdx === -1) {
     return {
       rows: [],
       hasPhoneColumn: false,
@@ -70,51 +110,61 @@ export function parseContactCsv(text: string): ParseContactCsvResult {
       hasCompanyColumn: false,
     };
   }
-
-  const nameIdx = headers.indexOf('name');
-  const emailIdx = headers.indexOf('email');
-  const companyIdx = headers.indexOf('company');
-  const tagsIdx = headers.indexOf('tags');
 
   const rows: ParsedContactRow[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = parseCsvLine(line);
-    const phone = values[phoneIdx]?.replace(/["']/g, '').trim();
-    if (!phone) continue;
+  for (const values of document.records) {
+    const phone = phoneIdx >= 0 ? cleanCell(values[phoneIdx]) : '';
+    const name = nameIdx >= 0 ? cleanCell(values[nameIdx]) : '';
+    if (!name) continue;
 
     rows.push({
       phone,
-      name:
-        nameIdx >= 0
-          ? values[nameIdx]?.replace(/["']/g, '').trim() || undefined
-          : undefined,
+      name,
       email:
         emailIdx >= 0
-          ? values[emailIdx]?.replace(/["']/g, '').trim() || undefined
+          ? cleanCell(values[emailIdx]) || undefined
           : undefined,
       company:
         companyIdx >= 0
-          ? values[companyIdx]?.replace(/["']/g, '').trim() || undefined
+          ? cleanCell(values[companyIdx]) || undefined
           : undefined,
       tagNames:
-        tagsIdx >= 0 ? parseTagCell(values[tagsIdx]?.replace(/["']/g, '')) : [],
+        tagsIdx >= 0 ? parseTagCell(cleanCell(values[tagsIdx])) : [],
     });
   }
 
   return {
     rows,
-    hasPhoneColumn: true,
+    hasPhoneColumn: phoneIdx >= 0,
     hasTagsColumn: tagsIdx >= 0,
     hasCompanyColumn: companyIdx >= 0,
   };
 }
 
 /** Simple CSV line parse (handles quoted fields). */
-function parseCsvLine(line: string): string[] {
+function detectDelimiter(headerLine: string): string {
+  const candidates = [',', ';', '\t'];
+  return candidates
+    .map((delimiter) => ({ delimiter, count: parseCsvLine(headerLine, delimiter).length }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter ?? ',';
+}
+
+function normalizeHeader(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/["']/g, '')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+function cleanCell(value: string | undefined): string {
+  return value?.replace(/["']/g, '').trim() ?? '';
+}
+
+function parseCsvLine(line: string, delimiter: string): string[] {
   const values: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -122,7 +172,7 @@ function parseCsvLine(line: string): string[] {
   for (const char of line) {
     if (char === '"') {
       inQuotes = !inQuotes;
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       values.push(current.trim());
       current = '';
     } else {

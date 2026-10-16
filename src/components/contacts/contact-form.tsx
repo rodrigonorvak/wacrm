@@ -125,8 +125,8 @@ export function ContactForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!phone.trim()) {
-      toast.error(t('phoneRequired'));
+    if (!name.trim()) {
+      toast.error('O nome é obrigatório.');
       return;
     }
 
@@ -153,7 +153,7 @@ export function ContactForm({
         const { error } = await supabase
           .from('contacts')
           .update({
-            name: name.trim() || null,
+            name: name.trim(),
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
@@ -167,7 +167,7 @@ export function ContactForm({
           .insert({
             user_id: user.id,
             account_id: accountId,
-            name: name.trim() || null,
+            name: name.trim(),
             phone: phone.trim(),
             email: email.trim() || null,
             company: company.trim() || null,
@@ -237,20 +237,21 @@ export function ContactForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cf-name" className="text-muted-foreground">
-              {t('nameLabel')}
+              {t('nameLabel')} <span className="text-red-400">*</span>
             </Label>
             <Input
               id="cf-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('namePlaceholder')}
+              required
               className="bg-muted border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="cf-phone" className="text-muted-foreground">
-              {t('phoneLabel')} <span className="text-red-400">*</span>
+              {t('phoneLabel')} <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
             </Label>
             <Input
               id="cf-phone"

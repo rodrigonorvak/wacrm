@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Pipeline, PipelineStage, Deal, DealLabel } from "@/types";
+import type { Pipeline, PipelineStage, Deal, DealLabel, DealCustomFieldValue } from "@/types";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineList } from "@/components/pipelines/pipeline-list";
@@ -219,31 +219,57 @@ export default function PipelinesPage() {
 
   const loadDeals = useCallback(
     async (pipelineId: string) => {
-      const withLabels = await supabase
-        .from("deals")
-        .select(
-          "*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*), deal_label_links(label:deal_labels(*))",
-        )
-        .eq("pipeline_id", pipelineId)
-        .order("created_at", { ascending: false });
-      if (!withLabels.error) {
-        return (withLabels.data ?? []).map((row) => {
-          const { deal_label_links: links, ...rest } = row as Record<string, unknown> & {
-            deal_label_links?: { label: DealLabel | null }[];
-          };
-          return {
-            ...rest,
-            labels: (links ?? []).flatMap((link) => (link.label ? [link.label] : [])),
-          } as unknown as Deal;
-        });
-      }
-      // Labels tables may not exist yet (migration 059 pending).
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("deals")
         .select("*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*)")
         .eq("pipeline_id", pipelineId)
         .order("created_at", { ascending: false });
-      return (data ?? []) as Deal[];
+      if (error) {
+        console.error("Failed to load pipeline deals:", error.message);
+        return [];
+      }
+      const rows = data ?? [];
+      if (rows.length === 0) return [];
+      const dealIds = rows.map((row) => row.id);
+      const [labelResult, customValueResult] = await Promise.all([
+        supabase
+          .from("deal_label_links")
+          .select("deal_id, label:deal_labels(*)")
+          .in("deal_id", dealIds),
+        supabase
+          .from("deal_custom_field_values")
+          .select("deal_id, field_id, value, field:pipeline_custom_fields(field_name, show_on_card)")
+          .in("deal_id", dealIds),
+      ]);
+      if (labelResult.error) console.error("Failed to load deal labels:", labelResult.error.message);
+      if (customValueResult.error) console.error("Failed to load pipeline custom values:", customValueResult.error.message);
+
+      const labelsByDeal = new Map<string, DealLabel[]>();
+      for (const row of labelResult.data ?? []) {
+        const label = Array.isArray(row.label) ? row.label[0] : row.label;
+        if (!label) continue;
+        const current = labelsByDeal.get(row.deal_id) ?? [];
+        current.push(label);
+        labelsByDeal.set(row.deal_id, current);
+      }
+      const customValuesByDeal = new Map<string, DealCustomFieldValue[]>();
+      for (const row of customValueResult.data ?? []) {
+        const current = customValuesByDeal.get(row.deal_id) ?? [];
+        const field = Array.isArray(row.field) ? row.field[0] : row.field;
+        current.push({
+          field_id: row.field_id,
+          value: row.value,
+          field: field
+            ? { field_name: field.field_name, show_on_card: field.show_on_card }
+            : undefined,
+        });
+        customValuesByDeal.set(row.deal_id, current);
+      }
+      return rows.map((row) => ({
+        ...row,
+        labels: labelsByDeal.get(row.id) ?? [],
+        custom_values: customValuesByDeal.get(row.id) ?? [],
+      })) as Deal[];
     },
     [supabase],
   );
@@ -449,23 +475,16 @@ export default function PipelinesPage() {
   );
 
   const handleEditDeal = useCallback((deal: Deal) => {
-    const pipeline = pipelines.find((item) => item.id === deal.pipeline_id);
-    if (pipeline?.pipeline_type === "integrated") {
-      const params = new URLSearchParams({
-        pipeline: selectedPipelineId,
-        stage: stageFilter,
-        date: dateFilter,
-        view: viewMode,
-      });
-      if (customStartDate) params.set("start", customStartDate);
-      if (customEndDate) params.set("end", customEndDate);
-      router.push(`/pipelines/${deal.id}?${params.toString()}`);
-      return;
-    }
-    setEditingDeal(deal);
-    setDefaultStageId(deal.stage_id);
-    setDealFormOpen(true);
-  }, [pipelines, router, selectedPipelineId, stageFilter, dateFilter, viewMode, customStartDate, customEndDate]);
+    const params = new URLSearchParams({
+      pipeline: selectedPipelineId,
+      stage: stageFilter,
+      date: dateFilter,
+      view: viewMode,
+    });
+    if (customStartDate) params.set("start", customStartDate);
+    if (customEndDate) params.set("end", customEndDate);
+    router.push(`/pipelines/${deal.id}?${params.toString()}`);
+  }, [router, selectedPipelineId, stageFilter, dateFilter, viewMode, customStartDate, customEndDate]);
 
   async function handleCreatePipeline() {
     const name = newPipelineName.trim();
@@ -1044,6 +1063,7 @@ export default function PipelinesPage() {
         pipelineId={selectedPipelineId}
         stages={stages}
         defaultStageId={defaultStageId}
+        allowCreateContact={pipelines.find((pipeline) => pipeline.id === selectedPipelineId)?.pipeline_type !== "integrated"}
         visibleCardFields={visibleCardFields}
         onVisibleCardFieldsChange={updateVisibleCardFields}
         onSaved={refreshDeals}

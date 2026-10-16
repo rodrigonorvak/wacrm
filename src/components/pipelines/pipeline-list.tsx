@@ -23,12 +23,16 @@ export function PipelineList({
   const stageById = new Map(stages.map((stage) => [stage.id, stage]));
 
   function getDetails(deal: Deal): string[] {
-    return visibleCardFields.flatMap((field) => {
+    const standardDetails = visibleCardFields.flatMap((field) => {
       if (field === "company" && deal.contact?.company) return [deal.contact.company];
       if (field === "phone" && deal.contact?.phone) return [deal.contact.phone];
       if (field === "assignee" && deal.assignee?.full_name) return [deal.assignee.full_name];
       return [];
     });
+    const customDetails = (deal.custom_values ?? [])
+      .filter((item) => item.field?.show_on_card && item.value?.trim())
+      .map((item) => `${item.field?.field_name}: ${item.value}`);
+    return [...standardDetails, ...customDetails];
   }
 
   return (

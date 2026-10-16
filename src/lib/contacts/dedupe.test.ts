@@ -56,13 +56,14 @@ describe("dedupeByPhone", () => {
     expect(duplicates).toBe(1);
   });
 
-  it("drops rows with no digits", () => {
+  it("keeps phone-less contacts separate from phone de-duplication", () => {
     const { unique, duplicates } = dedupeByPhone([
-      { phone: "   " },
+      { phone: "   ", name: "A" },
+      { phone: "", name: "B" },
       { phone: "+1 555-3333" },
     ]);
-    expect(unique).toHaveLength(1);
-    expect(duplicates).toBe(1);
+    expect(unique.map((row) => row.name)).toEqual(["A", "B", undefined]);
+    expect(duplicates).toBe(0);
   });
 });
 

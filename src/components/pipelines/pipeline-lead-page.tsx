@@ -10,6 +10,7 @@ import type { ContactTag, Deal, DealLabel, MessageTemplate, PipelineStage } from
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { LeadQuickActions } from "@/components/pipelines/lead-quick-actions";
+import { DealForm } from "@/components/pipelines/deal-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,11 @@ import {
 import { TemplatePicker, type TemplateSendValues } from "@/components/inbox/template-picker";
 import { renderTemplateBody } from "@/lib/whatsapp/template-body";
 import { isPaidStageName } from "@/lib/pipelines/paid-stage";
+import {
+  DEFAULT_PIPELINE_CARD_FIELDS,
+  normalizePipelineCardFields,
+  type PipelineCardField,
+} from "@/lib/pipelines/card-fields";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -39,6 +45,7 @@ import {
   StickyNote,
   Trash2,
   UserRound,
+  Pencil,
 } from "lucide-react";
 
 type ContactNote = {
@@ -121,6 +128,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const router = useRouter();
   const supabase = createClient();
   const { accountId, user } = useAuth();
+  const userId = user?.id;
   const canManageLead = useCan("send-messages");
   const [deal, setDeal] = useState<Deal | null>(null);
   const [dealReloadToken, setDealReloadToken] = useState(0);
@@ -161,6 +169,8 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [savingServiceStep, setSavingServiceStep] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+  const [dealFormOpen, setDealFormOpen] = useState(false);
+  const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [deletingLead, setDeletingLead] = useState(false);
   const dealRequestKey = accountId ? `${accountId}:${dealId}:${dealReloadToken}` : "";
   const loading = !dealRequestKey || loadedDealKey !== dealRequestKey;
@@ -173,7 +183,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     if (!dealRequestKey) return;
     let cancelled = false;
     void (async () => {
-      const base = "*, contact:contacts(*), stage:pipeline_stages(*), assignee:profiles!deals_assigned_to_fkey(*)";
+      const base = "*, contact:contacts(*), stage:pipeline_stages(*), pipeline:pipelines(pipeline_type), assignee:profiles!deals_assigned_to_fkey(*)";
       let result = await supabase
         .from("deals")
         .select(`${base}, deal_label_links(label:deal_labels(*))`)
@@ -200,9 +210,26 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           deal_label_links?: { label: DealLabel | null }[];
         };
         setLoadError(false);
+        const { data: customValueRows, error: customValuesError } = await supabase
+          .from("deal_custom_field_values")
+          .select("field_id, value, field:pipeline_custom_fields(field_name, show_on_card)")
+          .eq("deal_id", dealId);
+        if (customValuesError) {
+          console.error("Failed to load pipeline custom values:", customValuesError.message);
+        }
         setDeal({
           ...rest,
           labels: (links ?? []).flatMap((link) => (link.label ? [link.label] : [])),
+          custom_values: (customValueRows ?? []).map((row) => {
+            const field = Array.isArray(row.field) ? row.field[0] : row.field;
+            return {
+              field_id: row.field_id,
+              value: row.value,
+              field: field
+                ? { field_name: field.field_name, show_on_card: field.show_on_card }
+                : undefined,
+            };
+          }),
         } as unknown as Deal);
       }
       setLoadedDealKey(dealRequestKey);
@@ -211,6 +238,28 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
       cancelled = true;
     };
   }, [accountId, dealRequestKey, dealId, supabase]);
+
+  useEffect(() => {
+    if (!userId) return;
+    /* eslint-disable react-hooks/set-state-in-effect */
+    try {
+      const stored = localStorage.getItem(`wacrm.pipeline.card-fields.${userId}`);
+      setVisibleCardFields(normalizePipelineCardFields(stored ? JSON.parse(stored) : null));
+    } catch {
+      setVisibleCardFields(DEFAULT_PIPELINE_CARD_FIELDS);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [userId]);
+
+  const updateVisibleCardFields = useCallback((fields: PipelineCardField[]) => {
+    setVisibleCardFields(fields);
+    if (!userId) return;
+    try {
+      localStorage.setItem(`wacrm.pipeline.card-fields.${userId}`, JSON.stringify(fields));
+    } catch {
+      console.error("Could not persist pipeline card field preferences.");
+    }
+  }, [userId]);
 
   useEffect(() => {
     if (!deal?.pipeline_id) return;
@@ -678,9 +727,15 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
             <CalendarDays className="size-4" /> Criado em {formatDate(deal.created_at)}
           </p>
         </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm">
-          {deal.stage?.name || "Sem etapa"}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => setDealFormOpen(true)}>
+            <Pencil className="size-4" />
+            Editar negócio
+          </Button>
+          <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm">
+            {deal.stage?.name || "Sem etapa"}
+          </span>
+        </div>
       </header>
 
       <div
@@ -706,7 +761,9 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
 
             <dl className="mt-4 space-y-4">
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Telefone principal</dt>
+                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {deal.pipeline?.pipeline_type === "standard" ? "Telefone informado manualmente" : "Telefone principal"}
+                </dt>
                 <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
                   <Phone className="size-4 text-emerald-600" /> {contact?.phone || "-"}
                 </dd>
@@ -737,6 +794,17 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                   </div>
                 );
               })}
+              {(deal.custom_values ?? [])
+                .filter((item) => item.value?.trim() && item.field?.field_name)
+                .map((item) => (
+                  <div key={item.field_id}>
+                    <dt className="text-[10px] font-semibold uppercase text-muted-foreground">{item.field?.field_name}</dt>
+                    <dd className="mt-1 flex items-start gap-2 text-sm text-foreground">
+                      <StickyNote className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <span className="break-words">{item.value}</span>
+                    </dd>
+                  </div>
+                ))}
             </dl>
           </div>
         </aside>
@@ -771,9 +839,15 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                     <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
                       <MessageCircle className="size-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">Este lead ainda não possui uma conversa.</p>
-                      <Button onClick={() => setTemplatePickerOpen(true)} disabled={sendingTemplate} className="gap-2">
-                        <Send className="size-4" /> Iniciar com template
-                      </Button>
+                      {contact?.phone ? (
+                        <Button onClick={() => setTemplatePickerOpen(true)} disabled={sendingTemplate} className="gap-2">
+                          <Send className="size-4" /> Iniciar com template
+                        </Button>
+                      ) : (
+                        <p className="max-w-sm text-xs text-muted-foreground">
+                          Adicione um telefone ao contato para iniciar uma conversa pelo WhatsApp.
+                        </p>
+                      )}
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">Nenhuma mensagem encontrada.</div>
@@ -1069,6 +1143,18 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         onOpenChange={setContactFormOpen}
         contact={contact ?? null}
         contactTags={contactTags}
+        onSaved={() => setDealReloadToken((current) => current + 1)}
+      />
+
+      <DealForm
+        open={dealFormOpen}
+        onOpenChange={setDealFormOpen}
+        deal={deal}
+        pipelineId={deal.pipeline_id}
+        stages={stages}
+        defaultStageId={deal.stage_id}
+        visibleCardFields={visibleCardFields}
+        onVisibleCardFieldsChange={updateVisibleCardFields}
         onSaved={() => setDealReloadToken((current) => current + 1)}
       />
 

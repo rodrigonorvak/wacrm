@@ -198,8 +198,8 @@ export function ContactDetailView({
   }
 
   async function saveDetails() {
-    if (!contactId || !editPhone.trim()) {
-      toast.error(t('toastPhoneRequired'));
+    if (!contactId || !editName.trim()) {
+      toast.error('O nome é obrigatório.');
       return;
     }
 
@@ -207,7 +207,7 @@ export function ContactDetailView({
     const { error } = await supabase
       .from('contacts')
       .update({
-        name: editName.trim() || null,
+        name: editName.trim(),
         phone: editPhone.trim(),
         email: editEmail.trim() || null,
         company: editCompany.trim() || null,
@@ -405,18 +405,25 @@ export function ContactDetailView({
                     {t('contactDetailsDesc')}
                   </SheetDescription>
                   <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                    <button
-                      onClick={copyPhone}
-                      className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
-                    >
-                      <Phone className="size-3" />
-                      {contact.phone}
-                      {copiedPhone ? (
-                        <Check className="size-3 text-primary" />
-                      ) : (
-                        <Copy className="size-3" />
-                      )}
-                    </button>
+                    {contact.phone ? (
+                      <button
+                        onClick={copyPhone}
+                        className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                      >
+                        <Phone className="size-3" />
+                        {contact.phone}
+                        {copiedPhone ? (
+                          <Check className="size-3 text-primary" />
+                        ) : (
+                          <Copy className="size-3" />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Phone className="size-3" />
+                        Telefone não informado
+                      </span>
+                    )}
                     {contact.email && (
                       <span className="flex items-center gap-1">
                         <Mail className="size-3" />
@@ -488,16 +495,17 @@ export function ContactDetailView({
               <TabsContent value="details" className="flex-1 overflow-y-auto px-4 py-3">
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-muted-foreground text-xs">{t('name')}</Label>
+                    <Label className="text-muted-foreground text-xs">{t('name')} *</Label>
                     <Input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
+                      required
                       className="bg-muted border-border text-foreground h-8 text-sm"
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-muted-foreground text-xs">
-                      {t('phone')} <span className="text-red-400">*</span>
+                      {t('phone')} <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
                     </Label>
                     <Input
                       value={editPhone}

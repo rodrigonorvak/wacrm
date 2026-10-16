@@ -44,6 +44,9 @@ export function DealCard({
     if (field === "assignee" && deal.assignee?.full_name) return [deal.assignee.full_name];
     return [];
   });
+  const customDetails = (deal.custom_values ?? [])
+    .filter((item) => item.field?.show_on_card && item.value?.trim())
+    .map((item) => `${item.field?.field_name}: ${item.value}`);
 
   const labels = deal.labels ?? [];
 
@@ -112,6 +115,11 @@ export function DealCard({
       </div>
       {details.map((detail, index) => (
         <p key={`${index}-${detail}`} className="mt-1 truncate text-xs text-muted-foreground">
+          {detail}
+        </p>
+      ))}
+      {customDetails.map((detail) => (
+        <p key={detail} className="mt-1 truncate text-xs text-muted-foreground">
           {detail}
         </p>
       ))}

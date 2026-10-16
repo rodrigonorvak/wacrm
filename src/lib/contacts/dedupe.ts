@@ -76,9 +76,7 @@ export function isUniqueViolation(error: unknown): boolean {
 
 /**
  * De-duplicate parsed CSV rows by normalized phone, keeping the first
- * occurrence of each. Rows with an empty normalized phone are dropped
- * (they can't be a valid contact). Returns the unique rows plus the
- * count removed as in-file duplicates.
+ * occurrence of each. Name-only contacts are valid and remain distinct.
  */
 export function dedupeByPhone<T extends { phone: string }>(
   rows: T[],
@@ -90,7 +88,7 @@ export function dedupeByPhone<T extends { phone: string }>(
   for (const row of rows) {
     const key = normalizeKey(row.phone);
     if (!key) {
-      duplicates++;
+      unique.push(row);
       continue;
     }
     if (seen.has(key)) {

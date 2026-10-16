@@ -10,6 +10,10 @@ import {
 } from '@/lib/contacts/dedupe';
 import {
   parseContactCsv,
+  parseContactCsvDocument,
+  suggestContactCsvMapping,
+  type ContactCsvField,
+  type ContactCsvMapping,
   type ParsedContactRow,
 } from '@/lib/contacts/parse-contact-csv';
 import {
@@ -41,6 +45,7 @@ import { useTranslations } from 'next-intl';
 
 const DEFAULT_TAG_COLOR = '#3b82f6';
 const PREVIEW_LIMIT = 5;
+const CSV_MAPPING_FIELDS: ContactCsvField[] = ['name', 'phone', 'email', 'company', 'tags'];
 
 function truncateFilename(name: string, max = 48): string {
   if (name.length <= max) return name;
@@ -133,6 +138,10 @@ export function ImportModal({
 
   const [file, setFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedContactRow[]>([]);
+  const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [csvRecordCount, setCsvRecordCount] = useState(0);
+  const [csvText, setCsvText] = useState('');
+  const [columnMapping, setColumnMapping] = useState<ContactCsvMapping>({});
   const [hasTagsColumn, setHasTagsColumn] = useState(false);
   const [hasCompanyColumn, setHasCompanyColumn] = useState(false);
   const [tagColorByKey, setTagColorByKey] = useState<Map<string, string>>(
@@ -149,6 +158,10 @@ export function ImportModal({
   function reset() {
     setFile(null);
     setParsedRows([]);
+    setCsvHeaders([]);
+    setCsvRecordCount(0);
+    setCsvText('');
+    setColumnMapping({});
     setHasTagsColumn(false);
     setHasCompanyColumn(false);
     setTagColorByKey(new Map());
@@ -169,14 +182,23 @@ export function ImportModal({
     setResult(null);
 
     const text = await selected.text();
+    const document = parseContactCsvDocument(text);
+    const mapping = suggestContactCsvMapping(document.headers);
+    setCsvText(text);
+    setCsvHeaders(document.headers);
+    setCsvRecordCount(document.records.length);
+    setColumnMapping(mapping);
+    await applyMapping(text, mapping);
+  }
+
+  async function applyMapping(text: string, mapping: ContactCsvMapping) {
     const {
       rows,
       hasTagsColumn: csvHasTags,
       hasCompanyColumn: csvHasCompany,
-    } = parseContactCsv(text);
+    } = parseContactCsv(text, mapping);
 
     if (rows.length === 0) {
-      toast.error(t('toastNoValidRows'));
       setParsedRows([]);
       setHasTagsColumn(false);
       setHasCompanyColumn(false);
@@ -203,6 +225,14 @@ export function ImportModal({
     } else {
       setTagColorByKey(new Map());
     }
+  }
+
+  async function handleColumnMappingChange(field: ContactCsvField, value: string) {
+    const next = { ...columnMapping };
+    if (value === '') delete next[field];
+    else next[field] = Number(value);
+    setColumnMapping(next);
+    await applyMapping(csvText, next);
   }
 
   async function handleImport() {
@@ -480,6 +510,40 @@ export function ImportModal({
                     </span>
                   )}
                 </div>
+                {file && csvHeaders.length > 0 && (
+                  <div className="grid gap-3 rounded-lg border border-border/80 bg-background/50 p-3 sm:grid-cols-2">
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Confira o mapeamento. Nome é obrigatório; telefone e e-mail são opcionais.
+                    </p>
+                    {CSV_MAPPING_FIELDS.map((field) => (
+                      <label key={field} className="grid gap-1 text-xs font-medium text-muted-foreground">
+                        {t(`columns.${field}`)}{field === 'name' ? ' *' : ''}
+                        <select
+                          value={columnMapping[field] === undefined ? '' : String(columnMapping[field])}
+                          onChange={(event) => void handleColumnMappingChange(field, event.target.value)}
+                          className="h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                        >
+                          <option value="">Não mapear</option>
+                          {csvHeaders.map((header, index) => (
+                            <option key={`${index}-${header}`} value={index}>
+                              {header || `Coluna ${index + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
+                    {parsedRows.length === 0 && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 sm:col-span-2">
+                        Mapeie a coluna de nome e confira se há nomes preenchidos nas linhas.
+                      </p>
+                    )}
+                    {parsedRows.length > 0 && parsedRows.length < csvRecordCount && (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 sm:col-span-2">
+                        {csvRecordCount - parsedRows.length} linha(s) ignorada(s) por não ter nome preenchido.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="overflow-hidden rounded-xl border border-border ring-1 ring-border/50">
