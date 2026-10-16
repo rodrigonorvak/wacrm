@@ -137,7 +137,7 @@
       "networkError": "Não foi possível conectar ao servidor"
     },
     "overview": {
-      "appearance": "Cor de destaque: {theme}",
+      "appearance": "Tema: {theme}",
       "currencyBRL": "real brasileiro",
       "notSetup": "Ainda não configurado",
       "connected": "Conectado",
@@ -156,7 +156,7 @@
     },
     "appearance": {
       "title": "Aparência",
-      "description": "Escolha a cor de destaque do aplicativo. A preferência fica salva neste dispositivo e é aplicada imediatamente.",
+      "description": "Instale e personalize temas visuais. A preferência fica salva neste dispositivo e é aplicada imediatamente.",
       "accentColor": "Cor de destaque",
       "active": "Ativa",
       "useTheme": "Usar tema {name}",

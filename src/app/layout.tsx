@@ -6,6 +6,7 @@ import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { ThemedToaster } from "@/components/themed-toaster";
+import { GLASS_STORAGE_KEY } from "@/lib/glass-theme";
 import {
   DEFAULT_THEME,
   STORAGE_KEY,
@@ -59,6 +60,12 @@ const THEME_BOOT_SCRIPT = `
 
     d.dataset.mode = "light";
     localStorage.removeItem("wacrm.mode");
+
+    var glass = JSON.parse(localStorage.getItem(${JSON.stringify(GLASS_STORAGE_KEY)}) || "null");
+    if (glass && glass.installed === true && glass.active === true && typeof glass.wallpaperCss === "string") {
+      d.dataset.visual = "glass";
+      d.style.setProperty("--glass-wallpaper", glass.wallpaperCss);
+    }
   } catch (_e) {
     d.dataset.theme = ${JSON.stringify(DEFAULT_THEME)};
     d.dataset.mode = "light";

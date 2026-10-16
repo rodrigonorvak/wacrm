@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
 import { useAuth } from '@/hooks/use-auth';
-import { useTheme } from '@/hooks/use-theme';
-import { THEMES } from '@/lib/themes';
+import { useGlassTheme } from '@/hooks/use-glass-theme';
 import { SettingsRail } from '@/components/settings/settings-rail';
 import { SettingsOverview } from '@/components/settings/settings-overview';
 import { ProfileForm } from '@/components/settings/profile-form';
@@ -45,8 +44,8 @@ export default function SettingsPage() {
 function SettingsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { state: glass } = useGlassTheme();
   const { defaultCurrency } = useAuth();
-  const { theme } = useTheme();
   const t = useTranslations('Settings');
 
   // The URL (`?tab=`) is the single source of truth for the active
@@ -75,10 +74,10 @@ function SettingsPageInner() {
   // already in context.
   const hints: Partial<Record<SettingsSection, ReactNode>> = useMemo(
     () => ({
-      appearance: THEMES.find((item) => item.id === theme)?.name ?? theme,
+      appearance: glass.active ? 'Vidro Fosco' : 'Padrão',
       deals: defaultCurrency,
     }),
-    [theme, defaultCurrency],
+    [glass.active, defaultCurrency],
   );
 
   const panel: Record<SettingsSection, ReactNode> = {

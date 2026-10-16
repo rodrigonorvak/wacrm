@@ -6,8 +6,7 @@ import { useTranslations } from 'next-intl';
 
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
-import { useTheme } from '@/hooks/use-theme';
-import { THEMES } from '@/lib/themes';
+import { useGlassTheme } from '@/hooks/use-glass-theme';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +40,6 @@ export function SettingsOverview({
 }) {
   const { user, profile, accountId, accountRole, defaultCurrency, canManageMembers } =
     useAuth();
-  const { theme } = useTheme();
   const t = useTranslations('Settings.overview');
   const tRoles = useTranslations('Settings.roles');
   const tSections = useTranslations('Settings.sections');
@@ -171,7 +169,8 @@ export function SettingsOverview({
   const RoleIcon = roleMeta?.icon;
 
   const currencyLabel = t('currencyBRL');
-  const themeName = THEMES.find((t) => t.id === theme)?.name ?? theme;
+  const { state: glass } = useGlassTheme();
+  const themeName = glass.active ? 'Vidro Fosco' : 'Padrão';
 
   // Per-tile loading + subtitle. `null` counts render as a graceful
   // fallback so a single failed query never blanks a tile.

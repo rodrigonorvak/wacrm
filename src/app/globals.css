@@ -281,6 +281,105 @@ html[data-theme="rose"] {
   --sidebar-ring: #e10c8c;
 }
 
+/* ============================================================
+ * VISUAL THEME — "Vidro Fosco com Wallpaper" (installable).
+ * Active only while <html data-visual="glass"> is set, which the
+ * theme hook / boot script do exclusively for an installed theme.
+ * The sidebar uses its own `.crm-sidebar` styles and is not
+ * affected by any rule below.
+ * ============================================================ */
+
+html[data-visual="glass"] {
+  --background: transparent;
+  --foreground: #ffffff;
+  --card: rgb(255 255 255 / 13%);
+  --card-2: rgb(255 255 255 / 9%);
+  --card-foreground: #ffffff;
+  --popover: rgb(30 27 52 / 84%);
+  --popover-foreground: #ffffff;
+  --secondary: rgb(255 255 255 / 14%);
+  --secondary-foreground: #ffffff;
+  --muted: rgb(255 255 255 / 10%);
+  --muted-foreground: rgb(255 255 255 / 72%);
+  --accent: rgb(255 255 255 / 16%);
+  --accent-foreground: #ffffff;
+  --border: rgb(255 255 255 / 24%);
+  --input: rgb(255 255 255 / 26%);
+  color-scheme: dark;
+}
+
+html[data-visual="glass"] body {
+  background-color: transparent;
+}
+
+/* Fixed layer instead of background-attachment so it also behaves on iOS. */
+html[data-visual="glass"] body::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(rgb(8 8 24 / 28%), rgb(8 8 24 / 28%)),
+    var(--glass-wallpaper);
+  background-position: center;
+  background-size: cover;
+  content: "";
+  pointer-events: none;
+}
+
+html[data-visual="glass"] :is(
+  .bg-card,
+  .bg-card-2,
+  [data-slot="card"],
+  [data-slot="popover-content"],
+  [data-slot="dialog-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="select-content"],
+  [data-slot="sheet-content"]
+) {
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.2);
+}
+
+html[data-visual="glass"] .pipeline-lead-canvas {
+  background: transparent;
+}
+
+html[data-visual="glass"] .settings-workspace {
+  --foreground: #ffffff;
+  --muted-foreground: rgb(255 255 255 / 72%);
+  --border: rgb(255 255 255 / 24%);
+  --input: rgb(255 255 255 / 26%);
+}
+
+html[data-visual="glass"] .settings-workspace > div > aside {
+  border-color: rgb(255 255 255 / 20%);
+  background: rgb(255 255 255 / 8%);
+  box-shadow: none;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+html[data-visual="glass"] .settings-workspace > div > aside nav > div > div {
+  color: rgb(255 255 255 / 58%);
+}
+
+html[data-visual="glass"] .settings-workspace > div > aside nav button:not([aria-current]) {
+  color: rgb(255 255 255 / 85%);
+}
+
+html[data-visual="glass"] .settings-workspace > div > aside nav button:not([aria-current]) svg {
+  color: rgb(255 255 255 / 65%);
+}
+
+html[data-visual="glass"] .settings-workspace > div > aside nav button:not([aria-current]):hover {
+  background: rgb(255 255 255 / 14%);
+  color: #ffffff;
+}
+
+/* The sidebar tab can't blend into a translucent panel, so it stays white. */
+html[data-visual="glass"] .crm-sidebar-item-gray {
+  --tab-bg: #ffffff;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
