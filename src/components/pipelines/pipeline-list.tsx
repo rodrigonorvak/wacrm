@@ -68,6 +68,20 @@ export function PipelineList({
                   className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_120px] sm:items-center sm:gap-3"
                 >
                   <span className="min-w-0">
+                    {(deal.labels?.length ?? 0) > 0 && (
+                      <span className="mb-1 flex flex-wrap gap-1">
+                        {deal.labels!.map((label) => (
+                          <span
+                            key={label.id}
+                            title={label.name || undefined}
+                            className={`inline-flex h-4 max-w-full items-center rounded-full px-2 text-[10px] font-semibold leading-none text-white ${label.name ? "" : "w-8"}`}
+                            style={{ backgroundColor: label.color }}
+                          >
+                            <span className="truncate">{label.name}</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
                     <span className="block truncate text-sm font-semibold text-foreground">
                       {deal.title}
                     </span>

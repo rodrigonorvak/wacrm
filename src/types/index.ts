@@ -478,6 +478,15 @@ export interface Deal {
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;
+  labels?: DealLabel[];
+}
+
+export interface DealLabel {
+  id: string;
+  account_id: string;
+  name: string;
+  color: string;
+  created_at?: string;
 }
 
 export type BroadcastStatus = 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';

@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCan } from "@/hooks/use-can";
-import type { ContactTag, Deal, MessageTemplate, PipelineStage } from "@/types";
+import type { ContactTag, Deal, DealLabel, MessageTemplate, PipelineStage } from "@/types";
+import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { LeadQuickActions } from "@/components/pipelines/lead-quick-actions";
 import { Button } from "@/components/ui/button";
@@ -159,6 +160,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [serviceStepLabel, setServiceStepLabel] = useState("");
   const [savingServiceStep, setSavingServiceStep] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
   const [deletingLead, setDeletingLead] = useState(false);
   const dealRequestKey = accountId ? `${accountId}:${dealId}:${dealReloadToken}` : "";
   const loading = !dealRequestKey || loadedDealKey !== dealRequestKey;
@@ -170,24 +172,41 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   useEffect(() => {
     if (!dealRequestKey) return;
     let cancelled = false;
-    void supabase
-      .from("deals")
-      .select("*, contact:contacts(*), stage:pipeline_stages(*), assignee:profiles!deals_assigned_to_fkey(*)")
-      .eq("id", dealId)
-      .eq("account_id", accountId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error || !data) {
-          if (error) console.error("Failed to load pipeline lead:", error.message);
-          setLoadError(true);
-          setDeal(null);
-        } else {
-          setLoadError(false);
-          setDeal(data as unknown as Deal);
-        }
-        setLoadedDealKey(dealRequestKey);
-      });
+    void (async () => {
+      const base = "*, contact:contacts(*), stage:pipeline_stages(*), assignee:profiles!deals_assigned_to_fkey(*)";
+      let result = await supabase
+        .from("deals")
+        .select(`${base}, deal_label_links(label:deal_labels(*))`)
+        .eq("id", dealId)
+        .eq("account_id", accountId)
+        .maybeSingle();
+      // Labels tables may not exist yet (migration 059 pending).
+      if (result.error) {
+        result = await supabase
+          .from("deals")
+          .select(base)
+          .eq("id", dealId)
+          .eq("account_id", accountId)
+          .maybeSingle();
+      }
+      if (cancelled) return;
+      const { data, error } = result;
+      if (error || !data) {
+        if (error) console.error("Failed to load pipeline lead:", error.message);
+        setLoadError(true);
+        setDeal(null);
+      } else {
+        const { deal_label_links: links, ...rest } = data as unknown as Record<string, unknown> & {
+          deal_label_links?: { label: DealLabel | null }[];
+        };
+        setLoadError(false);
+        setDeal({
+          ...rest,
+          labels: (links ?? []).flatMap((link) => (link.label ? [link.label] : [])),
+        } as unknown as Deal);
+      }
+      setLoadedDealKey(dealRequestKey);
+    })();
     return () => {
       cancelled = true;
     };
@@ -642,6 +661,19 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
               ID: {deal.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
+          {(deal.labels?.length ?? 0) > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {deal.labels!.map((label) => (
+                <span
+                  key={label.id}
+                  className="inline-flex h-5 items-center rounded-full px-2.5 text-xs font-semibold text-white"
+                  style={{ backgroundColor: label.color }}
+                >
+                  {label.name || "\u00A0\u00A0\u00A0"}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="size-4" /> Criado em {formatDate(deal.created_at)}
           </p>
@@ -1062,7 +1094,18 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           setContactFormOpen(true);
         }}
         onServiceSteps={() => void openServiceSteps()}
+        onEditLabels={() => setLabelsDialogOpen(true)}
         onDeleteLead={() => setDeleteDialogOpen(true)}
+      />
+
+      <DealLabelsDialog
+        open={labelsDialogOpen}
+        onOpenChange={setLabelsDialogOpen}
+        dealId={deal.id}
+        accountId={accountId}
+        selected={deal.labels ?? []}
+        canEdit={canManageLead}
+        onChange={(_, labels) => setDeal((current) => (current ? { ...current, labels } : current))}
       />
     </div>
     </div>

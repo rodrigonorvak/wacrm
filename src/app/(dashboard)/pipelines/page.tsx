@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Pipeline, PipelineStage, Deal } from "@/types";
+import type { Pipeline, PipelineStage, Deal, DealLabel } from "@/types";
+import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
 import { PipelineBoard } from "@/components/pipelines/pipeline-board";
 import { PipelineList } from "@/components/pipelines/pipeline-list";
 import { PipelineSettings } from "@/components/pipelines/pipeline-settings";
@@ -135,6 +136,7 @@ export default function PipelinesPage() {
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>("");
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [labelsDealId, setLabelsDealId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>("max");
   const [customStartDate, setCustomStartDate] = useState("");
@@ -217,6 +219,25 @@ export default function PipelinesPage() {
 
   const loadDeals = useCallback(
     async (pipelineId: string) => {
+      const withLabels = await supabase
+        .from("deals")
+        .select(
+          "*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*), deal_label_links(label:deal_labels(*))",
+        )
+        .eq("pipeline_id", pipelineId)
+        .order("created_at", { ascending: false });
+      if (!withLabels.error) {
+        return (withLabels.data ?? []).map((row) => {
+          const { deal_label_links: links, ...rest } = row as Record<string, unknown> & {
+            deal_label_links?: { label: DealLabel | null }[];
+          };
+          return {
+            ...rest,
+            labels: (links ?? []).flatMap((link) => (link.label ? [link.label] : [])),
+          } as unknown as Deal;
+        });
+      }
+      // Labels tables may not exist yet (migration 059 pending).
       const { data } = await supabase
         .from("deals")
         .select("*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*)")
@@ -805,6 +826,7 @@ export default function PipelinesPage() {
               onDealMoved={handleDealMoved}
               onAddDeal={handleAddDeal}
               onEditDeal={handleEditDeal}
+              onEditLabels={canCreateDeals ? (deal) => setLabelsDealId(deal.id) : undefined}
             />
           ) : (
             <PipelineList
@@ -816,6 +838,20 @@ export default function PipelinesPage() {
           )}
         </>
       )}
+
+      <DealLabelsDialog
+        open={labelsDealId !== null}
+        onOpenChange={(open) => {
+          if (!open) setLabelsDealId(null);
+        }}
+        dealId={labelsDealId ?? ""}
+        accountId={accountId}
+        selected={deals.find((deal) => deal.id === labelsDealId)?.labels ?? []}
+        canEdit={canCreateDeals}
+        onChange={(dealId, labels) =>
+          setDeals((prev) => prev.map((deal) => (deal.id === dealId ? { ...deal, labels } : deal)))
+        }
+      />
 
       <Dialog
         open={paidMove !== null}

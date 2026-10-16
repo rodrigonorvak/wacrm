@@ -11,6 +11,7 @@ import {
   Plus,
   Smartphone,
   SquarePen,
+  Tag,
   CircleCheck,
   Trash2,
   X,
@@ -25,6 +26,7 @@ interface LeadQuickActionsProps {
   onChangeStage: () => void;
   onEditInformation: () => void;
   onServiceSteps: () => void;
+  onEditLabels: () => void;
   onDeleteLead: () => void;
 }
 
@@ -51,6 +53,7 @@ export function LeadQuickActions({
   onChangeStage,
   onEditInformation,
   onServiceSteps,
+  onEditLabels,
   onDeleteLead,
 }: LeadQuickActionsProps) {
   const [expanded, setExpanded] = useState(false);
@@ -67,6 +70,7 @@ export function LeadQuickActions({
     { label: "Alterar Estágio", icon: CircleCheck, color: "text-emerald-600", onClick: onChangeStage, disabled: !canManageLead },
     { label: "Editar Informações", icon: SquarePen, color: "text-violet-600", onClick: onEditInformation, disabled: !canManageLead },
     { label: "Etapas de Atendimento", icon: ClipboardList, color: "text-indigo-600", onClick: onServiceSteps },
+    { label: "Editar Etiquetas", icon: Tag, color: "text-pink-600", onClick: onEditLabels, disabled: !canManageLead },
     { label: "Excluir Lead", icon: Trash2, color: "text-red-600", onClick: onDeleteLead, disabled: !canManageLead },
     {
       label: "Ligar - Telefone Principal",

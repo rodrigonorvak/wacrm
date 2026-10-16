@@ -44,6 +44,7 @@ interface PipelineBoardProps {
   onDealMoved: (dealId: string, newStageId: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
+  onEditLabels?: (deal: Deal) => void;
 }
 
 const INITIAL_VISIBLE_DEALS = 6;
@@ -59,6 +60,7 @@ export function PipelineBoard({
   onDealMoved,
   onAddDeal,
   onEditDeal,
+  onEditLabels,
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [visibleStageCount, setVisibleStageCount] = useState(1);
@@ -138,6 +140,7 @@ export function PipelineBoard({
             onStageColorChange={onStageColorChange}
             onAddDeal={onAddDeal}
             onEditDeal={onEditDeal}
+            onEditLabels={onEditLabels}
           />
         ))}
       </div>
@@ -206,6 +209,7 @@ function StageColumn({
   onStageColorChange,
   onAddDeal,
   onEditDeal,
+  onEditLabels,
 }: {
   stage: PipelineStage;
   isVisible: boolean;
@@ -215,6 +219,7 @@ function StageColumn({
   onStageColorChange: (stageId: string, color: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
+  onEditLabels?: (deal: Deal) => void;
 }) {
   const t = useTranslations("Pipelines.board");
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
@@ -309,6 +314,7 @@ function StageColumn({
               entranceDelay={`${Math.min(dealIndex * 55, 275)}ms`}
               visibleCardFields={visibleCardFields}
               onEdit={onEditDeal}
+              onEditLabels={onEditLabels}
             />
           ))
         )}
@@ -355,11 +361,13 @@ function DraggableDealCard({
   entranceDelay,
   visibleCardFields,
   onEdit,
+  onEditLabels,
 }: {
   deal: Deal;
   entranceDelay: string;
   visibleCardFields: PipelineCardField[];
   onEdit: (deal: Deal) => void;
+  onEditLabels?: (deal: Deal) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: deal.id,
@@ -377,6 +385,7 @@ function DraggableDealCard({
         entranceDelay={entranceDelay}
         visibleFields={visibleCardFields}
         onEdit={onEdit}
+        onEditLabels={onEditLabels}
       />
     </div>
   );
