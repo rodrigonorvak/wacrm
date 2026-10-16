@@ -675,14 +675,15 @@ export default function PipelinesPage() {
                   setCustomEndDate(nextEnd);
                 }}
               />
-              <label className="inline-flex h-9 min-w-0 items-center gap-2 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground">
-                <Filter className="size-4 shrink-0 text-muted-foreground" />
+              <label className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-sm text-foreground sm:w-auto sm:justify-start sm:gap-2 sm:px-2.5">
+                <Filter className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="sr-only">Estágio</span>
                 <select
                   aria-label="Filtrar por estágio"
+                  title={stageFilter === "all" ? "Todos os estágios" : stages.find((stage) => stage.id === stageFilter)?.name}
                   value={stageFilter}
                   onChange={(event) => setStageFilter(event.target.value)}
-                  className="min-w-0 max-w-40 bg-transparent outline-none"
+                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 sm:static sm:h-auto sm:w-auto sm:max-w-40 sm:appearance-auto sm:opacity-100 sm:bg-transparent sm:outline-none"
                 >
                   <option value="all">Todos os estágios</option>
                   {stages.slice().sort((a, b) => a.position - b.position).map((stage) => (
@@ -737,7 +738,7 @@ export default function PipelinesPage() {
               setNewPipelineType("standard");
               setNewPipelineOpen(true);
             }}
-            className="border-border bg-card text-foreground hover:bg-muted"
+            className="hidden border-border bg-card text-foreground hover:bg-muted sm:inline-flex"
           >
             <Plus className="mr-1 h-4 w-4" />
             {t("addPipeline")}
@@ -750,7 +751,7 @@ export default function PipelinesPage() {
               setNewPipelineType("integrated");
               setNewPipelineOpen(true);
             }}
-            className="border-primary/40 bg-card text-primary hover:bg-primary/10"
+            className="hidden border-primary/40 bg-card text-primary hover:bg-primary/10 sm:inline-flex"
           >
             <Plus className="mr-1 h-4 w-4" />
             Pipeline integrada
@@ -760,7 +761,7 @@ export default function PipelinesPage() {
             gateReason="create deals"
             disabled={!selectedPipelineId || stages.length === 0}
             onClick={() => handleAddDeal()}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
+            className="hidden bg-primary text-primary-foreground hover:bg-primary/90 sm:inline-flex"
           >
             <Plus className="mr-1 h-4 w-4" />
             {t("addDeal")}
@@ -1110,16 +1111,21 @@ function PipelineDateFilter({
     <div>
       <Popover open={open} onOpenChange={openPicker}>
         <PopoverTrigger
-          className="inline-flex h-9 min-w-44 items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground shadow-sm hover:bg-muted"
+          aria-label={`Período: ${draftFilter === "custom" && draftStart
+            ? `${dateLabel(draftStart)}${draftEnd ? ` - ${dateLabel(draftEnd)}` : ""}`
+            : DATE_FILTER_LABELS[draftFilter]}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-sm text-foreground shadow-sm hover:bg-muted sm:w-auto sm:min-w-44 sm:justify-between sm:gap-2 sm:px-3"
         >
           <span className="flex items-center gap-2">
             <CalendarDays className="size-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Período:</span>
-            {draftFilter === "custom" && draftStart
-              ? `${dateLabel(draftStart)}${draftEnd ? ` - ${dateLabel(draftEnd)}` : ""}`
-              : DATE_FILTER_LABELS[draftFilter]}
+            <span className="hidden sm:inline">
+              <span className="text-muted-foreground">Período:</span>{" "}
+              {draftFilter === "custom" && draftStart
+                ? `${dateLabel(draftStart)}${draftEnd ? ` - ${dateLabel(draftEnd)}` : ""}`
+                : DATE_FILTER_LABELS[draftFilter]}
+            </span>
           </span>
-          <ChevronDown className="size-4 text-muted-foreground" />
+          <ChevronDown className="hidden size-4 text-muted-foreground sm:block" />
         </PopoverTrigger>
         <PopoverContent align="start" className="w-[min(94vw,680px)] overflow-hidden border-border bg-popover p-0 text-popover-foreground">
           <div className="flex max-h-[min(80vh,560px)] flex-col sm:flex-row">
