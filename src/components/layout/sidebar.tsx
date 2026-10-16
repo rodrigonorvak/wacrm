@@ -245,7 +245,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                       collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
                       isActive
-                        ? "crm-sidebar-item-active"
+                        ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
                         : "text-white/70 hover:bg-white/10 hover:text-white",
                     )}
                   >
@@ -295,7 +295,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                       "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                       collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
                       isActive
-                        ? "crm-sidebar-item-active"
+                        ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
                         : "text-white/70 hover:bg-white/10 hover:text-white",
                     )}
                   >
