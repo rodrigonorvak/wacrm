@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
+  MoreHorizontal,
   Radio,
   Settings,
   Shield,
@@ -106,6 +107,15 @@ const bottomNavItems = [
   { href: "/settings", labelKey: "settings", icon: Settings },
 ];
 
+const mobileNavItems = navItems.filter((item) =>
+  ["/dashboard", "/inbox", "/notifications", "/pipelines"].includes(item.href),
+);
+
+// Everything not in the bottom bar stays reachable from the "more" menu.
+const moreNavItems = navItems.filter(
+  (item) => !mobileNavItems.includes(item),
+);
+
 interface SidebarProps {
   /** Controlled on mobile by the Header's hamburger button. Ignored on lg+. */
   open?: boolean;
@@ -121,6 +131,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   const [collapsed, setCollapsed] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreActive = [...bottomNavItems, ...moreNavItems].some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
   // Only surface the account-name strip when it actually carries
   // information. A solo user's personal account is named after them
   // (the 017 signup trigger seeds it from `full_name`), so showing it
@@ -137,6 +151,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   // Close the drawer when route changes — users opened it to navigate,
   // so once they pick a destination the drawer should get out of the way.
   useEffect(() => {
+    setMoreOpen(false);
     onClose?.();
     // Only pathname drives this — onClose identity doesn't need to re-run it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +189,72 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             : "pointer-events-none opacity-0",
         )}
       />
+
+      {moreOpen && (
+        <button
+          type="button"
+          aria-label={t("closeMenu")}
+          onClick={() => setMoreOpen(false)}
+          className="fixed inset-0 z-40 lg:hidden"
+        />
+      )}
+      <nav
+        aria-label="Primary mobile"
+        className="crm-sidebar fixed inset-x-0 bottom-0 z-50 flex h-16 items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] text-white shadow-[0_-4px_20px_rgb(0_0_0_/_20%)] lg:hidden"
+      >
+        {mobileNavItems.map((item) => {
+          const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const badge =
+            item.href === "/notifications" && unreadNotifications > 0;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={t(item.labelKey as string)}
+              className={cn(
+                "relative flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
+                active
+                  ? "bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
+                  : "text-white/75 active:bg-white/10",
+              )}
+            >
+              <item.icon className="h-5 w-5" />
+              {badge && (
+                <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-white ring-2 ring-[#e10c8c]" />
+              )}
+            </Link>
+          );
+        })}
+        <div className="relative">
+          <button
+            type="button"
+            aria-label={t("settings")}
+            onClick={() => setMoreOpen((value) => !value)}
+            className={cn(
+              "flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
+              moreOpen || moreActive
+                ? "bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
+                : "text-white/75 active:bg-white/10",
+            )}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </button>
+          {moreOpen && (
+            <div className="absolute bottom-14 right-0 w-52 overflow-hidden rounded-2xl bg-white py-1.5 text-sm text-gray-800 shadow-[0_8px_30px_rgb(0_0_0_/_25%)]">
+              {[...bottomNavItems, ...moreNavItems].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 px-4 py-2.5 font-medium hover:bg-gray-100"
+                >
+                  <item.icon className="h-4 w-4 text-[#e10c8c]" />
+                  {t(item.labelKey as string)}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </nav>
 
       <aside
         className={cn(
