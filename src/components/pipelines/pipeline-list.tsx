@@ -60,7 +60,7 @@ export function PipelineList({
                   year: "numeric",
                 });
             const details = getDetails(deal);
-            const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale);
+            const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale, deal.scheduled_time);
 
             return (
               <li

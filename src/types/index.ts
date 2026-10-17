@@ -474,6 +474,9 @@ export interface Deal {
   expected_close_date?: string;
   /** Single-day appointment (YYYY-MM-DD). */
   scheduled_date?: string | null;
+  /** Optional time of the appointment (HH:MM or HH:MM:SS). */
+  scheduled_time?: string | null;
+  last_note?: string | null;
   status?: DealStatus;
   created_at: string;
   updated_at?: string;

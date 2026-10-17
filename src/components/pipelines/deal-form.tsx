@@ -34,6 +34,7 @@ import {
   Plus,
   MessageSquare,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
@@ -72,6 +73,7 @@ export function DealForm({
   const supabase = createClient();
   const { accountId } = useAuth();
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [contactId, setContactId] = useState("");
@@ -262,7 +264,9 @@ export function DealForm({
   }, [open, contactId, supabase]);
 
   async function handleSave() {
-    if (!title.trim() || !stageId || (contactMode === "existing" && !contactId) ||
+    const effectiveTitle = title.trim() ||
+      (contactMode === "new" && !deal ? newContactName.trim() : contactSearch.trim());
+    if (!effectiveTitle || !stageId || (contactMode === "existing" && !contactId) ||
       (contactMode === "new" && !newContactName.trim())) {
       toast.error(t("toastRequired"));
       return;
@@ -277,7 +281,7 @@ export function DealForm({
     let customSaveFailed = false;
 
     const payload = {
-      title: title.trim(),
+      title: effectiveTitle,
       value: parseFloat(value) || 0,
       currency: "BRL",
       contact_id: contactId,
@@ -393,7 +397,7 @@ export function DealForm({
 
     setSaving(false);
     if (customSaveFailed) {
-      toast.warning("O negócio foi salvo, mas não foi possível salvar as informações extras.");
+      toast.warning("O lead foi salvo, mas não foi possível salvar as informações extras.");
     } else {
       toast.success(deal ? t("toastUpdated") : t("toastCreated"));
     }
@@ -487,6 +491,9 @@ export function DealForm({
     onSaved();
   }
 
+  const showAdvanced =
+    advancedOpen || !!deal || isPaidStageName(stages.find((stage) => stage.id === stageId)?.name);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -501,16 +508,6 @@ export function DealForm({
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            <div className="grid gap-2">
-              <Label className="text-muted-foreground">{t("title")}</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={t("titlePlaceholder")}
-                className="border-border bg-muted text-foreground"
-              />
-            </div>
-
             <div className="grid gap-2">
               <div className="flex items-center justify-between gap-3">
                 <Label className="text-muted-foreground">{t("contact")}</Label>
@@ -540,10 +537,7 @@ export function DealForm({
                     <Input
                       id="deal-contact-name"
                       value={newContactName}
-                      onChange={(event) => {
-                        setNewContactName(event.target.value);
-                        if (!title.trim()) setTitle(event.target.value);
-                      }}
+                      onChange={(event) => setNewContactName(event.target.value)}
                       placeholder="Nome da pessoa"
                       required
                     />
@@ -559,16 +553,6 @@ export function DealForm({
                     <p className="text-xs text-muted-foreground">
                       Este número será salvo no contato; não significa que exista uma conversa do WhatsApp.
                     </p>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="deal-contact-email">E-mail <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
-                    <Input
-                      id="deal-contact-email"
-                      type="email"
-                      value={newContactEmail}
-                      onChange={(event) => setNewContactEmail(event.target.value)}
-                      placeholder="email@exemplo.com"
-                    />
                   </div>
                 </div>
               ) : (
@@ -627,6 +611,44 @@ export function DealForm({
                 </>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((current) => !current)}
+              className="flex w-full items-center justify-between rounded-lg border border-border px-3 py-2 text-left text-sm font-medium text-foreground hover:bg-muted/50"
+              aria-expanded={showAdvanced}
+            >
+              <span>
+                {t("advanced")}
+                <span className="block text-xs font-normal text-muted-foreground">{t("advancedHint")}</span>
+              </span>
+              <ChevronDown className={`size-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+            </button>
+
+            {showAdvanced && (
+            <div className="space-y-4">
+            <div className="grid gap-2">
+              <Label className="text-muted-foreground">{t("title")}</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={t("titlePlaceholder")}
+                className="border-border bg-muted text-foreground"
+              />
+            </div>
+
+            {contactMode === "new" && !deal && (
+              <div className="grid gap-2">
+                <Label htmlFor="deal-contact-email">E-mail <span className="text-xs font-normal text-muted-foreground">(opcional)</span></Label>
+                <Input
+                  id="deal-contact-email"
+                  type="email"
+                  value={newContactEmail}
+                  onChange={(event) => setNewContactEmail(event.target.value)}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+            )}
 
             <div className="grid gap-2">
                 <Label className="text-muted-foreground">
@@ -767,6 +789,8 @@ export function DealForm({
                 </Button>
               </div>
             </fieldset>
+            </div>
+            )}
 
             {deal && (
               <fieldset className="grid gap-3 rounded-lg border border-border p-3">

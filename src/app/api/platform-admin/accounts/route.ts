@@ -16,8 +16,12 @@ interface ProfileRow {
   full_name: string | null
   email: string | null
   account_role: string
-  access_status: 'pending' | 'approved' | 'denied' | 'suspended' | 'deleted'
+  access_status?: 'pending' | 'approved' | 'denied' | 'suspended' | 'deleted'
   created_at: string
+}
+
+function isMissingColumn(error: { message: string }, column: string): boolean {
+  return error.message.toLowerCase().includes(column.toLowerCase())
 }
 
 export async function GET() {
@@ -28,33 +32,60 @@ export async function GET() {
     }
 
     const admin = supabaseAdmin()
-    const { data: accounts, error: accountsError } = await admin
+    let accountsResult = await admin
       .from('accounts')
       .select('id, name, owner_user_id, created_at')
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(100)
 
-    if (accountsError) {
-      console.error('[platform-admin/accounts] account list failed:', accountsError.message)
+    const schemaWarnings: string[] = []
+    if (accountsResult.error && isMissingColumn(accountsResult.error, 'deleted_at')) {
+      schemaWarnings.push('account_lifecycle')
+      console.warn('[platform-admin/accounts] accounts.deleted_at is missing; retrying without soft-delete filter')
+      accountsResult = await admin
+        .from('accounts')
+        .select('id, name, owner_user_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100)
+    }
+
+    if (accountsResult.error) {
+      console.error('[platform-admin/accounts] account list failed:', accountsResult.error)
       return NextResponse.json({ error: 'Failed to load accounts' }, { status: 500 })
     }
 
-    const accountRows = (accounts ?? []) as AccountRow[]
+    const accountRows = (accountsResult.data ?? []) as AccountRow[]
     const accountIds = accountRows.map((account) => account.id)
     if (accountIds.length === 0) {
-      return NextResponse.json({ accounts: [], truncated: false })
+      return NextResponse.json({ accounts: [], truncated: false, schema_warnings: schemaWarnings })
     }
 
-    const { data: profiles, error: profilesError } = await admin
+    const profilesResult = await admin
       .from('profiles')
       .select('user_id, account_id, full_name, email, account_role, access_status, created_at')
       .in('account_id', accountIds)
       .order('created_at', { ascending: true })
 
-    if (profilesError) {
-      console.error('[platform-admin/accounts] member summary failed:', profilesError.message)
+    let profiles: ProfileRow[]
+    if (profilesResult.error && isMissingColumn(profilesResult.error, 'access_status')) {
+      schemaWarnings.push('account_creation_approval')
+      console.warn('[platform-admin/accounts] profiles.access_status is missing; retrying without account status')
+      const legacyProfilesResult = await admin
+        .from('profiles')
+        .select('user_id, account_id, full_name, email, account_role, created_at')
+        .in('account_id', accountIds)
+        .order('created_at', { ascending: true })
+      if (legacyProfilesResult.error) {
+        console.error('[platform-admin/accounts] member summary failed:', legacyProfilesResult.error)
+        return NextResponse.json({ error: 'Failed to load account summaries' }, { status: 500 })
+      }
+      profiles = (legacyProfilesResult.data ?? []) as ProfileRow[]
+    } else if (profilesResult.error) {
+      console.error('[platform-admin/accounts] member summary failed:', profilesResult.error)
       return NextResponse.json({ error: 'Failed to load account summaries' }, { status: 500 })
+    } else {
+      profiles = (profilesResult.data ?? []) as ProfileRow[]
     }
 
     const { data: featureRows, error: featuresError } = await admin
@@ -69,7 +100,7 @@ export async function GET() {
     }
 
     const membersByAccount = new Map<string, ProfileRow[]>()
-    for (const profile of (profiles ?? []) as ProfileRow[]) {
+    for (const profile of profiles) {
       const members = membersByAccount.get(profile.account_id) ?? []
       members.push(profile)
       membersByAccount.set(profile.account_id, members)
@@ -99,6 +130,7 @@ export async function GET() {
       }),
       truncated: accountRows.length === 100,
       features_error: Boolean(featuresError),
+      schema_warnings: schemaWarnings,
     })
   } catch (error) {
     return toErrorResponse(error)

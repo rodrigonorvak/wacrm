@@ -269,8 +269,21 @@ export default function PipelinesPage() {
         });
         customValuesByDeal.set(row.deal_id, current);
       }
+      const contactIds = [...new Set(rows.map((row) => row.contact_id).filter(Boolean))];
+      const lastNoteByContact = new Map<string, string>();
+      if (contactIds.length > 0) {
+        const { data: noteRows } = await supabase
+          .from("contact_notes")
+          .select("contact_id, note_text, created_at")
+          .in("contact_id", contactIds)
+          .order("created_at", { ascending: false });
+        for (const note of noteRows ?? []) {
+          if (!lastNoteByContact.has(note.contact_id)) lastNoteByContact.set(note.contact_id, note.note_text);
+        }
+      }
       return rows.map((row) => ({
         ...row,
+        last_note: lastNoteByContact.get(row.contact_id) ?? null,
         labels: labelsByDeal.get(row.id) ?? [],
         custom_values: customValuesByDeal.get(row.id) ?? [],
       })) as Deal[];
@@ -887,10 +900,15 @@ export default function PipelinesPage() {
         }}
         dealId={scheduleDealId ?? ""}
         value={deals.find((deal) => deal.id === scheduleDealId)?.scheduled_date}
+        timeValue={deals.find((deal) => deal.id === scheduleDealId)?.scheduled_time}
         canEdit={canCreateDeals}
-        onChange={(dealId, scheduledDate) =>
+        onChange={(dealId, scheduledDate, scheduledTime) =>
           setDeals((prev) =>
-            prev.map((deal) => (deal.id === dealId ? { ...deal, scheduled_date: scheduledDate } : deal)),
+            prev.map((deal) =>
+              deal.id === dealId
+                ? { ...deal, scheduled_date: scheduledDate, scheduled_time: scheduledTime }
+                : deal,
+            ),
           )
         }
       />

@@ -733,14 +733,14 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           {deal.scheduled_date && (
             <p className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-blue-600 px-2 py-0.5 text-sm font-semibold text-white">
               <CalendarClock className="size-4" /> Agendado para{" "}
-              {formatScheduledDate(deal.scheduled_date, "pt-BR")}
+              {formatScheduledDate(deal.scheduled_date, "pt-BR", deal.scheduled_time)}
             </p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" onClick={() => setDealFormOpen(true)}>
             <Pencil className="size-4" />
-            Editar negócio
+            Editar lead
           </Button>
           <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm">
             {deal.stage?.name || "Sem etapa"}
@@ -1209,9 +1209,12 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         onOpenChange={setScheduleDialogOpen}
         dealId={deal.id}
         value={deal.scheduled_date}
+        timeValue={deal.scheduled_time}
         canEdit={canManageLead}
-        onChange={(_, scheduledDate) =>
-          setDeal((current) => (current ? { ...current, scheduled_date: scheduledDate } : current))
+        onChange={(_, scheduledDate, scheduledTime) =>
+          setDeal((current) =>
+            current ? { ...current, scheduled_date: scheduledDate, scheduled_time: scheduledTime } : current,
+          )
         }
       />
     </div>

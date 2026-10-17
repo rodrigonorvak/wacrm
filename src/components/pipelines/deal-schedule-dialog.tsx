@@ -14,8 +14,9 @@ interface DealScheduleDialogProps {
   onOpenChange: (open: boolean) => void;
   dealId: string;
   value: string | null | undefined;
+  timeValue?: string | null;
   canEdit?: boolean;
-  onChange: (dealId: string, scheduledDate: string | null) => void;
+  onChange: (dealId: string, scheduledDate: string | null, scheduledTime: string | null) => void;
 }
 
 function monthStart(key: string | null | undefined): Date {
@@ -28,6 +29,7 @@ export function DealScheduleDialog({
   onOpenChange,
   dealId,
   value,
+  timeValue,
   canEdit = true,
   onChange,
 }: DealScheduleDialogProps) {
@@ -35,14 +37,16 @@ export function DealScheduleDialog({
   const supabase = useMemo(() => createClient(), []);
   const [month, setMonth] = useState(() => monthStart(value));
   const [selected, setSelected] = useState<string | null>(value ?? null);
+  const [time, setTime] = useState(timeValue?.slice(0, 5) ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelected(value ?? null);
+    setTime(timeValue?.slice(0, 5) ?? "");
     setMonth(monthStart(value));
-  }, [open, value]);
+  }, [open, value, timeValue]);
 
   const todayKey = toDateKey(new Date());
   const monthLabel = month.toLocaleDateString(locale, { month: "long", year: "numeric" });
@@ -70,13 +74,17 @@ export function DealScheduleDialog({
   async function save(next: string | null) {
     if (!canEdit || saving) return;
     setSaving(true);
-    const { error } = await supabase.from("deals").update({ scheduled_date: next }).eq("id", dealId);
+    const nextTime = next ? time || null : null;
+    const { error } = await supabase
+      .from("deals")
+      .update({ scheduled_date: next, scheduled_time: nextTime })
+      .eq("id", dealId);
     setSaving(false);
     if (error) {
       toast.error("Não foi possível salvar a data");
       return;
     }
-    onChange(dealId, next);
+    onChange(dealId, next, nextTime);
     onOpenChange(false);
   }
 
@@ -122,6 +130,26 @@ export function DealScheduleDialog({
               <span key={`blank-${index}`} />
             ),
           )}
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+          <label htmlFor="schedule-time" className="text-sm font-medium">
+            Horário <span className="font-normal text-muted-foreground">(opcional)</span>
+          </label>
+          <div className="flex items-center gap-1">
+            <input
+              id="schedule-time"
+              type="time"
+              value={time}
+              disabled={!canEdit}
+              onChange={(event) => setTime(event.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+            />
+            {time && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setTime("")}>
+                Limpar
+              </Button>
+            )}
+          </div>
         </div>
         <div className="flex items-center justify-between gap-2 pt-1">
           <Button

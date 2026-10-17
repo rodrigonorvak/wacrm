@@ -1,7 +1,7 @@
 "use client";
 
 import type { Deal } from "@/types";
-import { CalendarClock, CalendarDays, ExternalLink, Pencil, Tag } from "lucide-react";
+import { CalendarClock, CalendarDays, ExternalLink, Pencil, StickyNote, Tag } from "lucide-react";
 import { useLocale } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
 import {
@@ -33,7 +33,7 @@ export function DealCard({
   isOverlay,
 }: DealCardProps) {
   const locale = useLocale();
-  const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale);
+  const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale, deal.scheduled_time);
   const createdAt = new Date(deal.created_at);
   const createdAtLabel = Number.isNaN(createdAt.getTime())
     ? null
@@ -137,6 +137,15 @@ export function DealCard({
         <div className="mt-2 flex items-center gap-1.5 border-t border-border/70 pt-2 text-[11px] text-muted-foreground">
           <CalendarDays className="size-3.5 shrink-0" />
           <time dateTime={deal.created_at}>{createdAtLabel}</time>
+        </div>
+      )}
+      {deal.last_note && (
+        <div className="group/note relative mt-1.5 inline-flex">
+          <StickyNote className="size-4 text-yellow-500" aria-label="Nota interna" />
+          <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-56 max-w-[70vw] whitespace-pre-wrap break-words rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-lg group-hover/note:block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-muted-foreground">Última nota</span>
+            <span className="line-clamp-6">{deal.last_note}</span>
+          </div>
         </div>
       )}
       {scheduledLabel && (

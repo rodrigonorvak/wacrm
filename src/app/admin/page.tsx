@@ -29,13 +29,16 @@ export default function PlatformAdminPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const [featuresError, setFeaturesError] = useState(false);
+  const [schemaWarnings, setSchemaWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
     setDenied(false);
     setFailed(false);
+    setFailedMessage(null);
     try {
       const response = await fetch("/api/platform-admin/accounts", { cache: "no-store" });
       if (response.status === 401 || response.status === 403) {
@@ -43,6 +46,8 @@ export default function PlatformAdminPage() {
         return;
       }
       if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { error?: string } | null;
+        setFailedMessage(body?.error ?? `Não foi possível carregar os dados da plataforma (HTTP ${response.status}).`);
         setFailed(true);
         return;
       }
@@ -50,11 +55,18 @@ export default function PlatformAdminPage() {
         accounts: PlatformAccount[];
         truncated: boolean;
         features_error?: boolean;
+        schema_warnings?: string[];
       };
       setFeaturesError(Boolean(data.features_error));
+      setSchemaWarnings(data.schema_warnings ?? []);
       setAccounts(data.accounts);
       setTruncated(data.truncated);
-    } catch {
+    } catch (error) {
+      setFailedMessage(
+        error instanceof Error
+          ? `Falha ao conectar com a API: ${error.message}`
+          : "Não foi possível conectar com a API da plataforma.",
+      );
       setFailed(true);
     } finally {
       setLoading(false);
@@ -147,6 +159,18 @@ export default function PlatformAdminPage() {
           poder liberar módulos.
         </p>
       )}
+      {schemaWarnings.includes("account_lifecycle") && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          A migration 058_account_lifecycle_status.sql está pendente. A lista foi carregada sem filtrar contas
+          desativadas; aplique a migration para restaurar esse filtro.
+        </p>
+      )}
+      {schemaWarnings.includes("account_creation_approval") && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          A migration 057_account_creation_approval.sql está pendente. O resumo de status das contas fica limitado até
+          aplicá-la.
+        </p>
+      )}
 
       {denied ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
@@ -154,7 +178,9 @@ export default function PlatformAdminPage() {
           <p className="max-w-md text-sm text-muted-foreground">{t("accessDenied")}</p>
         </div>
       ) : failed ? (
-        <div className="flex min-h-64 items-center justify-center text-sm text-destructive">{t("loadFailed")}</div>
+        <div className="flex min-h-64 items-center justify-center text-center text-sm text-destructive">
+          {failedMessage ?? t("loadFailed")}
+        </div>
       ) : loading ? (
         <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
           <LoaderCircle className="mr-2 size-4 animate-spin" />

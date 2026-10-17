@@ -307,7 +307,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               const navContent = (
                 <>
                   <item.icon className="h-4 w-4" />
-                  <span className={cn("flex-1", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
+                  <span className={cn("flex-1 text-left", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
                   {isFeatureLocked ? (
                     <LockKeyhole className={cn("size-3.5 shrink-0", collapsed ? "lg:hidden" : "")} />
                   ) : item.beta && !collapsed ? (
