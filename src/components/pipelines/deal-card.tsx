@@ -139,22 +139,26 @@ export function DealCard({
           <time dateTime={deal.created_at}>{createdAtLabel}</time>
         </div>
       )}
-      {deal.last_note && (
-        <div className="group/note relative mt-1.5 inline-flex">
-          <StickyNote className="size-4 text-yellow-500" aria-label="Nota interna" />
-          <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1 hidden w-56 max-w-[70vw] whitespace-pre-wrap break-words rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-lg group-hover/note:block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-muted-foreground">Última nota</span>
-            <span className="line-clamp-6">{deal.last_note}</span>
-          </div>
-        </div>
-      )}
-      {scheduledLabel && (
-        <div
-          title="Agendamento"
-          className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white"
-        >
-          <CalendarClock className="size-3.5 shrink-0" />
-          <time dateTime={deal.scheduled_date ?? undefined}>{scheduledLabel}</time>
+      {(scheduledLabel || deal.last_note) && (
+        <div className="mt-1.5 flex min-h-5 items-center gap-2">
+          {scheduledLabel && (
+            <div
+              title="Agendamento"
+              className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-semibold text-white"
+            >
+              <CalendarClock className="size-3.5 shrink-0" />
+              <time dateTime={deal.scheduled_date ?? undefined}>{scheduledLabel}</time>
+            </div>
+          )}
+          {deal.last_note && (
+            <div className="group/note relative ml-auto inline-flex shrink-0">
+              <StickyNote className="size-4 text-yellow-500" aria-label="Nota interna" />
+              <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 hidden w-56 max-w-[70vw] whitespace-pre-wrap break-words rounded-md border border-border bg-popover p-2 text-xs font-normal text-popover-foreground shadow-lg group-hover/note:block">
+                <span className="mb-0.5 block text-[10px] font-semibold uppercase text-muted-foreground">Última nota</span>
+                <span className="line-clamp-6">{deal.last_note}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </button>
