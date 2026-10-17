@@ -17,6 +17,19 @@ function renderText(value: string): string {
   return escapeHtml(value).replace(/\r\n?|\n/g, '<br />');
 }
 
+function isAllowedUrl(value: string, allowMailto: boolean): boolean {
+  try {
+    const { protocol } = new URL(value);
+    return (
+      protocol === 'https:' ||
+      protocol === 'http:' ||
+      (allowMailto && protocol === 'mailto:')
+    );
+  } catch {
+    return false;
+  }
+}
+
 function renderBlock(block: EmailBlock, design: EmailDesignSettings): string {
   const alignment = `text-align:${block.alignment};`;
   const text = renderText(block.text);
@@ -30,10 +43,10 @@ function renderBlock(block: EmailBlock, design: EmailDesignSettings): string {
     case 'text':
       return `<p style="margin:0 0 20px;color:${design.secondaryText};font-family:${font},sans-serif;font-size:16px;line-height:1.6;${alignment}">${text}</p>`;
     case 'image':
-      if (!block.url.trim()) return '';
+      if (!isAllowedUrl(block.url, false)) return '';
       return `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="640" style="display:block;width:100%;max-width:640px;height:auto;margin:0 auto 20px;border:0;" />`;
     case 'button':
-      if (!block.url.trim()) {
+      if (!isAllowedUrl(block.url, true)) {
         return `<div style="margin:0 0 20px;${alignment}"><span style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:15px;font-weight:bold;">${text}</span></div>`;
       }
       return `<div style="margin:0 0 20px;${alignment}"><a href="${escapeHtml(block.url)}" style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:15px;font-weight:bold;text-decoration:none;">${text}</a></div>`;
@@ -45,6 +58,8 @@ function renderBlock(block: EmailBlock, design: EmailDesignSettings): string {
       return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e4e7ec;color:${design.secondaryText};font-family:${font},sans-serif;font-size:12px;line-height:1.6;${alignment}">${text}</div>`;
   }
 }
+
+export const renderEmailBlock = renderBlock;
 
 export interface RenderedEmail {
   html: string;

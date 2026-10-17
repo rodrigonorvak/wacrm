@@ -69,11 +69,14 @@ import {
   type EmailDesignSettings,
 } from '@/lib/email-campaigns/types';
 import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
-import { renderEmailCampaign } from '@/lib/email-campaigns/render';
 import {
   buildTemplateBlocks,
   getEmailTemplate,
 } from '@/lib/email-campaigns/templates';
+import {
+  EmailCanvas,
+  type EmailCanvasLabels,
+} from '@/components/email-campaigns/email-canvas';
 
 interface SenderOption {
   id: string;
@@ -375,11 +378,6 @@ export function EmailCampaignEditor({
     future: EmailBlock[][];
   }>({ past: [], future: [] });
   const blocksRef = useRef(blocks);
-  const designPreview = useMemo(
-    () =>
-      renderEmailCampaign(subject, preheader, blocks, undefined, design).html,
-    [subject, preheader, blocks, design]
-  );
   const [selectedBlockId, setSelectedBlockId] = useState(INITIAL_BLOCKS[0].id);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>(
     'desktop'
@@ -552,11 +550,19 @@ export function EmailCampaignEditor({
 
   function updateSelectedBlock(patch: Partial<EmailBlock>) {
     if (!selectedBlock) return;
+    updateBlock(selectedBlock.id, patch);
+  }
+
+  function updateBlock(id: string, patch: Partial<EmailBlock>) {
     commitBlocks(
-      blocks.map((block) =>
-        block.id === selectedBlock.id ? { ...block, ...patch } : block
+      blocksRef.current.map((block) =>
+        block.id === id ? { ...block, ...patch } : block
       )
     );
+  }
+
+  function commitBlockText(id: string, text: string) {
+    updateBlock(id, { text });
   }
 
   function commitBlocks(nextBlocks: EmailBlock[]) {
@@ -637,6 +643,13 @@ export function EmailCampaignEditor({
     const fromIndex = blocks.findIndex((block) => block.id === active.id);
     const toIndex = blocks.findIndex((block) => block.id === over.id);
     if (fromIndex < 0 || toIndex < 0) return;
+    commitBlocks(arrayMove(blocks, fromIndex, toIndex));
+  }
+
+  function moveBlock(id: string, direction: -1 | 1) {
+    const fromIndex = blocks.findIndex((block) => block.id === id);
+    const toIndex = fromIndex + direction;
+    if (fromIndex < 0 || toIndex < 0 || toIndex >= blocks.length) return;
     commitBlocks(arrayMove(blocks, fromIndex, toIndex));
   }
 
@@ -820,6 +833,30 @@ export function EmailCampaignEditor({
     spacer: Space,
     footer: PanelBottom,
   };
+  const canvasLabels: EmailCanvasLabels = {
+    blockTypes: {
+      hero: t('blockTypes.hero'),
+      heading: t('blockTypes.heading'),
+      text: t('blockTypes.text'),
+      image: t('blockTypes.image'),
+      button: t('blockTypes.button'),
+      divider: t('blockTypes.divider'),
+      spacer: t('blockTypes.spacer'),
+      footer: t('blockTypes.footer'),
+    },
+    placeholders: {
+      hero: t('canvasPlaceholderHero'),
+      heading: t('canvasPlaceholderHeading'),
+      text: t('canvasPlaceholderText'),
+      button: t('canvasPlaceholderButton'),
+      footer: t('canvasPlaceholderFooter'),
+      image: t('canvasPlaceholderImage'),
+    },
+    moveUp: t('moveBlockUp'),
+    moveDown: t('moveBlockDown'),
+    duplicate: t('duplicateBlock'),
+    remove: t('removeBlock'),
+  };
 
   if (loading) {
     return (
@@ -833,7 +870,7 @@ export function EmailCampaignEditor({
     return (
       <form
         onSubmit={saveDraft}
-        className="fixed inset-0 z-40 flex flex-col bg-slate-100"
+        className="relative -mx-4 -mt-4 -mb-20 flex h-[calc(100dvh-3.5rem)] min-h-[560px] flex-col overflow-hidden bg-slate-100 sm:-mx-6 sm:-mt-6 sm:-mb-24 lg:-mb-6"
       >
         <header className="border-border bg-background flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:px-5">
           <div className="flex items-center gap-2">
@@ -894,48 +931,60 @@ export function EmailCampaignEditor({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1">
-          <main className="flex min-w-0 flex-1 flex-col p-3 sm:p-6">
-            <div className="text-muted-foreground mb-3 flex items-center justify-center gap-3 text-xs">
-              <span>{subject || t('subjectPlaceholder')}</span>
-              <span aria-hidden="true">·</span>
-              <span>{preheader || t('preheaderPlaceholder')}</span>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col p-3 sm:p-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-muted-foreground min-w-0 text-xs">
+                <p className="truncate font-medium text-slate-700">
+                  {subject || t('subjectPlaceholder')}
+                </p>
+                <p className="truncate">
+                  {preheader || t('preheaderPlaceholder')}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={previewMode === 'desktop' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewMode('desktop')}
+                >
+                  <Laptop />
+                  {t('desktop')}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={previewMode === 'mobile' ? 'secondary' : 'outline'}
+                  onClick={() => setPreviewMode('mobile')}
+                >
+                  <Smartphone />
+                  {t('mobile')}
+                </Button>
+              </div>
             </div>
             <div className="flex min-h-0 flex-1 justify-center overflow-auto rounded-xl bg-slate-200 p-3 sm:p-6">
-              <iframe
-                title={t('designPreview')}
-                srcDoc={designPreview}
-                sandbox=""
-                className={`h-full min-h-[600px] bg-white shadow-xl transition-[width] ${
-                  previewMode === 'mobile'
-                    ? 'w-[375px] max-w-full'
-                    : 'w-full max-w-[720px]'
-                }`}
-              />
-            </div>
-            <div className="mt-3 flex justify-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={previewMode === 'desktop' ? 'secondary' : 'outline'}
-                onClick={() => setPreviewMode('desktop')}
+              <div
+                className="min-h-full w-full shrink-0"
+                style={{ background: design.emailBackground }}
               >
-                <Laptop />
-                {t('desktop')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={previewMode === 'mobile' ? 'secondary' : 'outline'}
-                onClick={() => setPreviewMode('mobile')}
-              >
-                <Smartphone />
-                {t('mobile')}
-              </Button>
+                <EmailCanvas
+                  blocks={blocks}
+                  design={design}
+                  selectedId={selectedBlockId}
+                  mobile={previewMode === 'mobile'}
+                  labels={canvasLabels}
+                  onSelect={(id) => setSelectedBlockId(id ?? '')}
+                  onTextCommit={commitBlockText}
+                  onMove={moveBlock}
+                  onDuplicate={duplicateBlock}
+                  onRemove={removeBlock}
+                />
+              </div>
             </div>
           </main>
 
-          <aside className="border-border bg-background w-[min(360px,44vw)] shrink-0 overflow-y-auto border-l">
+          <aside className="border-border bg-background max-h-[45%] shrink-0 overflow-y-auto border-t lg:max-h-none lg:w-[min(360px,34vw)] lg:border-t-0 lg:border-l">
             <div className="border-border bg-background sticky top-0 z-10 grid grid-cols-2 border-b p-2">
               <Button
                 type="button"

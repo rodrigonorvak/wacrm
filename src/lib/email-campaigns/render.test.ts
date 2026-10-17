@@ -121,6 +121,31 @@ describe('email campaign renderer', () => {
     expect(rendered.html).toContain('Saiba mais');
   });
 
+  it('does not render unsafe links or image sources', () => {
+    const rendered = renderEmailCampaign('', '', [
+      {
+        id: 'image',
+        type: 'image',
+        text: '',
+        url: 'javascript:alert(1)',
+        alt: '',
+        alignment: 'left',
+      },
+      {
+        id: 'button',
+        type: 'button',
+        text: 'Saiba mais',
+        url: 'javascript:alert(1)',
+        alt: '',
+        alignment: 'center',
+      },
+    ]);
+
+    expect(rendered.html).not.toContain('<img');
+    expect(rendered.html).not.toContain('href="javascript:');
+    expect(rendered.html).toContain('Saiba mais');
+  });
+
   it('adds a plain-text and HTML unsubscribe link when provided', () => {
     const rendered = renderEmailCampaign(
       'Novidades',
