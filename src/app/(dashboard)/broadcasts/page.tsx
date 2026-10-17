@@ -13,11 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Radio, Plus, Loader2 } from 'lucide-react';
+import { Radio, Plus, Loader2, Mail } from 'lucide-react';
 import { useCan } from '@/hooks/use-can';
 import { GatedButton } from '@/components/ui/gated-button';
 import { getBroadcastStatus } from '@/lib/broadcast-status';
 import { useTranslations } from 'next-intl';
+import { usePlatformFeatureAccess } from '@/components/platform/feature-access-provider';
 
 /**
  * Poll cadence while any broadcast is sending. Kept modest so we don't
@@ -61,7 +62,10 @@ export default function BroadcastsPage() {
   const router = useRouter();
   const t = useTranslations('Broadcasts.page');
   const tStatus = useTranslations('Broadcasts.status');
+  const tEmail = useTranslations('EmailSenders');
   const canCreate = useCan('send-messages');
+  const canManageEmailSenders = useCan('edit-settings');
+  const { features, loading: featuresLoading } = usePlatformFeatureAccess();
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -187,15 +191,26 @@ export default function BroadcastsPage() {
             {t('subtitle')}
           </p>
         </div>
-        <GatedButton
-          canAct={canCreate}
-          gateReason="create broadcasts"
-          onClick={() => router.push('/broadcasts/new')}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          {t('newBroadcast')}
-        </GatedButton>
+        <div className="flex flex-wrap gap-2">
+          {!featuresLoading && features.broadcasts && canManageEmailSenders && (
+            <Button
+              variant="outline"
+              onClick={() => router.push('/broadcasts/email/senders')}
+            >
+              <Mail className="h-4 w-4" />
+              {tEmail('openSettings')}
+            </Button>
+          )}
+          <GatedButton
+            canAct={canCreate}
+            gateReason="create broadcasts"
+            onClick={() => router.push('/broadcasts/new')}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            {t('newBroadcast')}
+          </GatedButton>
+        </div>
       </div>
 
       {broadcasts.length === 0 ? (

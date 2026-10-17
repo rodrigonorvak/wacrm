@@ -173,6 +173,9 @@ export const RATE_LIMITS = {
    *  capping a stampede; excess inbounds simply don't get an auto-reply
    *  (they still land in the inbox for a human). */
   aiAutoReplyAccount: { limit: 30, windowMs: 60_000 },
+  /** Email sender verification is an explicit admin action and sends a
+   *  real test message, so keep its per-account budget deliberately low. */
+  emailSenderTest: { limit: 5, windowMs: 10 * 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't
