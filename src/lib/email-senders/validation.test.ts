@@ -31,6 +31,15 @@ describe('email sender input validation', () => {
     expect('input' in result && result.input.smtpSecure).toBe(false);
   });
 
+  it('removes Google app password grouping spaces', () => {
+    const result = validateEmailSenderInput(
+      { ...validInput, password: 'abcd efgh ijkl mnop' },
+      { passwordRequired: true }
+    );
+
+    expect('input' in result && result.input.password).toBe('abcdefghijklmnop');
+  });
+
   it('rejects a missing password when creating a sender', () => {
     const result = validateEmailSenderInput(
       { ...validInput, password: '' },

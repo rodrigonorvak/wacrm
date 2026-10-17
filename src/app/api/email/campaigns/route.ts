@@ -26,6 +26,28 @@ export async function GET() {
       );
     }
 
+    const [failedDeliveries, unsubscribeCount] = await Promise.all([
+      admin
+        .from('email_campaign_deliveries')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', context.accountId)
+        .eq('status', 'failed'),
+      admin
+        .from('email_unsubscribes')
+        .select('address_hash', { count: 'exact', head: true })
+        .eq('account_id', context.accountId),
+    ]);
+    if (failedDeliveries.error || unsubscribeCount.error) {
+      console.error(
+        '[email-campaigns] summary metrics lookup failed:',
+        failedDeliveries.error?.message ?? unsubscribeCount.error?.message
+      );
+      return NextResponse.json(
+        { error: 'Não foi possível carregar as métricas das campanhas.' },
+        { status: 500 }
+      );
+    }
+
     const campaignIds = (data ?? []).map((campaign) => campaign.id);
     const { data: recipientCounts, error: recipientCountsError } =
       campaignIds.length
@@ -83,6 +105,14 @@ export async function GET() {
             recipientCountByCampaignId.get(campaign.id) ?? 0,
           sender: senderById.get(campaign.sender_connection_id) ?? null,
         })),
+        metrics: {
+          sent: (data ?? []).reduce(
+            (sum, campaign) => sum + (campaign.sent_count ?? 0),
+            0
+          ),
+          failed: failedDeliveries.count ?? 0,
+          unsubscribed: unsubscribeCount.count ?? 0,
+        },
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );
@@ -131,7 +161,11 @@ export async function POST(request: Request) {
         audience_contact_ids: input.audienceContactIds,
         audience_pipeline_id: input.audiencePipelineId,
         audience_stage_id: input.audienceStageId,
-        content_json: input.content,
+        content_json: {
+          version: 1,
+          blocks: input.content,
+          design: input.design,
+        },
         status: 'draft',
       })
       .select(CAMPAIGN_COLUMNS)

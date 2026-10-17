@@ -36,6 +36,40 @@ describe('email campaign renderer', () => {
     expect(rendered.text).toContain('https://example.com/oferta');
   });
 
+  it('renders hero blocks and uses the campaign design settings', () => {
+    const rendered = renderEmailCampaign(
+      'Destaque',
+      '',
+      [
+        {
+          id: 'hero',
+          type: 'hero',
+          text: 'Nova coleção',
+          url: '',
+          alt: '',
+          alignment: 'center',
+        },
+      ],
+      undefined,
+      {
+        fontFamily: 'Georgia',
+        emailBackground: '#eeeeee',
+        sectionBackground: '#ffffff',
+        primaryText: '#172033',
+        secondaryText: '#344054',
+        buttonColor: '#123456',
+        accentColor: '#abcdef',
+        sectionSpacing: 40,
+        cornerRadius: 12,
+        buttonRadius: 8,
+      }
+    );
+    expect(rendered.html).toContain('Nova coleção');
+    expect(rendered.html).toContain('background:#eeeeee');
+    expect(rendered.html).toContain('background:#abcdef');
+    expect(rendered.html).toContain('padding:40px');
+  });
+
   it('escapes user-controlled text and URLs before inserting HTML', () => {
     const rendered = renderEmailCampaign('', '', [
       {

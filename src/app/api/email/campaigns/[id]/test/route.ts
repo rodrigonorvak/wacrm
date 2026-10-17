@@ -184,7 +184,9 @@ export async function POST(
     const rendered = renderEmailCampaign(
       validation.input.subject,
       validation.input.preheader,
-      validation.input.content
+      validation.input.content,
+      undefined,
+      validation.input.design
     );
     try {
       await sendEmailThroughSender(senderRow, password, {

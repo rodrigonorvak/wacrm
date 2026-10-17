@@ -345,6 +345,14 @@ export default function EmailSenderSettingsPage() {
                 <span className="text-muted-foreground text-xs">
                   {t('gmailAppPasswordHint')}
                 </span>
+                <a
+                  href="https://myaccount.google.com/apppasswords"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-primary w-fit text-xs underline underline-offset-4"
+                >
+                  {t('createGmailAppPassword')}
+                </a>
               </div>
             ) : (
               <>

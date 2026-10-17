@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from 'react';
@@ -33,8 +34,10 @@ import {
   AlignRight,
   ArrowLeft,
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Copy,
   GripVertical,
   Heading1,
   Image as ImageIcon,
@@ -50,17 +53,27 @@ import {
   Space,
   Trash2,
   Type,
-  Users,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type {
   EmailBlock,
-  EmailBlockAlignment,
   EmailBlockType,
   EmailCampaignAudienceType,
 } from '@/lib/email-campaigns/types';
+import {
+  DEFAULT_EMAIL_DESIGN,
+  type EmailDesignSettings,
+} from '@/lib/email-campaigns/types';
+import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
+import { renderEmailCampaign } from '@/lib/email-campaigns/render';
+import {
+  buildTemplateBlocks,
+  getEmailTemplate,
+} from '@/lib/email-campaigns/templates';
 
 interface SenderOption {
   id: string;
@@ -87,6 +100,8 @@ interface StageOption {
 
 interface EditorProps {
   campaignId?: string;
+  templateId?: string;
+  cloneFromId?: string;
 }
 
 const INITIAL_BLOCKS: EmailBlock[] = [
@@ -117,6 +132,7 @@ const INITIAL_BLOCKS: EmailBlock[] = [
 ];
 
 const BLOCK_TYPE_ORDER: EmailBlockType[] = [
+  'hero',
   'heading',
   'text',
   'image',
@@ -130,28 +146,11 @@ function newBlock(type: EmailBlockType): EmailBlock {
   return {
     id: crypto.randomUUID(),
     type,
-    text: '',
+    text: type === 'hero' ? 'Seu destaque principal' : '',
     url: '',
     alt: '',
     alignment: type === 'button' || type === 'heading' ? 'center' : 'left',
   };
-}
-
-function isEmailBlockArray(value: unknown): value is EmailBlock[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (item) =>
-        typeof item === 'object' &&
-        item !== null &&
-        typeof item.id === 'string' &&
-        typeof item.type === 'string' &&
-        typeof item.text === 'string' &&
-        typeof item.url === 'string' &&
-        typeof item.alt === 'string' &&
-        typeof item.alignment === 'string'
-    )
-  );
 }
 
 function displayName(name: string | null, email: string): string {
@@ -171,6 +170,15 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
     right: 'text-right',
   }[block.alignment];
 
+  if (block.type === 'hero') {
+    return (
+      <div
+        className={`rounded-lg bg-fuchsia-600 px-6 py-10 text-3xl font-bold text-white ${alignmentClass}`}
+      >
+        {block.text || 'Seu destaque principal'}
+      </div>
+    );
+  }
   if (block.type === 'heading') {
     return (
       <h1
@@ -251,14 +259,18 @@ function SortableEmailBlock({
   label,
   onSelect,
   onRemove,
+  onDuplicate,
   removeLabel,
+  duplicateLabel,
 }: {
   block: EmailBlock;
   selected: boolean;
   label: string;
   onSelect: () => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   removeLabel: string;
+  duplicateLabel: string;
 }) {
   const {
     attributes,
@@ -295,6 +307,14 @@ function SortableEmailBlock({
           </button>
           <button
             type="button"
+            onClick={onDuplicate}
+            aria-label={duplicateLabel}
+            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <Copy className="size-4" />
+          </button>
+          <button
+            type="button"
             onClick={onRemove}
             aria-label={removeLabel}
             className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
@@ -315,7 +335,11 @@ function SortableEmailBlock({
   );
 }
 
-export function EmailCampaignEditor({ campaignId }: EditorProps) {
+export function EmailCampaignEditor({
+  campaignId,
+  templateId,
+  cloneFromId,
+}: EditorProps) {
   const t = useTranslations('EmailCampaigns');
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -342,6 +366,20 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
   const [pipelines, setPipelines] = useState<PipelineOption[]>([]);
   const [stages, setStages] = useState<StageOption[]>([]);
   const [blocks, setBlocks] = useState<EmailBlock[]>(INITIAL_BLOCKS);
+  const [design, setDesign] =
+    useState<EmailDesignSettings>(DEFAULT_EMAIL_DESIGN);
+  const [designMode, setDesignMode] = useState(false);
+  const [designTab, setDesignTab] = useState<'blocks' | 'settings'>('blocks');
+  const [blockHistory, setBlockHistory] = useState<{
+    past: EmailBlock[][];
+    future: EmailBlock[][];
+  }>({ past: [], future: [] });
+  const blocksRef = useRef(blocks);
+  const designPreview = useMemo(
+    () =>
+      renderEmailCampaign(subject, preheader, blocks, undefined, design).html,
+    [subject, preheader, blocks, design]
+  );
   const [selectedBlockId, setSelectedBlockId] = useState(INITIAL_BLOCKS[0].id);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>(
     'desktop'
@@ -395,8 +433,21 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
   }, [loadSenderAndPipelineOptions]);
 
   useEffect(() => {
-    if (!campaignId) {
-      setName(t('newCampaignDefault'));
+    const sourceId = campaignId ?? cloneFromId;
+    if (!sourceId) {
+      const template = getEmailTemplate(templateId);
+      if (template) {
+        const templateBlocks = buildTemplateBlocks(template);
+        setName(template.name);
+        setSubject(template.subject);
+        setPreheader(template.preheader);
+        setBlocks(templateBlocks);
+        blocksRef.current = templateBlocks;
+        setDesign(DEFAULT_EMAIL_DESIGN);
+        setSelectedBlockId(templateBlocks[0].id);
+      } else {
+        setName(t('newCampaignDefault'));
+      }
       setLoading(false);
       return;
     }
@@ -405,19 +456,38 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
     async function loadCampaign() {
       setLoading(true);
       try {
-        const response = await fetch(`/api/email/campaigns/${campaignId}`, {
+        const response = await fetch(`/api/email/campaigns/${sourceId}`, {
           cache: 'no-store',
         });
         const payload = await response.json();
         if (!response.ok)
           throw new Error(payload.error || t('loadCampaignFailed'));
         const campaign = payload.campaign;
-        if (campaign.status !== 'draft') {
+        if (campaignId && campaign.status !== 'draft') {
           toast.error(t('onlyDraftEditable'));
           router.replace('/broadcasts/email');
           return;
         }
         if (cancelled) return;
+        const parsedContent = parseEmailCampaignContent(campaign.content_json);
+        const savedBlocks = parsedContent.blocks.length
+          ? parsedContent.blocks
+          : INITIAL_BLOCKS;
+        if (!campaignId) {
+          // Cloning a previous campaign copies only its content.
+          const clonedBlocks = savedBlocks.map((block: EmailBlock) => ({
+            ...block,
+            id: crypto.randomUUID(),
+          }));
+          setName(t('cloneName', { name: campaign.name }));
+          setSubject(campaign.subject ?? '');
+          setPreheader(campaign.preheader ?? '');
+          setBlocks(clonedBlocks);
+          blocksRef.current = clonedBlocks;
+          setDesign(parsedContent.design);
+          setSelectedBlockId(clonedBlocks[0]?.id ?? INITIAL_BLOCKS[0].id);
+          return;
+        }
         setName(campaign.name);
         setSubject(campaign.subject ?? '');
         setPreheader(campaign.preheader ?? '');
@@ -426,10 +496,9 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
         setContactIds(campaign.audience_contact_ids ?? []);
         setPipelineId(campaign.audience_pipeline_id ?? '');
         setStageId(campaign.audience_stage_id ?? '');
-        const savedBlocks = isEmailBlockArray(campaign.content_json)
-          ? campaign.content_json
-          : INITIAL_BLOCKS;
         setBlocks(savedBlocks);
+        blocksRef.current = savedBlocks;
+        setDesign(parsedContent.design);
         setSelectedBlockId(savedBlocks[0]?.id ?? INITIAL_BLOCKS[0].id);
       } catch (error) {
         if (!cancelled) {
@@ -446,7 +515,7 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
     return () => {
       cancelled = true;
     };
-  }, [campaignId, router, t]);
+  }, [campaignId, templateId, cloneFromId, router, t]);
 
   useEffect(() => {
     if (audienceType !== 'selected_contacts') return;
@@ -483,16 +552,55 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
 
   function updateSelectedBlock(patch: Partial<EmailBlock>) {
     if (!selectedBlock) return;
-    setBlocks((current) =>
-      current.map((block) =>
+    commitBlocks(
+      blocks.map((block) =>
         block.id === selectedBlock.id ? { ...block, ...patch } : block
       )
     );
   }
 
+  function commitBlocks(nextBlocks: EmailBlock[]) {
+    const current = blocksRef.current;
+    if (current === nextBlocks) return;
+    setBlockHistory((history) => ({
+      past: [...history.past.slice(-49), current],
+      future: [],
+    }));
+    blocksRef.current = nextBlocks;
+    setBlocks(nextBlocks);
+  }
+
+  function undoBlocks() {
+    const previous = blockHistory.past.at(-1);
+    if (!previous) return;
+    const current = blocksRef.current;
+    blocksRef.current = previous;
+    setBlocks(previous);
+    setBlockHistory({
+      past: blockHistory.past.slice(0, -1),
+      future: [current, ...blockHistory.future],
+    });
+  }
+
+  function redoBlocks() {
+    const next = blockHistory.future[0];
+    if (!next) return;
+    const current = blocksRef.current;
+    blocksRef.current = next;
+    setBlocks(next);
+    setBlockHistory({
+      past: [...blockHistory.past, current],
+      future: blockHistory.future.slice(1),
+    });
+  }
+
   function addBlock(type: EmailBlockType) {
+    if (blocks.length >= 40) {
+      toast.error(t('blockLimit'));
+      return;
+    }
     const block = newBlock(type);
-    setBlocks((current) => [...current, block]);
+    commitBlocks([...blocks, block]);
     setSelectedBlockId(block.id);
   }
 
@@ -502,8 +610,25 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
       return;
     }
     const nextBlocks = blocks.filter((block) => block.id !== id);
-    setBlocks(nextBlocks);
+    commitBlocks(nextBlocks);
     if (selectedBlockId === id) setSelectedBlockId(nextBlocks[0].id);
+  }
+
+  function duplicateBlock(id: string) {
+    const index = blocks.findIndex((block) => block.id === id);
+    if (index < 0) return;
+    if (blocks.length >= 40) {
+      toast.error(t('blockLimit'));
+      return;
+    }
+    const duplicated = { ...blocks[index], id: crypto.randomUUID() };
+    const nextBlocks = [
+      ...blocks.slice(0, index + 1),
+      duplicated,
+      ...blocks.slice(index + 1),
+    ];
+    commitBlocks(nextBlocks);
+    setSelectedBlockId(duplicated.id);
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -512,7 +637,7 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
     const fromIndex = blocks.findIndex((block) => block.id === active.id);
     const toIndex = blocks.findIndex((block) => block.id === over.id);
     if (fromIndex < 0 || toIndex < 0) return;
-    setBlocks((current) => arrayMove(current, fromIndex, toIndex));
+    commitBlocks(arrayMove(blocks, fromIndex, toIndex));
   }
 
   function toggleContact(id: string) {
@@ -549,6 +674,7 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
       audiencePipelineId: audienceType === 'pipeline_stage' ? pipelineId : null,
       audienceStageId: audienceType === 'pipeline_stage' ? stageId : null,
       content: blocks,
+      design,
     };
   }
 
@@ -685,6 +811,7 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
   }
 
   const blockIcons = {
+    hero: Heading1,
     heading: Heading1,
     text: Type,
     image: ImageIcon,
@@ -699,6 +826,388 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="text-primary size-6 animate-spin" />
       </div>
+    );
+  }
+
+  if (designMode) {
+    return (
+      <form
+        onSubmit={saveDraft}
+        className="fixed inset-0 z-40 flex flex-col bg-slate-100"
+      >
+        <header className="border-border bg-background flex min-h-14 flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:px-5">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t('backToCampaign')}
+              onClick={() => setDesignMode(false)}
+            >
+              <ArrowLeft />
+            </Button>
+            <div>
+              <p className="text-muted-foreground text-xs">
+                {t('designEditor')}
+              </p>
+              <p className="text-foreground max-w-[40vw] truncate text-sm font-semibold">
+                {name || t('newCampaign')}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={t('undo')}
+              title={t('undo')}
+              disabled={!blockHistory.past.length}
+              onClick={undoBlocks}
+            >
+              <Undo2 />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={t('redo')}
+              title={t('redo')}
+              disabled={!blockHistory.future.length}
+              onClick={redoBlocks}
+            >
+              <Redo2 />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || sendingTest || senders.length === 0}
+              onClick={() => void sendTestEmail()}
+            >
+              {sendingTest ? <Loader2 className="animate-spin" /> : <Send />}
+              {t('sendTest')}
+            </Button>
+            <Button type="submit" disabled={saving || senders.length === 0}>
+              {saving ? <Loader2 className="animate-spin" /> : <Save />}
+              {t('saveDraft')}
+            </Button>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1">
+          <main className="flex min-w-0 flex-1 flex-col p-3 sm:p-6">
+            <div className="text-muted-foreground mb-3 flex items-center justify-center gap-3 text-xs">
+              <span>{subject || t('subjectPlaceholder')}</span>
+              <span aria-hidden="true">·</span>
+              <span>{preheader || t('preheaderPlaceholder')}</span>
+            </div>
+            <div className="flex min-h-0 flex-1 justify-center overflow-auto rounded-xl bg-slate-200 p-3 sm:p-6">
+              <iframe
+                title={t('designPreview')}
+                srcDoc={designPreview}
+                sandbox=""
+                className={`h-full min-h-[600px] bg-white shadow-xl transition-[width] ${
+                  previewMode === 'mobile'
+                    ? 'w-[375px] max-w-full'
+                    : 'w-full max-w-[720px]'
+                }`}
+              />
+            </div>
+            <div className="mt-3 flex justify-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={previewMode === 'desktop' ? 'secondary' : 'outline'}
+                onClick={() => setPreviewMode('desktop')}
+              >
+                <Laptop />
+                {t('desktop')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={previewMode === 'mobile' ? 'secondary' : 'outline'}
+                onClick={() => setPreviewMode('mobile')}
+              >
+                <Smartphone />
+                {t('mobile')}
+              </Button>
+            </div>
+          </main>
+
+          <aside className="border-border bg-background w-[min(360px,44vw)] shrink-0 overflow-y-auto border-l">
+            <div className="border-border bg-background sticky top-0 z-10 grid grid-cols-2 border-b p-2">
+              <Button
+                type="button"
+                variant={designTab === 'blocks' ? 'secondary' : 'ghost'}
+                onClick={() => setDesignTab('blocks')}
+              >
+                {t('blocks')}
+              </Button>
+              <Button
+                type="button"
+                variant={designTab === 'settings' ? 'secondary' : 'ghost'}
+                onClick={() => setDesignTab('settings')}
+              >
+                {t('designSettings')}
+              </Button>
+            </div>
+            {designTab === 'blocks' ? (
+              <div className="space-y-3 p-3">
+                <div className="space-y-1">
+                  {BLOCK_TYPE_ORDER.map((type) => {
+                    const Icon = blockIcons[type];
+                    return (
+                      <details
+                        key={type}
+                        className="border-border rounded-lg border"
+                      >
+                        <summary className="text-foreground flex cursor-pointer list-none items-center justify-between gap-2 p-3 text-sm font-medium">
+                          <span className="flex items-center gap-2">
+                            <Icon className="text-primary size-4" />
+                            {t(`blockTypes.${type}`)}
+                          </span>
+                          <ChevronDown className="size-4" />
+                        </summary>
+                        <div className="px-3 pb-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => addBlock(type)}
+                            disabled={blocks.length >= 40}
+                          >
+                            {t('addBlock')}
+                          </Button>
+                        </div>
+                      </details>
+                    );
+                  })}
+                </div>
+
+                <section className="border-border space-y-2 border-t pt-3">
+                  <h2 className="text-foreground text-sm font-semibold">
+                    {t('emailContent')}
+                  </h2>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={blocks.map((block) => block.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {blocks.map((block) => (
+                          <SortableEmailBlock
+                            key={block.id}
+                            block={block}
+                            selected={block.id === selectedBlockId}
+                            label={t(`blockTypes.${block.type}`)}
+                            removeLabel={t('removeBlock')}
+                            duplicateLabel={t('duplicateBlock')}
+                            onSelect={() => setSelectedBlockId(block.id)}
+                            onRemove={() => removeBlock(block.id)}
+                            onDuplicate={() => duplicateBlock(block.id)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                </section>
+
+                {selectedBlock && (
+                  <section className="border-border space-y-3 border-t pt-3">
+                    <h2 className="text-foreground text-sm font-semibold">
+                      {t('blockSettings')}
+                    </h2>
+                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
+                      selectedBlock.type
+                    ) && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="design-block-text">
+                          {t('blockText')}
+                        </Label>
+                        <textarea
+                          id="design-block-text"
+                          rows={selectedBlock.type === 'hero' ? 2 : 4}
+                          value={selectedBlock.text}
+                          onChange={(event) =>
+                            updateSelectedBlock({ text: event.target.value })
+                          }
+                          maxLength={10_000}
+                          className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    )}
+                    {selectedBlock.type === 'image' && (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="design-image-url">
+                            {t('imageUrl')}
+                          </Label>
+                          <Input
+                            id="design-image-url"
+                            type="url"
+                            value={selectedBlock.url}
+                            onChange={(event) =>
+                              updateSelectedBlock({ url: event.target.value })
+                            }
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="design-image-alt">
+                            {t('imageAlt')}
+                          </Label>
+                          <Input
+                            id="design-image-alt"
+                            value={selectedBlock.alt}
+                            onChange={(event) =>
+                              updateSelectedBlock({ alt: event.target.value })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+                    {selectedBlock.type === 'button' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="design-button-url">
+                          {t('buttonUrl')}
+                        </Label>
+                        <Input
+                          id="design-button-url"
+                          type="url"
+                          value={selectedBlock.url}
+                          onChange={(event) =>
+                            updateSelectedBlock({ url: event.target.value })
+                          }
+                          placeholder="https://..."
+                        />
+                      </div>
+                    )}
+                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
+                      selectedBlock.type
+                    ) && (
+                      <div className="grid gap-2">
+                        <Label>{t('alignment')}</Label>
+                        <div className="flex gap-1">
+                          {(
+                            [
+                              ['left', AlignLeft],
+                              ['center', AlignCenter],
+                              ['right', AlignRight],
+                            ] as const
+                          ).map(([alignment, Icon]) => (
+                            <Button
+                              key={alignment}
+                              type="button"
+                              variant={
+                                selectedBlock.alignment === alignment
+                                  ? 'secondary'
+                                  : 'outline'
+                              }
+                              size="icon-sm"
+                              aria-label={t(`alignments.${alignment}`)}
+                              onClick={() => updateSelectedBlock({ alignment })}
+                            >
+                              <Icon />
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4 p-4">
+                <h2 className="text-foreground font-semibold">
+                  {t('designSettings')}
+                </h2>
+                <div className="grid gap-2">
+                  <Label htmlFor="design-font">{t('fontFamily')}</Label>
+                  <select
+                    id="design-font"
+                    value={design.fontFamily}
+                    onChange={(event) =>
+                      setDesign((current) => ({
+                        ...current,
+                        fontFamily: event.target
+                          .value as EmailDesignSettings['fontFamily'],
+                      }))
+                    }
+                    className="border-border bg-background h-9 rounded-lg border px-3 text-sm"
+                  >
+                    {(['Arial', 'Georgia', 'Verdana'] as const).map((font) => (
+                      <option key={font}>{font}</option>
+                    ))}
+                  </select>
+                </div>
+                {(
+                  [
+                    ['emailBackground', 'emailBackground'],
+                    ['sectionBackground', 'sectionBackground'],
+                    ['primaryText', 'primaryTextColor'],
+                    ['secondaryText', 'secondaryTextColor'],
+                    ['buttonColor', 'buttonColor'],
+                    ['accentColor', 'accentColor'],
+                  ] as const
+                ).map(([key, label]) => (
+                  <div key={key} className="grid gap-2">
+                    <Label htmlFor={`design-${key}`}>{t(label)}</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id={`design-${key}`}
+                        type="color"
+                        value={design[key]}
+                        onChange={(event) =>
+                          setDesign((current) => ({
+                            ...current,
+                            [key]: event.target.value,
+                          }))
+                        }
+                        className="h-10 w-14 p-1"
+                      />
+                      <span className="text-muted-foreground text-xs">
+                        {design[key]}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {(
+                  [
+                    ['sectionSpacing', 'sectionSpacing', 8, 96],
+                    ['cornerRadius', 'cornerRadius', 0, 32],
+                    ['buttonRadius', 'buttonRadius', 0, 32],
+                  ] as const
+                ).map(([key, label, min, max]) => (
+                  <div key={key} className="grid gap-2">
+                    <Label htmlFor={`design-${key}`}>
+                      {t(label)} ({design[key]}px)
+                    </Label>
+                    <Input
+                      id={`design-${key}`}
+                      type="range"
+                      min={min}
+                      max={max}
+                      value={design[key]}
+                      onChange={(event) =>
+                        setDesign((current) => ({
+                          ...current,
+                          [key]: Number(event.target.value),
+                        }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
+        </div>
+      </form>
     );
   }
 
@@ -723,6 +1232,14 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDesignMode(true)}
+          >
+            <Type />
+            {t('editDesign')}
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -771,380 +1288,466 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <section className="border-border bg-card space-y-4 rounded-xl border p-4">
-              <h2 className="text-foreground font-semibold">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <aside className="order-2 space-y-4">
+            <details open className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
                 {t('campaignDetails')}
-              </h2>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-name">{t('campaignName')}</Label>
-                <Input
-                  id="campaign-name"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  maxLength={120}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-sender">{t('sender')}</Label>
-                <select
-                  id="campaign-sender"
-                  value={senderId}
-                  onChange={(event) => setSenderId(event.target.value)}
-                  required
-                  className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
-                >
-                  <option value="">{t('selectSender')}</option>
-                  {senders.map((sender) => (
-                    <option key={sender.id} value={sender.id}>
-                      {sender.name} · {sender.from_email}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-subject">{t('subject')}</Label>
-                <Input
-                  id="campaign-subject"
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  maxLength={255}
-                  placeholder={t('subjectPlaceholder')}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-preheader">{t('preheader')}</Label>
-                <Input
-                  id="campaign-preheader"
-                  value={preheader}
-                  onChange={(event) => setPreheader(event.target.value)}
-                  maxLength={250}
-                  placeholder={t('preheaderPlaceholder')}
-                />
-              </div>
-            </section>
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-4 rounded-xl border p-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="campaign-name">{t('campaignName')}</Label>
+                  <Input
+                    id="campaign-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    maxLength={120}
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="campaign-sender">{t('sender')}</Label>
+                  <select
+                    id="campaign-sender"
+                    value={senderId}
+                    onChange={(event) => setSenderId(event.target.value)}
+                    required
+                    className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
+                  >
+                    <option value="">{t('selectSender')}</option>
+                    {senders.map((sender) => (
+                      <option key={sender.id} value={sender.id}>
+                        {sender.name} · {sender.from_email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="campaign-subject">{t('subject')}</Label>
+                  <Input
+                    id="campaign-subject"
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    maxLength={255}
+                    placeholder={t('subjectPlaceholder')}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="campaign-preheader">{t('preheader')}</Label>
+                  <Input
+                    id="campaign-preheader"
+                    value={preheader}
+                    onChange={(event) => setPreheader(event.target.value)}
+                    maxLength={250}
+                    placeholder={t('preheaderPlaceholder')}
+                  />
+                </div>
+              </section>
+            </details>
 
-            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-              <div className="grid gap-2">
-                <Label htmlFor="test-recipient">{t('testRecipient')}</Label>
-                <Input
-                  id="test-recipient"
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={testRecipient}
-                  onChange={(event) => setTestRecipient(event.target.value)}
-                  placeholder={t('testRecipientPlaceholder')}
-                  maxLength={254}
-                />
-                <p className="text-muted-foreground text-xs">
-                  {t('testSendHint')}
-                </p>
-              </div>
-            </section>
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+                {t('testRecipient')}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="test-recipient">{t('testRecipient')}</Label>
+                  <Input
+                    id="test-recipient"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={testRecipient}
+                    onChange={(event) => setTestRecipient(event.target.value)}
+                    placeholder={t('testRecipientPlaceholder')}
+                    maxLength={254}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    {t('testSendHint')}
+                  </p>
+                </div>
+              </section>
+            </details>
 
-            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-              <h2 className="text-foreground font-semibold">
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
                 {t('deliverySchedule')}
-              </h2>
-              <p className="text-muted-foreground text-xs">
-                {t('deliveryScheduleHint')}
-              </p>
-              <Button
-                type="button"
-                className="w-full"
-                disabled={
-                  saving ||
-                  sendingTest ||
-                  dispatchingCampaign ||
-                  senders.length === 0
-                }
-                onClick={() => void queueCampaign(null)}
-              >
-                {dispatchingCampaign ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Send />
-                )}
-                {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
-              </Button>
-              <div className="grid gap-2">
-                <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
-                <Input
-                  id="campaign-schedule"
-                  type="datetime-local"
-                  min={toLocalDateTimeInputValue(new Date(Date.now() + 60_000))}
-                  value={scheduledAtLocal}
-                  onChange={(event) => setScheduledAtLocal(event.target.value)}
-                  disabled={dispatchingCampaign}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                disabled={
-                  saving ||
-                  sendingTest ||
-                  dispatchingCampaign ||
-                  senders.length === 0 ||
-                  !scheduledAtLocal
-                }
-                onClick={scheduleCampaign}
-              >
-                {dispatchingCampaign ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <CalendarClock />
-                )}
-                {t('scheduleCampaign')}
-              </Button>
-            </section>
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+                <p className="text-muted-foreground text-xs">
+                  {t('deliveryScheduleHint')}
+                </p>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={
+                    saving ||
+                    sendingTest ||
+                    dispatchingCampaign ||
+                    senders.length === 0
+                  }
+                  onClick={() => void queueCampaign(null)}
+                >
+                  {dispatchingCampaign ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Send />
+                  )}
+                  {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
+                </Button>
+                <div className="grid gap-2">
+                  <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
+                  <Input
+                    id="campaign-schedule"
+                    type="datetime-local"
+                    min={toLocalDateTimeInputValue(
+                      new Date(Date.now() + 60_000)
+                    )}
+                    value={scheduledAtLocal}
+                    onChange={(event) =>
+                      setScheduledAtLocal(event.target.value)
+                    }
+                    disabled={dispatchingCampaign}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  disabled={
+                    saving ||
+                    sendingTest ||
+                    dispatchingCampaign ||
+                    senders.length === 0 ||
+                    !scheduledAtLocal
+                  }
+                  onClick={scheduleCampaign}
+                >
+                  {dispatchingCampaign ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <CalendarClock />
+                  )}
+                  {t('scheduleCampaign')}
+                </Button>
+              </section>
+            </details>
 
-            <section className="border-border bg-card space-y-4 rounded-xl border p-4">
-              <div className="flex items-center gap-2">
-                <Users className="text-primary size-4" />
-                <h2 className="text-foreground font-semibold">
-                  {t('audience')}
-                </h2>
-              </div>
-              <div className="grid gap-2">
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+                {t('advancedDelivery')}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-2 rounded-xl border p-4">
                 {(
                   [
-                    ['all_contacts', 'allContacts'],
-                    ['selected_contacts', 'selectContacts'],
-                    ['pipeline_stage', 'pipelineStage'],
+                    'abTesting',
+                    'recurringCampaign',
+                    'automaticResend',
+                    'gradualDelivery',
                   ] as const
-                ).map(([type, labelKey]) => (
-                  <label
-                    key={type}
-                    className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
-                      audienceType === type
-                        ? 'border-primary bg-primary/5 text-foreground'
-                        : 'border-border text-muted-foreground'
-                    }`}
+                ).map((key) => (
+                  <div
+                    key={key}
+                    className="border-border flex items-center justify-between gap-3 rounded-lg border p-3"
                   >
-                    <input
-                      type="radio"
-                      name="email-audience"
-                      value={type}
-                      checked={audienceType === type}
-                      onChange={() => setAudienceType(type)}
-                      className="accent-primary mt-0.5"
-                    />
-                    <span>
-                      <span className="block font-medium">{t(labelKey)}</span>
-                      {type === 'all_contacts' && (
-                        <span className="mt-0.5 block text-xs">
-                          {t('allContactsHint')}
-                        </span>
-                      )}
-                      {type === 'selected_contacts' && (
-                        <span className="mt-0.5 block text-xs">
-                          {t('selectedContactCount', {
-                            count: contactIds.length,
-                          })}
-                        </span>
-                      )}
+                    <span className="text-foreground text-sm">{t(key)}</span>
+                    <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-medium">
+                      {t('comingSoon')}
                     </span>
-                  </label>
+                  </div>
                 ))}
-              </div>
+              </section>
+            </details>
 
-              {audienceType === 'selected_contacts' && (
-                <div className="border-border space-y-3 border-t pt-3">
-                  <div className="flex gap-2">
-                    <Input
-                      value={contactSearch}
-                      onChange={(event) => {
-                        setContactSearch(event.target.value);
-                        setContactPage(0);
-                      }}
-                      placeholder={t('searchContacts')}
-                      aria-label={t('searchContacts')}
-                    />
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {t('contactsWithEmail', { count: contactTotal })}
-                  </p>
-                  {loadingContacts ? (
-                    <div className="flex h-24 items-center justify-center">
-                      <Loader2 className="text-primary size-5 animate-spin" />
-                    </div>
-                  ) : contacts.length === 0 ? (
-                    <p className="bg-muted text-muted-foreground rounded-md p-3 text-xs">
-                      {t('noContactsWithEmail')}
-                    </p>
-                  ) : (
-                    <>
-                      <div className="max-h-60 space-y-1 overflow-y-auto">
-                        {contacts.map((contact) => (
-                          <label
-                            key={contact.id}
-                            className="hover:bg-muted flex cursor-pointer items-start gap-2 rounded-md p-2"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={contactIds.includes(contact.id)}
-                              onChange={() => toggleContact(contact.id)}
-                              className="accent-primary mt-1"
-                            />
-                            <span className="min-w-0">
-                              <span className="text-foreground block truncate text-sm">
-                                {displayName(contact.name, contact.email)}
-                              </span>
-                              {contact.name && (
-                                <span className="text-muted-foreground block truncate text-xs">
-                                  {contact.email}
-                                </span>
-                              )}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={contactPage === 0}
-                          onClick={() =>
-                            setContactPage((page) => Math.max(0, page - 1))
-                          }
-                        >
-                          <ChevronLeft />
-                          {t('previous')}
-                        </Button>
-                        <span className="text-muted-foreground text-xs">
-                          {contactPage + 1} /{' '}
-                          {Math.max(1, Math.ceil(contactTotal / 40))}
-                        </span>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={(contactPage + 1) * 40 >= contactTotal}
-                          onClick={() => setContactPage((page) => page + 1)}
-                        >
-                          {t('next')}
-                          <ChevronRight />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {audienceType === 'pipeline_stage' && (
-                <div className="border-border grid gap-3 border-t pt-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="audience-pipeline">{t('pipeline')}</Label>
-                    <select
-                      id="audience-pipeline"
-                      value={pipelineId}
-                      onChange={(event) => {
-                        const nextPipelineId = event.target.value;
-                        setPipelineId(nextPipelineId);
-                        setStageId(
-                          stages.find(
-                            (stage) => stage.pipeline_id === nextPipelineId
-                          )?.id ?? ''
-                        );
-                      }}
-                      className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
-                    >
-                      <option value="">{t('selectPipeline')}</option>
-                      {pipelines.map((pipeline) => (
-                        <option key={pipeline.id} value={pipeline.id}>
-                          {pipeline.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="audience-stage">{t('stage')}</Label>
-                    <select
-                      id="audience-stage"
-                      value={stageId}
-                      onChange={(event) => setStageId(event.target.value)}
-                      disabled={!pipelineId}
-                      className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm disabled:opacity-50"
-                    >
-                      <option value="">{t('selectStage')}</option>
-                      {filteredStages.map((stage) => (
-                        <option key={stage.id} value={stage.id}>
-                          {stage.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    {t('pipelineAudienceHint')}
-                  </p>
-                </div>
-              )}
-            </section>
-
-            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-              <h2 className="text-foreground font-semibold">{t('addBlock')}</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {BLOCK_TYPE_ORDER.map((type) => {
-                  const Icon = blockIcons[type];
-                  return (
-                    <Button
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+                {t('audience')}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-4 rounded-xl border p-4">
+                <div className="grid gap-2">
+                  {(
+                    [
+                      ['all_contacts', 'allContacts'],
+                      ['selected_contacts', 'selectContacts'],
+                      ['pipeline_stage', 'pipelineStage'],
+                    ] as const
+                  ).map(([type, labelKey]) => (
+                    <label
                       key={type}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => addBlock(type)}
+                      className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${
+                        audienceType === type
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-border text-muted-foreground'
+                      }`}
                     >
-                      <Icon />
-                      {t(`blockTypes.${type}`)}
-                    </Button>
-                  );
-                })}
-              </div>
-            </section>
+                      <input
+                        type="radio"
+                        name="email-audience"
+                        value={type}
+                        checked={audienceType === type}
+                        onChange={() => setAudienceType(type)}
+                        className="accent-primary mt-0.5"
+                      />
+                      <span>
+                        <span className="block font-medium">{t(labelKey)}</span>
+                        {type === 'all_contacts' && (
+                          <span className="mt-0.5 block text-xs">
+                            {t('allContactsHint')}
+                          </span>
+                        )}
+                        {type === 'selected_contacts' && (
+                          <span className="mt-0.5 block text-xs">
+                            {t('selectedContactCount', {
+                              count: contactIds.length,
+                            })}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))}
+                </div>
 
-            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-              <h2 className="text-foreground font-semibold">
-                {t('blockSettings')}
-              </h2>
-              {!selectedBlock ? (
-                <p className="text-muted-foreground text-sm">
-                  {t('selectBlockHint')}
-                </p>
-              ) : (
-                <>
-                  <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                    {t(`blockTypes.${selectedBlock.type}`)}
-                  </p>
-                  {['heading', 'text', 'button', 'footer'].includes(
-                    selectedBlock.type
-                  ) && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="block-text">{t('blockText')}</Label>
-                      <textarea
-                        id="block-text"
-                        rows={selectedBlock.type === 'heading' ? 2 : 5}
-                        value={selectedBlock.text}
-                        onChange={(event) =>
-                          updateSelectedBlock({ text: event.target.value })
-                        }
-                        maxLength={10_000}
-                        className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+                {audienceType === 'selected_contacts' && (
+                  <div className="border-border space-y-3 border-t pt-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={contactSearch}
+                        onChange={(event) => {
+                          setContactSearch(event.target.value);
+                          setContactPage(0);
+                        }}
+                        placeholder={t('searchContacts')}
+                        aria-label={t('searchContacts')}
                       />
                     </div>
-                  )}
-                  {selectedBlock.type === 'image' && (
-                    <>
+                    <p className="text-muted-foreground text-xs">
+                      {t('contactsWithEmail', { count: contactTotal })}
+                    </p>
+                    {loadingContacts ? (
+                      <div className="flex h-24 items-center justify-center">
+                        <Loader2 className="text-primary size-5 animate-spin" />
+                      </div>
+                    ) : contacts.length === 0 ? (
+                      <p className="bg-muted text-muted-foreground rounded-md p-3 text-xs">
+                        {t('noContactsWithEmail')}
+                      </p>
+                    ) : (
+                      <>
+                        <div className="max-h-60 space-y-1 overflow-y-auto">
+                          {contacts.map((contact) => (
+                            <label
+                              key={contact.id}
+                              className="hover:bg-muted flex cursor-pointer items-start gap-2 rounded-md p-2"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={contactIds.includes(contact.id)}
+                                onChange={() => toggleContact(contact.id)}
+                                className="accent-primary mt-1"
+                              />
+                              <span className="min-w-0">
+                                <span className="text-foreground block truncate text-sm">
+                                  {displayName(contact.name, contact.email)}
+                                </span>
+                                {contact.name && (
+                                  <span className="text-muted-foreground block truncate text-xs">
+                                    {contact.email}
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={contactPage === 0}
+                            onClick={() =>
+                              setContactPage((page) => Math.max(0, page - 1))
+                            }
+                          >
+                            <ChevronLeft />
+                            {t('previous')}
+                          </Button>
+                          <span className="text-muted-foreground text-xs">
+                            {contactPage + 1} /{' '}
+                            {Math.max(1, Math.ceil(contactTotal / 40))}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={(contactPage + 1) * 40 >= contactTotal}
+                            onClick={() => setContactPage((page) => page + 1)}
+                          >
+                            {t('next')}
+                            <ChevronRight />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {audienceType === 'pipeline_stage' && (
+                  <div className="border-border grid gap-3 border-t pt-3">
+                    <div className="grid gap-2">
+                      <Label htmlFor="audience-pipeline">{t('pipeline')}</Label>
+                      <select
+                        id="audience-pipeline"
+                        value={pipelineId}
+                        onChange={(event) => {
+                          const nextPipelineId = event.target.value;
+                          setPipelineId(nextPipelineId);
+                          setStageId(
+                            stages.find(
+                              (stage) => stage.pipeline_id === nextPipelineId
+                            )?.id ?? ''
+                          );
+                        }}
+                        className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
+                      >
+                        <option value="">{t('selectPipeline')}</option>
+                        {pipelines.map((pipeline) => (
+                          <option key={pipeline.id} value={pipeline.id}>
+                            {pipeline.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="audience-stage">{t('stage')}</Label>
+                      <select
+                        id="audience-stage"
+                        value={stageId}
+                        onChange={(event) => setStageId(event.target.value)}
+                        disabled={!pipelineId}
+                        className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm disabled:opacity-50"
+                      >
+                        <option value="">{t('selectStage')}</option>
+                        {filteredStages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {t('pipelineAudienceHint')}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </details>
+
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+                {t('addBlock')}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+                <div className="grid grid-cols-2 gap-2">
+                  {BLOCK_TYPE_ORDER.map((type) => {
+                    const Icon = blockIcons[type];
+                    return (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="justify-start"
+                        onClick={() => addBlock(type)}
+                      >
+                        <Icon />
+                        {t(`blockTypes.${type}`)}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </section>
+            </details>
+
+            <details className="group">
+              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+                {t('blockSettings')}
+                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+              </summary>
+              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+                {!selectedBlock ? (
+                  <p className="text-muted-foreground text-sm">
+                    {t('selectBlockHint')}
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                      {t(`blockTypes.${selectedBlock.type}`)}
+                    </p>
+                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
+                      selectedBlock.type
+                    ) && (
                       <div className="grid gap-2">
-                        <Label htmlFor="block-image-url">{t('imageUrl')}</Label>
+                        <Label htmlFor="block-text">{t('blockText')}</Label>
+                        <textarea
+                          id="block-text"
+                          rows={
+                            selectedBlock.type === 'heading' ||
+                            selectedBlock.type === 'hero'
+                              ? 2
+                              : 5
+                          }
+                          value={selectedBlock.text}
+                          onChange={(event) =>
+                            updateSelectedBlock({ text: event.target.value })
+                          }
+                          maxLength={10_000}
+                          className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+                        />
+                      </div>
+                    )}
+                    {selectedBlock.type === 'image' && (
+                      <>
+                        <div className="grid gap-2">
+                          <Label htmlFor="block-image-url">
+                            {t('imageUrl')}
+                          </Label>
+                          <Input
+                            id="block-image-url"
+                            type="url"
+                            value={selectedBlock.url}
+                            onChange={(event) =>
+                              updateSelectedBlock({ url: event.target.value })
+                            }
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="block-image-alt">
+                            {t('imageAlt')}
+                          </Label>
+                          <Input
+                            id="block-image-alt"
+                            value={selectedBlock.alt}
+                            onChange={(event) =>
+                              updateSelectedBlock({ alt: event.target.value })
+                            }
+                          />
+                        </div>
+                      </>
+                    )}
+                    {selectedBlock.type === 'button' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="block-button-url">
+                          {t('buttonUrl')}
+                        </Label>
                         <Input
-                          id="block-image-url"
+                          id="block-button-url"
                           type="url"
                           value={selectedBlock.url}
                           onChange={(event) =>
@@ -1153,78 +1756,54 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
                           placeholder="https://..."
                         />
                       </div>
+                    )}
+                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
+                      selectedBlock.type
+                    ) && (
                       <div className="grid gap-2">
-                        <Label htmlFor="block-image-alt">{t('imageAlt')}</Label>
-                        <Input
-                          id="block-image-alt"
-                          value={selectedBlock.alt}
-                          onChange={(event) =>
-                            updateSelectedBlock({ alt: event.target.value })
-                          }
-                        />
+                        <Label>{t('alignment')}</Label>
+                        <div className="flex gap-1">
+                          {(
+                            [
+                              ['left', AlignLeft],
+                              ['center', AlignCenter],
+                              ['right', AlignRight],
+                            ] as const
+                          ).map(([alignment, Icon]) => (
+                            <Button
+                              key={alignment}
+                              type="button"
+                              variant={
+                                selectedBlock.alignment === alignment
+                                  ? 'secondary'
+                                  : 'outline'
+                              }
+                              size="icon-sm"
+                              aria-label={t(`alignments.${alignment}`)}
+                              onClick={() =>
+                                updateSelectedBlock({
+                                  alignment,
+                                })
+                              }
+                            >
+                              <Icon />
+                            </Button>
+                          ))}
+                        </div>
                       </div>
-                    </>
-                  )}
-                  {selectedBlock.type === 'button' && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="block-button-url">{t('buttonUrl')}</Label>
-                      <Input
-                        id="block-button-url"
-                        type="url"
-                        value={selectedBlock.url}
-                        onChange={(event) =>
-                          updateSelectedBlock({ url: event.target.value })
-                        }
-                        placeholder="https://..."
-                      />
-                    </div>
-                  )}
-                  {['heading', 'text', 'button', 'footer'].includes(
-                    selectedBlock.type
-                  ) && (
-                    <div className="grid gap-2">
-                      <Label>{t('alignment')}</Label>
-                      <div className="flex gap-1">
-                        {(
-                          [
-                            ['left', AlignLeft],
-                            ['center', AlignCenter],
-                            ['right', AlignRight],
-                          ] as const
-                        ).map(([alignment, Icon]) => (
-                          <Button
-                            key={alignment}
-                            type="button"
-                            variant={
-                              selectedBlock.alignment === alignment
-                                ? 'secondary'
-                                : 'outline'
-                            }
-                            size="icon-sm"
-                            aria-label={t(`alignments.${alignment}`)}
-                            onClick={() =>
-                              updateSelectedBlock({
-                                alignment: alignment as EmailBlockAlignment,
-                              })
-                            }
-                          >
-                            <Icon />
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {['divider', 'spacer'].includes(selectedBlock.type) && (
-                    <p className="text-muted-foreground text-xs">
-                      {t('noBlockSettings')}
-                    </p>
-                  )}
-                </>
-              )}
-            </section>
+                    )}
+                    {['divider', 'spacer'].includes(selectedBlock.type) && (
+                      <p className="text-muted-foreground text-xs">
+                        {t('noBlockSettings')}
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+            </details>
           </aside>
 
-          <section className="min-w-0 space-y-3">
+          <section className="order-1 min-w-0 space-y-3">
             <div className="border-border bg-card flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
               <div>
                 <h2 className="text-foreground font-semibold">
@@ -1286,8 +1865,10 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
                           selected={block.id === selectedBlockId}
                           label={t(`blockTypes.${block.type}`)}
                           removeLabel={t('removeBlock')}
+                          duplicateLabel={t('duplicateBlock')}
                           onSelect={() => setSelectedBlockId(block.id)}
                           onRemove={() => removeBlock(block.id)}
+                          onDuplicate={() => duplicateBlock(block.id)}
                         />
                       ))}
                     </div>

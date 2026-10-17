@@ -35,6 +35,67 @@ describe('email campaign draft validation', () => {
     expect('input' in result).toBe(true);
   });
 
+  it('accepts the versioned content document and validates design settings', () => {
+    const result = validateEmailCampaignDraft({
+      ...validDraft,
+      content: {
+        version: 1,
+        blocks: [{ ...validDraft.content[0], type: 'hero' }],
+        design: {
+          fontFamily: 'Georgia',
+          emailBackground: '#f2f4f7',
+          sectionBackground: '#ffffff',
+          primaryText: '#172033',
+          secondaryText: '#344054',
+          buttonColor: '#c026d3',
+          accentColor: '#e10c8c',
+          sectionSpacing: 40,
+          cornerRadius: 12,
+          buttonRadius: 8,
+        },
+      },
+    });
+    expect('input' in result && result.input.content[0].type).toBe('hero');
+    expect('input' in result && result.input.design?.fontFamily).toBe(
+      'Georgia'
+    );
+  });
+
+  it('rejects unsafe colors and out-of-range design settings', () => {
+    const unsafeColor = validateEmailCampaignDraft({
+      ...validDraft,
+      design: {
+        fontFamily: 'Arial',
+        emailBackground: 'url(javascript:alert(1))',
+        sectionBackground: '#ffffff',
+        primaryText: '#172033',
+        secondaryText: '#344054',
+        buttonColor: '#c026d3',
+        accentColor: '#e10c8c',
+        sectionSpacing: 32,
+        cornerRadius: 8,
+        buttonRadius: 6,
+      },
+    });
+    const invalidSpacing = validateEmailCampaignDraft({
+      ...validDraft,
+      design: {
+        fontFamily: 'Arial',
+        emailBackground: '#f2f4f7',
+        sectionBackground: '#ffffff',
+        primaryText: '#172033',
+        secondaryText: '#344054',
+        buttonColor: '#c026d3',
+        accentColor: '#e10c8c',
+        sectionSpacing: 1000,
+        cornerRadius: 8,
+        buttonRadius: 6,
+      },
+    });
+    expect('error' in unsafeColor).toBe(true);
+    expect('error' in invalidSpacing).toBe(true);
+  });
+
   it('rejects script URLs in content blocks', () => {
     const result = validateEmailCampaignDraft({
       ...validDraft,

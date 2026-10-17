@@ -168,7 +168,11 @@ export async function PATCH(
         audience_contact_ids: input.audienceContactIds,
         audience_pipeline_id: input.audiencePipelineId,
         audience_stage_id: input.audienceStageId,
-        content_json: input.content,
+        content_json: {
+          version: 1,
+          blocks: input.content,
+          design: input.design,
+        },
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

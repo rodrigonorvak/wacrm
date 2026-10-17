@@ -11,7 +11,10 @@ import {
   validateEmailCampaignDraft,
   validateEmailCampaignReadyToSend,
 } from '@/lib/email-campaigns/validation';
-import type { EmailBlock } from '@/lib/email-campaigns/types';
+import type {
+  EmailBlock,
+  EmailDesignSettings,
+} from '@/lib/email-campaigns/types';
 import {
   sendEmailThroughSender,
   type EmailSenderSmtpConfig,
@@ -60,6 +63,7 @@ interface PreparedCampaign {
   sender: SenderRow;
   password: string;
   content: EmailBlock[];
+  design?: EmailDesignSettings;
 }
 
 function getCronSecrets(): string[] {
@@ -267,6 +271,7 @@ export async function GET(request: Request) {
         sender,
         password: decryptSenderPassword(sender.encrypted_password),
         content: validation.input.content,
+        design: validation.input.design,
       });
     } catch (error) {
       const message =
@@ -378,7 +383,8 @@ export async function GET(request: Request) {
         prepared.campaign.subject,
         prepared.campaign.preheader,
         prepared.content,
-        unsubscribe.url
+        unsubscribe.url,
+        prepared.design
       );
       await sendEmailThroughSender(prepared.sender, prepared.password, {
         to: job.email_address,

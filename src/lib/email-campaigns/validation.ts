@@ -4,11 +4,14 @@ import type {
   EmailBlockType,
   EmailCampaignAudienceType,
   EmailCampaignDraftInput,
+  EmailDesignSettings,
 } from './types';
+import { DEFAULT_EMAIL_DESIGN } from './types';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const BLOCK_TYPES = new Set<EmailBlockType>([
+  'hero',
   'heading',
   'text',
   'image',
@@ -83,6 +86,63 @@ function parseBlocks(value: unknown): EmailBlock[] | null {
   return blocks;
 }
 
+function parseDesign(value: unknown): EmailDesignSettings | null {
+  if (value === undefined) return DEFAULT_EMAIL_DESIGN;
+  if (!isRecord(value)) return null;
+
+  const colors = [
+    value.emailBackground,
+    value.sectionBackground,
+    value.primaryText,
+    value.secondaryText,
+    value.buttonColor,
+    value.accentColor,
+  ];
+  const numericSettings = [
+    value.sectionSpacing,
+    value.cornerRadius,
+    value.buttonRadius,
+  ];
+  if (
+    !['Arial', 'Georgia', 'Verdana'].includes(String(value.fontFamily)) ||
+    colors.some(
+      (color) => typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)
+    ) ||
+    numericSettings.some(
+      (number) => typeof number !== 'number' || !Number.isFinite(number)
+    )
+  ) {
+    return null;
+  }
+  const [sectionSpacing, cornerRadius, buttonRadius] = numericSettings as [
+    number,
+    number,
+    number,
+  ];
+  if (
+    sectionSpacing < 8 ||
+    sectionSpacing > 96 ||
+    cornerRadius < 0 ||
+    cornerRadius > 32 ||
+    buttonRadius < 0 ||
+    buttonRadius > 32
+  ) {
+    return null;
+  }
+  return {
+    fontFamily: value.fontFamily as EmailDesignSettings['fontFamily'],
+    emailBackground: value.emailBackground as string,
+    sectionBackground: value.sectionBackground as string,
+    primaryText: value.primaryText as string,
+    secondaryText: value.secondaryText as string,
+    buttonColor: value.buttonColor as string,
+    accentColor: value.accentColor as string,
+    sectionSpacing,
+    cornerRadius,
+    buttonRadius,
+  };
+}
+
 export function validateEmailCampaignDraft(value: unknown): ValidationResult {
   if (!isRecord(value)) return { error: 'Dados da campanha inválidos.' };
   const senderConnectionId = value.senderConnectionId;
@@ -94,7 +154,14 @@ export function validateEmailCampaignDraft(value: unknown): ValidationResult {
   const audienceContactIds = value.audienceContactIds;
   const audiencePipelineId = value.audiencePipelineId;
   const audienceStageId = value.audienceStageId;
-  const content = parseBlocks(value.content);
+  const rawContent = value.content;
+  const contentRecord = isRecord(rawContent) ? rawContent : null;
+  const content = parseBlocks(
+    contentRecord ? contentRecord.blocks : rawContent
+  );
+  const design = parseDesign(
+    contentRecord?.design === undefined ? value.design : contentRecord.design
+  );
 
   if (
     typeof senderConnectionId !== 'string' ||
@@ -121,7 +188,7 @@ export function validateEmailCampaignDraft(value: unknown): ValidationResult {
   ) {
     return { error: 'Escolha um público válido.' };
   }
-  if (!content) {
+  if (!content || !design) {
     return { error: 'Adicione ao menos um bloco válido ao e-mail.' };
   }
 
@@ -169,6 +236,7 @@ export function validateEmailCampaignDraft(value: unknown): ValidationResult {
       audiencePipelineId: pipelineId,
       audienceStageId: stageId,
       content,
+      design,
     },
   };
 }

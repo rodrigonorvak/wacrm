@@ -11,6 +11,7 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  ChevronDown,
   Crown,
   GitBranch,
   LayoutDashboard,
@@ -132,6 +133,9 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
   const [collapsed, setCollapsed] = useState(false);
+  const [campaignsOpen, setCampaignsOpen] = useState(false);
+  const onCampaignsRoute = pathname.startsWith("/broadcasts");
+  const emailActive = pathname.startsWith("/broadcasts/email");
   const settingsActive =
     pathname === "/settings" || pathname.startsWith("/settings/");
   // Only surface the account-name strip when it actually carries
@@ -146,6 +150,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     !profileLoading &&
     !!account?.name &&
     account.name !== profile?.full_name;
+
+  useEffect(() => {
+    if (onCampaignsRoute) setCampaignsOpen(true);
+  }, [onCampaignsRoute]);
 
   // Close the drawer when route changes — users opened it to navigate,
   // so once they pick a destination the drawer should get out of the way.
@@ -337,6 +345,70 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                   )}
                 </>
               );
+
+              if (item.href === "/broadcasts" && !isFeatureLocked) {
+                const subItems = [
+                  { key: "calendar", label: t("campaignsCalendar"), href: null },
+                  { key: "email", label: t("campaignsEmail"), href: "/broadcasts/email" },
+                  { key: "sms", label: t("campaignsSms"), href: null },
+                  { key: "whatsapp", label: t("campaignsWhatsapp"), href: "/broadcasts" },
+                ];
+                return (
+                  <li key={item.href}>
+                    <button
+                      type="button"
+                      aria-expanded={campaignsOpen}
+                      onClick={() => {
+                        if (collapsed) {
+                          setCollapsed(false);
+                          setCampaignsOpen(true);
+                          return;
+                        }
+                        setCampaignsOpen((value) => !value);
+                      }}
+                      className={cn(linkClassName, "w-full", onCampaignsRoute && "text-white")}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className={cn("flex-1 text-left", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
+                      <ChevronDown
+                        className={cn("size-3.5 shrink-0 transition-transform", campaignsOpen && "rotate-180", collapsed ? "lg:hidden" : "")}
+                      />
+                    </button>
+                    {campaignsOpen && !collapsed && (
+                      <ul className="mt-1 flex flex-col gap-0.5">
+                        {subItems.map((sub) => (
+                          <li key={sub.key}>
+                            {sub.href ? (
+                              <Link
+                                href={sub.href}
+                                className={cn(
+                                  "flex items-center gap-3 py-2 pl-10 pr-3 text-sm transition-none",
+                                  (sub.key === "email" && emailActive) ||
+                                    (sub.key === "whatsapp" && onCampaignsRoute && !emailActive)
+                                    ? "font-semibold text-white"
+                                    : "text-white/65 hover:bg-white/10 hover:text-white",
+                                )}
+                              >
+                                {sub.label}
+                              </Link>
+                            ) : (
+                              <span
+                                aria-disabled="true"
+                                className="flex items-center justify-between gap-2 py-2 pl-10 pr-3 text-sm text-white/40"
+                              >
+                                {sub.label}
+                                <span className="rounded-full border border-white/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider">
+                                  {t("comingSoon")}
+                                </span>
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              }
 
               return (
                 <li key={item.href}>

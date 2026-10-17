@@ -72,6 +72,7 @@ export function validateEmailSenderInput(
     if (smtpPort !== 465 && smtpPort !== 587) {
       return { error: 'O Gmail aceita as portas SMTP 465 ou 587.' };
     }
+    const gmailPassword = password.replace(/\s+/g, '');
     return {
       input: {
         name,
@@ -82,7 +83,7 @@ export function validateEmailSenderInput(
         smtpPort,
         smtpUsername,
         smtpSecure: smtpPort === 465,
-        password,
+        password: gmailPassword,
       },
     };
   }
