@@ -196,7 +196,7 @@ export default function EmailSenderSettingsPage() {
       <Button
         type="button"
         variant="ghost"
-        onClick={() => router.push('/broadcasts')}
+        onClick={() => router.push('/broadcasts/email')}
         className="-ml-2"
       >
         <ArrowLeft />

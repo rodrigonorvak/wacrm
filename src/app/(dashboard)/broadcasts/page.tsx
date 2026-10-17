@@ -62,7 +62,7 @@ export default function BroadcastsPage() {
   const router = useRouter();
   const t = useTranslations('Broadcasts.page');
   const tStatus = useTranslations('Broadcasts.status');
-  const tEmail = useTranslations('EmailSenders');
+  const tEmailCampaigns = useTranslations('EmailCampaigns');
   const canCreate = useCan('send-messages');
   const canManageEmailSenders = useCan('edit-settings');
   const { features, loading: featuresLoading } = usePlatformFeatureAccess();
@@ -195,10 +195,10 @@ export default function BroadcastsPage() {
           {!featuresLoading && features.broadcasts && canManageEmailSenders && (
             <Button
               variant="outline"
-              onClick={() => router.push('/broadcasts/email/senders')}
+              onClick={() => router.push('/broadcasts/email')}
             >
               <Mail className="h-4 w-4" />
-              {tEmail('openSettings')}
+              {tEmailCampaigns('title')}
             </Button>
           )}
           <GatedButton

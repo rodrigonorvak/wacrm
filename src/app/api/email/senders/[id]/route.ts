@@ -152,6 +152,15 @@ export async function DELETE(
       .select('id')
       .maybeSingle();
     if (error) {
+      if (error.code === '23503') {
+        return NextResponse.json(
+          {
+            error:
+              'Este remetente está vinculado a uma campanha. Troque ou exclua o rascunho antes de remover o remetente.',
+          },
+          { status: 409 }
+        );
+      }
       console.error('[email-senders] delete failed:', error.message);
       return NextResponse.json(
         { error: 'Não foi possível excluir o remetente.' },
