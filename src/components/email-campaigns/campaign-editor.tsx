@@ -32,6 +32,7 @@ import {
   AlignLeft,
   AlignRight,
   ArrowLeft,
+  CalendarClock,
   ChevronLeft,
   ChevronRight,
   GripVertical,
@@ -44,6 +45,7 @@ import {
   MousePointer2,
   PanelBottom,
   Save,
+  Send,
   Smartphone,
   Space,
   Trash2,
@@ -156,6 +158,12 @@ function displayName(name: string | null, email: string): string {
   return name?.trim() || email;
 }
 
+function toLocalDateTimeInputValue(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
+
 function EmailBlockPreview({ block }: { block: EmailBlock }) {
   const alignmentClass = {
     left: 'text-left',
@@ -230,7 +238,7 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
       <p className="mt-2">
         Cancelar inscrição
         <span className="block text-[10px] text-slate-400">
-          O link de descadastro será ativado na etapa de envio.
+          O link de descadastro será incluído automaticamente no envio.
         </span>
       </p>
     </div>
@@ -316,6 +324,11 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [dispatchingCampaign, setDispatchingCampaign] = useState(false);
+  const [activeCampaignId, setActiveCampaignId] = useState(campaignId);
+  const [testRecipient, setTestRecipient] = useState('');
+  const [scheduledAtLocal, setScheduledAtLocal] = useState('');
   const [senders, setSenders] = useState<SenderOption[]>([]);
   const [senderId, setSenderId] = useState('');
   const [name, setName] = useState('');
@@ -514,57 +527,161 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
     });
   }
 
-  async function saveDraft(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function getDraftPayload() {
     if (!senderId) {
-      toast.error(t('senderRequired'));
-      return;
+      throw new Error(t('senderRequired'));
     }
     if (audienceType === 'selected_contacts' && contactIds.length === 0) {
-      toast.error(t('contactsRequired'));
-      return;
+      throw new Error(t('contactsRequired'));
     }
     if (audienceType === 'pipeline_stage' && (!pipelineId || !stageId)) {
-      toast.error(t('stageRequired'));
-      return;
+      throw new Error(t('stageRequired'));
     }
 
+    return {
+      senderConnectionId: senderId,
+      name,
+      subject,
+      preheader,
+      audienceType,
+      audienceContactIds:
+        audienceType === 'selected_contacts' ? contactIds : [],
+      audiencePipelineId: audienceType === 'pipeline_stage' ? pipelineId : null,
+      audienceStageId: audienceType === 'pipeline_stage' ? stageId : null,
+      content: blocks,
+    };
+  }
+
+  async function persistDraft(): Promise<string> {
+    const payload = getDraftPayload();
+
+    const response = await fetch(
+      activeCampaignId
+        ? `/api/email/campaigns/${activeCampaignId}`
+        : '/api/email/campaigns',
+      {
+        method: activeCampaignId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }
+    );
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || t('saveFailed'));
+    const savedId = result.campaign?.id ?? activeCampaignId;
+    if (typeof savedId !== 'string') throw new Error(t('saveFailed'));
+    setActiveCampaignId(savedId);
+    return savedId;
+  }
+
+  async function saveDraft(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        senderConnectionId: senderId,
-        name,
-        subject,
-        preheader,
-        audienceType,
-        audienceContactIds:
-          audienceType === 'selected_contacts' ? contactIds : [],
-        audiencePipelineId:
-          audienceType === 'pipeline_stage' ? pipelineId : null,
-        audienceStageId: audienceType === 'pipeline_stage' ? stageId : null,
-        content: blocks,
-      };
-      const response = await fetch(
-        campaignId
-          ? `/api/email/campaigns/${campaignId}`
-          : '/api/email/campaigns',
-        {
-          method: campaignId ? 'PATCH' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || t('saveFailed'));
+      const savedId = await persistDraft();
       toast.success(t('draftSaved'));
-      if (!campaignId && result.campaign?.id) {
-        router.replace(`/broadcasts/email/${result.campaign.id}`);
-      }
+      if (!campaignId) router.replace(`/broadcasts/email/${savedId}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('saveFailed'));
     } finally {
       setSaving(false);
     }
+  }
+
+  async function sendTestEmail() {
+    const recipient = testRecipient.trim();
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) ||
+      recipient.length > 254
+    ) {
+      toast.error(t('testRecipientRequired'));
+      return;
+    }
+    if (!subject.trim()) {
+      toast.error(t('testSubjectRequired'));
+      return;
+    }
+    if (
+      !blocks.some(
+        (block) => block.text.trim() || (block.type === 'image' && block.url)
+      )
+    ) {
+      toast.error(t('testContentRequired'));
+      return;
+    }
+
+    setSendingTest(true);
+    try {
+      const savedId = await persistDraft();
+      toast.success(t('draftSaved'));
+      const response = await fetch(`/api/email/campaigns/${savedId}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: recipient }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || t('testSendFailed'));
+      toast.success(t('testSent'));
+      if (!campaignId) router.replace(`/broadcasts/email/${savedId}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('testSendFailed'));
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
+  async function queueCampaign(scheduledAt: string | null) {
+    const confirmation = scheduledAt
+      ? t('scheduleCampaignConfirm')
+      : t('sendCampaignConfirm');
+    if (!window.confirm(confirmation)) return;
+
+    setDispatchingCampaign(true);
+    try {
+      const savedId = await persistDraft();
+      const response = await fetch(`/api/email/campaigns/${savedId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduledAt }),
+      });
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || t('campaignSendFailed'));
+
+      if (scheduledAt) {
+        toast.success(
+          t('campaignScheduled', {
+            count: result.queuedCount,
+            date: new Date(result.scheduledAt).toLocaleString(),
+          })
+        );
+      } else {
+        toast.success(t('campaignQueued', { count: result.queuedCount }));
+      }
+      router.replace('/broadcasts/email');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('campaignSendFailed')
+      );
+    } finally {
+      setDispatchingCampaign(false);
+    }
+  }
+
+  function scheduleCampaign() {
+    if (!scheduledAtLocal) {
+      toast.error(t('scheduleTimeRequired'));
+      return;
+    }
+    const scheduledAt = new Date(scheduledAtLocal);
+    if (
+      !Number.isFinite(scheduledAt.getTime()) ||
+      scheduledAt.getTime() < Date.now() + 60_000 ||
+      scheduledAt.getTime() > Date.now() + 365 * 24 * 60 * 60 * 1000
+    ) {
+      toast.error(t('scheduleTimeInvalid'));
+      return;
+    }
+    void queueCampaign(scheduledAt.toISOString());
   }
 
   const blockIcons = {
@@ -605,10 +722,34 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
             </h1>
           </div>
         </div>
-        <Button type="submit" disabled={saving || senders.length === 0}>
-          {saving ? <Loader2 className="animate-spin" /> : <Save />}
-          {saving ? t('saving') : t('saveDraft')}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={
+              saving ||
+              sendingTest ||
+              dispatchingCampaign ||
+              senders.length === 0
+            }
+            onClick={() => void sendTestEmail()}
+          >
+            {sendingTest ? <Loader2 className="animate-spin" /> : <Send />}
+            {sendingTest ? t('sendingTest') : t('sendTest')}
+          </Button>
+          <Button
+            type="submit"
+            disabled={
+              saving ||
+              sendingTest ||
+              dispatchingCampaign ||
+              senders.length === 0
+            }
+          >
+            {saving ? <Loader2 className="animate-spin" /> : <Save />}
+            {saving ? t('saving') : t('saveDraft')}
+          </Button>
+        </div>
       </header>
 
       {senders.length === 0 ? (
@@ -683,6 +824,83 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
                   placeholder={t('preheaderPlaceholder')}
                 />
               </div>
+            </section>
+
+            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+              <div className="grid gap-2">
+                <Label htmlFor="test-recipient">{t('testRecipient')}</Label>
+                <Input
+                  id="test-recipient"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={testRecipient}
+                  onChange={(event) => setTestRecipient(event.target.value)}
+                  placeholder={t('testRecipientPlaceholder')}
+                  maxLength={254}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {t('testSendHint')}
+                </p>
+              </div>
+            </section>
+
+            <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+              <h2 className="text-foreground font-semibold">
+                {t('deliverySchedule')}
+              </h2>
+              <p className="text-muted-foreground text-xs">
+                {t('deliveryScheduleHint')}
+              </p>
+              <Button
+                type="button"
+                className="w-full"
+                disabled={
+                  saving ||
+                  sendingTest ||
+                  dispatchingCampaign ||
+                  senders.length === 0
+                }
+                onClick={() => void queueCampaign(null)}
+              >
+                {dispatchingCampaign ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Send />
+                )}
+                {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
+              </Button>
+              <div className="grid gap-2">
+                <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
+                <Input
+                  id="campaign-schedule"
+                  type="datetime-local"
+                  min={toLocalDateTimeInputValue(new Date(Date.now() + 60_000))}
+                  value={scheduledAtLocal}
+                  onChange={(event) => setScheduledAtLocal(event.target.value)}
+                  disabled={dispatchingCampaign}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={
+                  saving ||
+                  sendingTest ||
+                  dispatchingCampaign ||
+                  senders.length === 0 ||
+                  !scheduledAtLocal
+                }
+                onClick={scheduleCampaign}
+              >
+                {dispatchingCampaign ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <CalendarClock />
+                )}
+                {t('scheduleCampaign')}
+              </Button>
             </section>
 
             <section className="border-border bg-card space-y-4 rounded-xl border p-4">
@@ -1079,7 +1297,7 @@ export function EmailCampaignEditor({ campaignId }: EditorProps) {
             </div>
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
               <Mail className="size-4" />
-              {t('draftOnlyNotice')}
+              {t('deliveryNotice')}
             </div>
           </section>
         </div>

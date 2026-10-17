@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { validateEmailCampaignDraft } from './validation';
+import {
+  validateEmailCampaignDraft,
+  validateEmailCampaignReadyToSend,
+} from './validation';
 
 const senderId = '00000000-0000-4000-8000-000000000010';
 const blockId = '00000000-0000-4000-8000-000000000001';
@@ -46,6 +49,14 @@ describe('email campaign draft validation', () => {
     expect('error' in result).toBe(true);
   });
 
+  it('rejects line breaks in the subject', () => {
+    const result = validateEmailCampaignDraft({
+      ...validDraft,
+      subject: 'Assunto\nBcc: fraud@example.com',
+    });
+    expect('error' in result).toBe(true);
+  });
+
   it('requires at least one selected contact for a manual audience', () => {
     const result = validateEmailCampaignDraft({
       ...validDraft,
@@ -66,5 +77,24 @@ describe('email campaign draft validation', () => {
       contactId,
     ]);
     expect('input' in result && result.input.audiencePipelineId).toBeNull();
+  });
+
+  it('requires a subject and visible content before campaign delivery', () => {
+    const result = validateEmailCampaignDraft(validDraft);
+    expect('input' in result).toBe(true);
+    if (!('input' in result)) return;
+    expect(validateEmailCampaignReadyToSend(result.input)).toBeNull();
+    expect(
+      validateEmailCampaignReadyToSend({
+        ...result.input,
+        subject: '',
+      })
+    ).toContain('assunto');
+    expect(
+      validateEmailCampaignReadyToSend({
+        ...result.input,
+        content: [],
+      })
+    ).toContain('conteúdo');
   });
 });

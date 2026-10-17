@@ -1,7 +1,7 @@
-import nodemailer from 'nodemailer';
 import { NextResponse } from 'next/server';
 import { requireEmailSenderAdmin } from '@/lib/email-senders/access';
 import { decryptSenderPassword } from '@/lib/email-senders/encryption';
+import { sendEmailThroughSender } from '@/lib/email-senders/smtp';
 import { toErrorResponse } from '@/lib/auth/account';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import {
@@ -112,22 +112,8 @@ export async function POST(
     }
 
     const sender = data as EmailSenderRow;
-    const transporter = nodemailer.createTransport({
-      host: sender.smtp_host,
-      port: sender.smtp_port,
-      secure: sender.smtp_secure,
-      requireTLS: !sender.smtp_secure,
-      auth: { user: sender.smtp_username, pass: password },
-      connectionTimeout: 15_000,
-      greetingTimeout: 15_000,
-      socketTimeout: 20_000,
-    });
-
     try {
-      await transporter.sendMail({
-        from: sender.from_name
-          ? { name: sender.from_name, address: sender.from_email }
-          : sender.from_email,
+      await sendEmailThroughSender(sender, password, {
         to,
         subject: 'Teste de envio de e-mail do CRM',
         text: `Este é um e-mail de teste da conexão "${sender.name}".`,
@@ -145,8 +131,6 @@ export async function POST(
         },
         { status: 502 }
       );
-    } finally {
-      transporter.close();
     }
 
     return NextResponse.json({ ok: true });

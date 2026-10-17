@@ -108,6 +108,12 @@ export function validateEmailCampaignDraft(value: unknown): ValidationResult {
   if (subject.length > 255 || preheader.length > 250) {
     return { error: 'O assunto ou pré-cabeçalho excede o limite permitido.' };
   }
+  if (/[\r\n]/.test(subject) || /[\r\n]/.test(preheader)) {
+    return {
+      error: 'O assunto e o pré-cabeçalho devem ficar em uma única linha.',
+    };
+  }
+
   if (
     audienceType !== 'all_contacts' &&
     audienceType !== 'selected_contacts' &&
@@ -165,4 +171,21 @@ export function validateEmailCampaignDraft(value: unknown): ValidationResult {
       content,
     },
   };
+}
+
+export function validateEmailCampaignReadyToSend(
+  input: EmailCampaignDraftInput
+): string | null {
+  if (!input.subject) {
+    return 'Informe o assunto antes de enviar a campanha.';
+  }
+  if (
+    !input.content.some(
+      (block) =>
+        block.text.trim() || (block.type === 'image' && block.url.trim())
+    )
+  ) {
+    return 'Adicione conteúdo ao e-mail antes de enviar a campanha.';
+  }
+  return null;
 }

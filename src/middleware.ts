@@ -45,7 +45,15 @@ export async function middleware(request: NextRequest) {
   const requiresPasswordChange = user?.app_metadata?.must_change_password === true
   const isPasswordChangePage = request.nextUrl.pathname === '/change-password'
   const isPasswordChangeApi = request.nextUrl.pathname === '/api/auth/change-password'
-  if (requiresPasswordChange && !isPasswordChangePage && !isPasswordChangeApi) {
+  const isPublicEmailUnsubscribeRoute =
+    request.nextUrl.pathname === '/email/unsubscribe' ||
+    request.nextUrl.pathname === '/api/email/unsubscribe'
+  if (
+    requiresPasswordChange &&
+    !isPasswordChangePage &&
+    !isPasswordChangeApi &&
+    !isPublicEmailUnsubscribeRoute
+  ) {
     if (request.nextUrl.pathname.startsWith('/api/')) {
       return withRefreshedCookies(
         NextResponse.json(
@@ -63,7 +71,12 @@ export async function middleware(request: NextRequest) {
   const isApprovalPage = ['/signup/complete', '/account-pending', '/account-denied', '/account-status'].some(
     path => request.nextUrl.pathname.startsWith(path),
   )
-  if (user && !isApprovalPage && !request.nextUrl.pathname.startsWith('/auth/')) {
+  if (
+    user &&
+    !isApprovalPage &&
+    !isPublicEmailUnsubscribeRoute &&
+    !request.nextUrl.pathname.startsWith('/auth/')
+  ) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('access_status')

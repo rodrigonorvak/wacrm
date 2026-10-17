@@ -113,16 +113,16 @@ Kubernetes cluster.
 
 ### Why Hostinger?
 
-| | |
-|---|---|
-| **One-click Git deploy** | Connect your fork, push to `main`, Hostinger builds and ships it. No SSH, no Docker, no CI to wire up — this repo's own `main` deploys this way. |
-| **Managed Node.js** | Next.js 16 (App Router, server actions, ISR) runs out of the box on [Premium, Business, and Cloud](https://www.hostinger.com/web-apps-hosting?REFERRALCODE=WACRMHOST) shared plans. You don't manage Node versions, processes, or reverse proxies. |
-| **Free SSL + free domain** | Automatic Let's Encrypt on your custom domain (or a free one included with annual plans). HTTPS is on by default — required for the WhatsApp Business webhook. |
-| **Global CDN + LiteSpeed** | Static assets cached at the edge, dynamic routes served from LiteSpeed. Snappy dashboards out of the box, no Cloudflare setup required. |
-| **Env vars + logs in hPanel** | Set `SUPABASE_*`, `WHATSAPP_*`, and `ENCRYPTION_KEY` from the panel — no `.env` on the server. Live application logs in the same UI. |
-| **DDoS protection + daily backups** | Built-in, no add-ons. The webhook endpoint is a public target — having protection at the edge matters. |
-| **Cheaper than a VPS** | Plans start at a few dollars a month — order-of-magnitude less than a comparable managed Node.js host, and you don't pay extra for the database (that's Supabase). |
-| **24/7 human support** | Live chat support in 20+ languages — useful when your CRM is the thing your team relies on to talk to customers. |
+|                                     |                                                                                                                                                                                                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **One-click Git deploy**            | Connect your fork, push to `main`, Hostinger builds and ships it. No SSH, no Docker, no CI to wire up — this repo's own `main` deploys this way.                                                                                                   |
+| **Managed Node.js**                 | Next.js 16 (App Router, server actions, ISR) runs out of the box on [Premium, Business, and Cloud](https://www.hostinger.com/web-apps-hosting?REFERRALCODE=WACRMHOST) shared plans. You don't manage Node versions, processes, or reverse proxies. |
+| **Free SSL + free domain**          | Automatic Let's Encrypt on your custom domain (or a free one included with annual plans). HTTPS is on by default — required for the WhatsApp Business webhook.                                                                                     |
+| **Global CDN + LiteSpeed**          | Static assets cached at the edge, dynamic routes served from LiteSpeed. Snappy dashboards out of the box, no Cloudflare setup required.                                                                                                            |
+| **Env vars + logs in hPanel**       | Set `SUPABASE_*`, `WHATSAPP_*`, and `ENCRYPTION_KEY` from the panel — no `.env` on the server. Live application logs in the same UI.                                                                                                               |
+| **DDoS protection + daily backups** | Built-in, no add-ons. The webhook endpoint is a public target — having protection at the edge matters.                                                                                                                                             |
+| **Cheaper than a VPS**              | Plans start at a few dollars a month — order-of-magnitude less than a comparable managed Node.js host, and you don't pay extra for the database (that's Supabase).                                                                                 |
+| **24/7 human support**              | Live chat support in 20+ languages — useful when your CRM is the thing your team relies on to talk to customers.                                                                                                                                   |
 
 ### The 60-second version
 
@@ -139,6 +139,23 @@ Full walkthrough with screenshots:
 > (Vercel, Railway, your own VPS). Hostinger is recommended, not
 > required._
 
+## Email campaign delivery
+
+Email campaigns use the SMTP sender selected in each campaign. Configure
+`NEXT_PUBLIC_SITE_URL` (or `ALLOWED_INVITE_HOSTS`) and keep `ENCRYPTION_KEY`
+stable so unsubscribe links and encrypted sender credentials remain usable.
+
+Scheduled campaigns are processed by `GET /api/email/campaigns/dispatch`.
+Configure `CRON_SECRET` and call this endpoint at least once per minute with
+`Authorization: Bearer <CRON_SECRET>` or `x-cron-secret: <CRON_SECRET>`.
+Each run handles up to two messages; configure the schedule to suit the SMTP
+provider's sending limits. A message counts as sent when the SMTP server
+accepts it; SMTP does not confirm inbox delivery.
+
+The campaign report shows recipients queued, accepted by SMTP, failed, or
+skipped, with paginated recipient history. Generic SMTP does not provide
+delivery, open, or click events, so those metrics are not reported.
+
 ## Documentation
 
 Full self-host documentation — Supabase migrations, WhatsApp Business
@@ -147,6 +164,7 @@ API config, and production deploy — lives at
 (source: [ArnasDon/wacrm-site](https://github.com/ArnasDon/wacrm-site)).
 
 Key pages:
+
 - [Getting started](https://wacrm.tech/docs/getting-started)
 - [Supabase setup](https://wacrm.tech/docs/supabase-setup)
 - [WhatsApp setup](https://wacrm.tech/docs/whatsapp-setup)

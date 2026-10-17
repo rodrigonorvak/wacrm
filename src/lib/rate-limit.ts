@@ -176,6 +176,8 @@ export const RATE_LIMITS = {
   /** Email sender verification is an explicit admin action and sends a
    *  real test message, so keep its per-account budget deliberately low. */
   emailSenderTest: { limit: 5, windowMs: 10 * 60_000 },
+  /** Public unsubscribe endpoint, keyed by source IP. */
+  emailUnsubscribe: { limit: 60, windowMs: 60_000 },
 } as const;
 
 /** Test-only helper. Clears the in-memory state so unit tests don't

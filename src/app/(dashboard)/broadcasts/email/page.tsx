@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, Loader2, Mail, Plus, Settings2, Trash2 } from 'lucide-react';
+import {
+  BarChart3,
+  FileText,
+  Loader2,
+  Mail,
+  Plus,
+  Settings2,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
@@ -14,7 +23,10 @@ interface CampaignRow {
   preheader: string;
   audience_type: 'all_contacts' | 'selected_contacts' | 'pipeline_stage';
   audience_contact_ids: string[];
-  status: string;
+  audience_member_count: number;
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'archived';
+  scheduled_at: string | null;
+  sent_count: number;
   updated_at: string;
   sender: { id: string; name: string; from_email: string } | null;
 }
@@ -27,6 +39,7 @@ export default function EmailCampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const loadCampaigns = useCallback(async () => {
     setLoading(true);
@@ -70,12 +83,39 @@ export default function EmailCampaignsPage() {
     }
   }
 
+  async function cancelSchedule(campaign: CampaignRow) {
+    if (!window.confirm(t('cancelScheduleConfirm', { name: campaign.name }))) {
+      return;
+    }
+    setCancellingId(campaign.id);
+    try {
+      const response = await fetch(
+        `/api/email/campaigns/${campaign.id}/cancel`,
+        { method: 'POST' }
+      );
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || t('cancelScheduleFailed'));
+      }
+      await loadCampaigns();
+      toast.success(t('scheduleCancelled'));
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('cancelScheduleFailed')
+      );
+    } finally {
+      setCancellingId(null);
+    }
+  }
+
   function audienceLabel(campaign: CampaignRow): string {
     if (campaign.audience_type === 'all_contacts') return t('allContacts');
     if (campaign.audience_type === 'pipeline_stage')
-      return t('pipelineAudience');
+      return t('pipelineAudienceCount', {
+        count: campaign.audience_member_count,
+      });
     return t('selectedContactsCount', {
-      count: campaign.audience_contact_ids?.length ?? 0,
+      count: campaign.audience_member_count,
     });
   }
 
@@ -146,17 +186,9 @@ export default function EmailCampaignsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {campaigns.map((campaign) => (
-            <article
-              key={campaign.id}
-              className="border-border bg-card flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4"
-            >
-              <button
-                type="button"
-                onClick={() => router.push(`/broadcasts/email/${campaign.id}`)}
-                className="flex min-w-0 flex-1 items-start gap-3 text-left"
-              >
-                <FileText className="text-primary mt-0.5 size-5 shrink-0" />
+          {campaigns.map((campaign) => {
+            const content = (
+              <>
                 <span className="min-w-0">
                   <span className="text-foreground block truncate font-semibold">
                     {campaign.name}
@@ -174,30 +206,93 @@ export default function EmailCampaignsPage() {
                         ),
                       })}
                     </span>
+                    {campaign.scheduled_at && (
+                      <span>
+                        {t('scheduledAt', {
+                          date: new Date(campaign.scheduled_at).toLocaleString(
+                            locale
+                          ),
+                        })}
+                      </span>
+                    )}
+                    {campaign.sent_count > 0 && (
+                      <span>
+                        {t('sentCount', { count: campaign.sent_count })}
+                      </span>
+                    )}
                   </span>
                 </span>
-              </button>
-              <div className="flex items-center gap-2">
-                <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
-                  {t('draft')}
-                </span>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  aria-label={t('delete')}
-                  onClick={() => void deleteDraft(campaign)}
-                  disabled={deletingId === campaign.id}
-                >
-                  {deletingId === campaign.id ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Trash2 />
+              </>
+            );
+
+            return (
+              <article
+                key={campaign.id}
+                className="border-border bg-card flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4"
+              >
+                {campaign.status === 'draft' ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/broadcasts/email/${campaign.id}`)
+                    }
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                  >
+                    <FileText className="text-primary mt-0.5 size-5 shrink-0" />
+                    {content}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(`/broadcasts/email/${campaign.id}/report`)
+                    }
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                  >
+                    <BarChart3 className="text-primary mt-0.5 size-5 shrink-0" />
+                    {content}
+                  </button>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+                    {t(campaign.status)}
+                  </span>
+                  {campaign.status === 'scheduled' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label={t('cancelSchedule')}
+                      onClick={() => void cancelSchedule(campaign)}
+                      disabled={cancellingId === campaign.id}
+                    >
+                      {cancellingId === campaign.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <X />
+                      )}
+                    </Button>
                   )}
-                </Button>
-              </div>
-            </article>
-          ))}
+                  {campaign.status === 'draft' && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      aria-label={t('delete')}
+                      onClick={() => void deleteDraft(campaign)}
+                      disabled={deletingId === campaign.id}
+                    >
+                      {deletingId === campaign.id ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Trash2 />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

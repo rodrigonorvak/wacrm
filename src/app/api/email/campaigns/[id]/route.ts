@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CAMPAIGN_COLUMNS =
-  'id, sender_connection_id, name, subject, preheader, audience_type, audience_contact_ids, audience_pipeline_id, audience_stage_id, content_json, status, updated_at';
+  'id, sender_connection_id, name, subject, preheader, audience_type, audience_contact_ids, audience_pipeline_id, audience_stage_id, content_json, status, scheduled_at, sent_count, updated_at';
 
 export async function GET(
   _request: Request,
@@ -45,6 +45,21 @@ export async function GET(
         { status: 404 }
       );
     }
+    const { data: recipientCount, error: recipientCountError } = await admin
+      .from('email_campaign_recipient_counts')
+      .select('member_count')
+      .eq('campaign_id', data.id)
+      .maybeSingle();
+    if (recipientCountError) {
+      console.error(
+        '[email-campaigns] recipient count lookup failed:',
+        recipientCountError.message
+      );
+      return NextResponse.json(
+        { error: 'Não foi possível carregar o tamanho do público.' },
+        { status: 500 }
+      );
+    }
     const { data: sender, error: senderError } = await admin
       .from('email_sender_connections')
       .select('id, name, from_email')
@@ -63,7 +78,11 @@ export async function GET(
     }
     return NextResponse.json(
       {
-        campaign: { ...data, sender: sender ?? null },
+        campaign: {
+          ...data,
+          audience_member_count: recipientCount?.member_count ?? 0,
+          sender: sender ?? null,
+        },
       },
       { headers: { 'Cache-Control': 'no-store' } }
     );

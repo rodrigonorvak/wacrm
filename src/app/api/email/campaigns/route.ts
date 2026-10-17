@@ -7,7 +7,7 @@ import { validateEmailCampaignReferences } from '@/lib/email-campaigns/reference
 
 export const runtime = 'nodejs';
 const CAMPAIGN_COLUMNS =
-  'id, sender_connection_id, name, subject, preheader, audience_type, audience_contact_ids, audience_pipeline_id, audience_stage_id, content_json, status, updated_at';
+  'id, sender_connection_id, name, subject, preheader, audience_type, audience_contact_ids, audience_pipeline_id, audience_stage_id, content_json, status, scheduled_at, sent_count, updated_at';
 
 export async function GET() {
   try {
@@ -26,6 +26,31 @@ export async function GET() {
       );
     }
 
+    const campaignIds = (data ?? []).map((campaign) => campaign.id);
+    const { data: recipientCounts, error: recipientCountsError } =
+      campaignIds.length
+        ? await admin
+            .from('email_campaign_recipient_counts')
+            .select('campaign_id, member_count')
+            .in('campaign_id', campaignIds)
+        : { data: [], error: null };
+    if (recipientCountsError) {
+      console.error(
+        '[email-campaigns] recipient count lookup failed:',
+        recipientCountsError.message
+      );
+      return NextResponse.json(
+        { error: 'Não foi possível carregar o tamanho do público.' },
+        { status: 500 }
+      );
+    }
+
+    const recipientCountByCampaignId = new Map(
+      (recipientCounts ?? []).map((count) => [
+        count.campaign_id,
+        count.member_count,
+      ])
+    );
     const senderIds = [
       ...new Set((data ?? []).map((campaign) => campaign.sender_connection_id)),
     ];
@@ -54,6 +79,8 @@ export async function GET() {
       {
         campaigns: (data ?? []).map((campaign) => ({
           ...campaign,
+          audience_member_count:
+            recipientCountByCampaignId.get(campaign.id) ?? 0,
           sender: senderById.get(campaign.sender_connection_id) ?? null,
         })),
       },
