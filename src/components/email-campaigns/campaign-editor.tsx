@@ -351,6 +351,7 @@ export function EmailCampaignEditor({
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
   const [dispatchingCampaign, setDispatchingCampaign] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState(campaignId);
@@ -708,19 +709,28 @@ export function EmailCampaignEditor({
     if (!response.ok) throw new Error(result.error || t('saveFailed'));
     const savedId = result.campaign?.id ?? activeCampaignId;
     if (typeof savedId !== 'string') throw new Error(t('saveFailed'));
-    setActiveCampaignId(savedId);
+    if (!activeCampaignId) {
+      setActiveCampaignId(savedId);
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `/broadcasts/email/${savedId}`
+      );
+    }
     return savedId;
   }
 
   async function saveDraft(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setEditorError(null);
     setSaving(true);
     try {
-      const savedId = await persistDraft();
+      await persistDraft();
       toast.success(t('draftSaved'));
-      if (!campaignId) router.replace(`/broadcasts/email/${savedId}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('saveFailed'));
+      const message = error instanceof Error ? error.message : t('saveFailed');
+      setEditorError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -749,9 +759,9 @@ export function EmailCampaignEditor({
     }
 
     setSendingTest(true);
+    setEditorError(null);
     try {
       const savedId = await persistDraft();
-      toast.success(t('draftSaved'));
       const response = await fetch(`/api/email/campaigns/${savedId}/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -760,9 +770,11 @@ export function EmailCampaignEditor({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || t('testSendFailed'));
       toast.success(t('testSent'));
-      if (!campaignId) router.replace(`/broadcasts/email/${savedId}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('testSendFailed'));
+      const message =
+        error instanceof Error ? error.message : t('testSendFailed');
+      setEditorError(message);
+      toast.error(message);
     } finally {
       setSendingTest(false);
     }
@@ -915,21 +927,108 @@ export function EmailCampaignEditor({
             >
               <Redo2 />
             </Button>
+            <details className="relative">
+              <summary
+                className="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 cursor-pointer list-none items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium shadow-xs"
+                aria-disabled={
+                  saving ||
+                  sendingTest ||
+                  dispatchingCampaign ||
+                  senders.length === 0
+                }
+                onClick={(event) => {
+                  if (
+                    saving ||
+                    sendingTest ||
+                    dispatchingCampaign ||
+                    senders.length === 0
+                  ) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                {sendingTest ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
+                {t('sendTest')}
+              </summary>
+              <div className="bg-popover text-popover-foreground absolute right-0 z-30 mt-2 w-72 space-y-3 rounded-lg border p-4 shadow-lg">
+                <div className="grid gap-2">
+                  <Label htmlFor="design-test-recipient">
+                    {t('testRecipient')}
+                  </Label>
+                  <Input
+                    id="design-test-recipient"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="email"
+                    value={testRecipient}
+                    onChange={(event) => setTestRecipient(event.target.value)}
+                    placeholder={t('testRecipientPlaceholder')}
+                    maxLength={254}
+                    disabled={saving || sendingTest}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    {t('testSendHint')}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  disabled={
+                    saving ||
+                    sendingTest ||
+                    dispatchingCampaign ||
+                    senders.length === 0
+                  }
+                  onClick={() => void sendTestEmail()}
+                >
+                  {sendingTest ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Send />
+                  )}
+                  {sendingTest ? t('sendingTest') : t('sendTest')}
+                </Button>
+              </div>
+            </details>
             <Button
-              type="button"
-              variant="outline"
+              type="submit"
               disabled={saving || sendingTest || senders.length === 0}
-              onClick={() => void sendTestEmail()}
             >
-              {sendingTest ? <Loader2 className="animate-spin" /> : <Send />}
-              {t('sendTest')}
-            </Button>
-            <Button type="submit" disabled={saving || senders.length === 0}>
               {saving ? <Loader2 className="animate-spin" /> : <Save />}
-              {t('saveDraft')}
+              {saving ? t('saving') : t('saveDraft')}
             </Button>
           </div>
         </header>
+
+        {editorError ? (
+          <div
+            role="alert"
+            className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800"
+          >
+            {editorError}
+          </div>
+        ) : null}
+
+        {senders.length === 0 ? (
+          <div
+            role="status"
+            className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900"
+          >
+            <span className="font-medium">{t('noSendersTitle')}. </span>
+            {t('noSendersDescription')}{' '}
+            <button
+              type="button"
+              className="font-semibold underline underline-offset-2"
+              onClick={() => router.push('/broadcasts/email/senders')}
+            >
+              {t('manageSenders')}
+            </button>
+          </div>
+        ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <main className="flex min-h-0 min-w-0 flex-1 flex-col p-3 sm:p-6">
@@ -1317,6 +1416,15 @@ export function EmailCampaignEditor({
           </Button>
         </div>
       </header>
+
+      {editorError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          {editorError}
+        </div>
+      ) : null}
 
       {senders.length === 0 ? (
         <div className="border-border bg-card flex flex-col items-center rounded-xl border border-dashed p-10 text-center">
