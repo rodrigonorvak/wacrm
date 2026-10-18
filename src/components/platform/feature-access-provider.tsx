@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -23,7 +24,7 @@ interface FeatureAccessContextValue {
   features: PlatformFeatureAccess;
   loading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { silent?: boolean }) => Promise<void>;
 }
 
 const FeatureAccessContext = createContext<FeatureAccessContextValue | null>(null);
@@ -33,9 +34,15 @@ export function FeatureAccessProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const loadedRef = useRef(false);
+
+  const refresh = useCallback(async (options?: { silent?: boolean }) => {
+    // Background refreshes (window focus) must not unmount the page.
+    const silent = options?.silent === true && loadedRef.current;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const response = await fetch("/api/platform/features", { cache: "no-store" });
       if (!response.ok) {
@@ -48,16 +55,20 @@ export function FeatureAccessProvider({ children }: { children: ReactNode }) {
       const body = (await response.json()) as { features?: PlatformFeatureAccess };
       if (!body.features) throw new Error("A resposta de acesso aos módulos está inválida.");
       setFeatures({ ...DEFAULT_PLATFORM_FEATURE_ACCESS, ...body.features });
+      loadedRef.current = true;
+      setError(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Falha ao consultar o acesso aos módulos.");
+      if (!silent) {
+        setError(cause instanceof Error ? cause.message : "Falha ao consultar o acesso aos módulos.");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void refresh();
-    const handleFocus = () => void refresh();
+    const handleFocus = () => void refresh({ silent: true });
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [refresh]);

@@ -58,6 +58,14 @@ import {
   Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type {
@@ -571,6 +579,7 @@ export function EmailCampaignEditor({
   const [dispatchingCampaign, setDispatchingCampaign] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState(campaignId);
   const [testRecipient, setTestRecipient] = useState('');
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [scheduledAtLocal, setScheduledAtLocal] = useState('');
   const [senders, setSenders] = useState<SenderOption[]>([]);
   const [senderId, setSenderId] = useState('');
@@ -1055,6 +1064,7 @@ export function EmailCampaignEditor({
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || t('testSendFailed'));
       toast.success(t('testSent'));
+      setTestDialogOpen(false);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : t('testSendFailed');
@@ -1721,11 +1731,64 @@ export function EmailCampaignEditor({
               dispatchingCampaign ||
               senders.length === 0
             }
-            onClick={() => void sendTestEmail()}
+            onClick={() => setTestDialogOpen(true)}
           >
             {sendingTest ? <Loader2 className="animate-spin" /> : <Send />}
             {sendingTest ? t('sendingTest') : t('sendTest')}
           </Button>
+          <Dialog
+            open={testDialogOpen}
+            onOpenChange={(open) => {
+              if (!sendingTest) setTestDialogOpen(open);
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{t('sendTest')}</DialogTitle>
+                <DialogDescription>{t('testSendHint')}</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-2">
+                <Label htmlFor="test-dialog-recipient">
+                  {t('testRecipient')}
+                </Label>
+                <Input
+                  id="test-dialog-recipient"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoFocus
+                  value={testRecipient}
+                  onChange={(event) => setTestRecipient(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      if (!sendingTest) void sendTestEmail();
+                    }
+                  }}
+                  placeholder={t('testRecipientPlaceholder')}
+                  maxLength={254}
+                  disabled={sendingTest}
+                />
+                {editorError && (
+                  <p className="text-destructive text-xs">{editorError}</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  disabled={sendingTest || saving || senders.length === 0}
+                  onClick={() => void sendTestEmail()}
+                >
+                  {sendingTest ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Send />
+                  )}
+                  {sendingTest ? t('sendingTest') : t('sendTest')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <Button
             type="submit"
             disabled={
@@ -1835,31 +1898,6 @@ export function EmailCampaignEditor({
                     maxLength={250}
                     placeholder={t('preheaderPlaceholder')}
                   />
-                </div>
-              </section>
-            </details>
-
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('testRecipient')}
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="test-recipient">{t('testRecipient')}</Label>
-                  <Input
-                    id="test-recipient"
-                    type="text"
-                    inputMode="email"
-                    autoComplete="email"
-                    value={testRecipient}
-                    onChange={(event) => setTestRecipient(event.target.value)}
-                    placeholder={t('testRecipientPlaceholder')}
-                    maxLength={254}
-                  />
-                  <p className="text-muted-foreground text-xs">
-                    {t('testSendHint')}
-                  </p>
                 </div>
               </section>
             </details>
