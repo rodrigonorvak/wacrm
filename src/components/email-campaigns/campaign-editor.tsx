@@ -88,6 +88,7 @@ import {
 import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
 import {
   buildTemplateBlocks,
+  buildTemplateDesign,
   getEmailTemplate,
 } from '@/lib/email-campaigns/templates';
 import {
@@ -704,7 +705,7 @@ export function EmailCampaignEditor({
         setPreheader(template.preheader);
         setBlocks(templateBlocks);
         blocksRef.current = templateBlocks;
-        replaceLoadedDesign(DEFAULT_EMAIL_DESIGN);
+        replaceLoadedDesign(buildTemplateDesign(template));
         setSelectedBlockId(templateBlocks[0].id);
       } else {
         setName(t('newCampaignDefault'));

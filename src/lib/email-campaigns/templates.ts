@@ -1,4 +1,5 @@
-import type { EmailBlock, EmailBlockType } from './types';
+import type { EmailBlock, EmailBlockType, EmailDesignSettings } from './types';
+import { DEFAULT_EMAIL_DESIGN } from './types';
 
 export type EmailTemplateCategory = 'ready' | 'library';
 
@@ -10,17 +11,45 @@ export interface EmailTemplate {
   accent: string;
   subject: string;
   preheader: string;
+  design?: Partial<EmailDesignSettings>;
   blocks: Array<{
     type: EmailBlockType;
     text?: string;
     url?: string;
     alignment?: EmailBlock['alignment'];
+    fontSize?: number;
   }>;
 }
 
 const PLACEHOLDER_URL = 'https://www.seusite.com.br';
 
 export const EMAIL_TEMPLATES: EmailTemplate[] = [
+  {
+    id: 'immersion-signup',
+    category: 'ready',
+    name: 'Cadastro na Imersão',
+    description: 'Confirma o cadastro e convida para o grupo do evento.',
+    accent: '#113783',
+    subject: 'Quase lá...',
+    preheader: 'Falta pouco para concluir o cadastro!',
+    design: { accentColor: '#113783', buttonColor: '#15af12' },
+    blocks: [
+      { type: 'hero', text: 'Quase lá...', fontSize: 24 },
+      {
+        type: 'heading',
+        text: 'Seu cadastro está quase completo',
+        fontSize: 18,
+      },
+      {
+        type: 'text',
+        text: 'Entre no grupo da Imersão para acompanhar todas as atualizações do evento',
+        alignment: 'left',
+        fontSize: 15,
+      },
+      { type: 'button', text: 'ENTRAR NO GRUPO', url: PLACEHOLDER_URL },
+      { type: 'footer' },
+    ],
+  },
   {
     id: 'newsletter',
     category: 'ready',
@@ -161,5 +190,12 @@ export function buildTemplateBlocks(template: EmailTemplate): EmailBlock[] {
     alignment:
       block.alignment ??
       (block.type === 'button' || block.type === 'heading' ? 'center' : 'left'),
+    ...(block.fontSize ? { fontSize: block.fontSize } : {}),
   }));
+}
+
+export function buildTemplateDesign(
+  template: EmailTemplate
+): EmailDesignSettings {
+  return { ...DEFAULT_EMAIL_DESIGN, ...template.design };
 }

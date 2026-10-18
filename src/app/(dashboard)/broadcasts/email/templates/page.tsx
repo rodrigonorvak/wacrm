@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import {
   EMAIL_TEMPLATES,
   buildTemplateBlocks,
+  buildTemplateDesign,
   type EmailTemplate,
 } from '@/lib/email-campaigns/templates';
 import { renderEmailCampaign } from '@/lib/email-campaigns/render';
@@ -117,7 +118,7 @@ export default function EmailTemplatesPage() {
       subject: template.subject,
       preheader: template.preheader,
       blocks: buildTemplateBlocks(template),
-      design: DEFAULT_EMAIL_DESIGN,
+      design: buildTemplateDesign(template),
       href: `/broadcasts/email/new?template=${template.id}`,
     };
   }
