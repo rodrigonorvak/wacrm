@@ -1197,7 +1197,7 @@
     "testContentRequired": "Adicione conteúdo ao e-mail antes de enviar o teste.",
     "deliverySchedule": "Envio da campanha",
     "sendDate": "Data de envio",
-    "sendImmediately": "Agora",
+    "clearSchedule": "Limpar agendamento",
     "subjectAndPreheader": "Assunto e pré-cabeçalho",
     "deliveryScheduleHint": "O público é congelado ao iniciar o envio. O processamento acontece em lotes pelo agendador do servidor.",
     "deliveryNotice": "O link de descadastro é incluído automaticamente e verificado antes de cada envio.",

@@ -1912,11 +1912,6 @@ export function EmailCampaignEditor({
                 <p className="text-muted-foreground text-xs">
                   {t('deliveryScheduleHint')}
                 </p>
-                <p className="text-sm font-medium text-slate-700">
-                  {scheduledAtLocal
-                    ? new Date(scheduledAtLocal).toLocaleString()
-                    : t('sendImmediately')}
-                </p>
                 <div className="grid gap-2">
                   <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
                   <Input
@@ -1939,7 +1934,7 @@ export function EmailCampaignEditor({
                       onClick={() => setScheduledAtLocal('')}
                       disabled={dispatchingCampaign}
                     >
-                      {t('sendImmediately')}
+                      {t('clearSchedule')}
                     </Button>
                   ) : null}
                 </div>

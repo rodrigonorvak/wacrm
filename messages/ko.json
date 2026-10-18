@@ -1073,7 +1073,7 @@
     "testContentRequired": "테스트를 보내기 전에 이메일 내용을 추가하세요.",
     "deliverySchedule": "캠페인 발송",
     "sendDate": "발송 날짜",
-    "sendImmediately": "지금",
+    "clearSchedule": "예약 지우기",
     "subjectAndPreheader": "제목 및 프리헤더",
     "deliveryScheduleHint": "발송을 준비할 때 대상이 확정됩니다. 서버 스케줄러가 메시지를 묶음으로 처리합니다.",
     "deliveryNotice": "수신 거부 링크가 자동으로 추가되며 각 메시지 발송 전에 확인됩니다.",

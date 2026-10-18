@@ -1073,7 +1073,7 @@
     "testContentRequired": "Add email content before sending a test.",
     "deliverySchedule": "Campaign delivery",
     "sendDate": "Send date",
-    "sendImmediately": "Now",
+    "clearSchedule": "Clear schedule",
     "subjectAndPreheader": "Subject and preheader",
     "deliveryScheduleHint": "The audience is frozen when delivery is queued. A server scheduler processes messages in batches.",
     "deliveryNotice": "An unsubscribe link is added automatically and checked before each message.",
