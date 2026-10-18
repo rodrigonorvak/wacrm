@@ -42,6 +42,7 @@ import {
   Heading1,
   Image as ImageIcon,
   Laptop,
+  Link2,
   Loader2,
   Mail,
   Minus,
@@ -66,8 +67,10 @@ import type {
 } from '@/lib/email-campaigns/types';
 import {
   DEFAULT_EMAIL_DESIGN,
+  defaultEmailBlockFontSize,
   type EmailDesignSettings,
 } from '@/lib/email-campaigns/types';
+import { getSafeEmailLinkUrl } from '@/lib/email-campaigns/render';
 import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
 import {
   buildTemplateBlocks,
@@ -105,6 +108,11 @@ interface EditorProps {
   campaignId?: string;
   templateId?: string;
   cloneFromId?: string;
+}
+
+interface EditorSnapshot {
+  blocks: EmailBlock[];
+  design: EmailDesignSettings;
 }
 
 const INITIAL_BLOCKS: EmailBlock[] = [
@@ -156,6 +164,128 @@ function newBlock(type: EmailBlockType): EmailBlock {
   };
 }
 
+function EmailBlockTextField({
+  id,
+  label,
+  value,
+  onChange,
+  rows,
+  insertLinkLabel,
+  linkUrlLabel,
+  applyLinkLabel,
+  linkHint,
+  allowInlineLinks,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows: number;
+  insertLinkLabel: string;
+  linkUrlLabel: string;
+  applyLinkLabel: string;
+  linkHint: string;
+  allowInlineLinks: boolean;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const selectionRef = useRef({ start: 0, end: 0 });
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [linkUrl, setLinkUrl] = useState('');
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const selectedText = value.slice(selection.start, selection.end);
+  const hasValidSelection =
+    selection.end > selection.start && !/[\r\n]/.test(selectedText);
+  const safeLinkUrl = getSafeEmailLinkUrl(linkUrl.trim());
+
+  function rememberSelection(element: HTMLTextAreaElement) {
+    const next = { start: element.selectionStart, end: element.selectionEnd };
+    selectionRef.current = next;
+    setSelection(next);
+  }
+
+  function insertLink() {
+    const { start, end } = selectionRef.current;
+    const selected = value.slice(start, end);
+    const safeUrl = getSafeEmailLinkUrl(linkUrl.trim());
+    if (!safeUrl || start === end || /[\r\n]/.test(selected)) return;
+    const escapedLabel = selected.replace(/\]/g, '\\]');
+    const markdownUrl = safeUrl.replace(/\)/g, '%29');
+    const link = `[${escapedLabel}](${markdownUrl})`;
+    onChange(`${value.slice(0, start)}${link}${value.slice(end)}`);
+    setShowLinkForm(false);
+    setLinkUrl('');
+    requestAnimationFrame(() => {
+      const element = textareaRef.current;
+      if (!element) return;
+      const caret = start + link.length;
+      element.focus();
+      element.setSelectionRange(caret, caret);
+      rememberSelection(element);
+    });
+  }
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <textarea
+        ref={textareaRef}
+        id={id}
+        rows={rows}
+        value={value}
+        onChange={(event) => {
+          rememberSelection(event.currentTarget);
+          onChange(event.target.value);
+        }}
+        onSelect={(event) => rememberSelection(event.currentTarget)}
+        onKeyUp={(event) => rememberSelection(event.currentTarget)}
+        maxLength={10_000}
+        className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+      />
+      {allowInlineLinks ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!hasValidSelection}
+              onClick={() => {
+                if (textareaRef.current) rememberSelection(textareaRef.current);
+                setShowLinkForm(true);
+              }}
+            >
+              <Link2 />
+              {insertLinkLabel}
+            </Button>
+            {showLinkForm ? (
+              <div className="flex min-w-0 flex-1 gap-2">
+                <Input
+                  type="text"
+                  inputMode="url"
+                  value={linkUrl}
+                  onChange={(event) => setLinkUrl(event.target.value)}
+                  placeholder="https://..."
+                  aria-label={linkUrlLabel}
+                  className="min-w-0"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!hasValidSelection || !safeLinkUrl}
+                  onClick={insertLink}
+                >
+                  {applyLinkLabel}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+          <p className="text-muted-foreground text-xs">{linkHint}</p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function displayName(name: string | null, email: string): string {
   return name?.trim() || email;
 }
@@ -176,7 +306,10 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
   if (block.type === 'hero') {
     return (
       <div
-        className={`rounded-lg bg-fuchsia-600 px-6 py-10 text-3xl font-bold text-white ${alignmentClass}`}
+        className={`rounded-lg bg-fuchsia-600 px-6 py-10 font-bold text-white ${alignmentClass}`}
+        style={{
+          fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
+        }}
       >
         {block.text || 'Seu destaque principal'}
       </div>
@@ -185,7 +318,10 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
   if (block.type === 'heading') {
     return (
       <h1
-        className={`text-2xl font-bold break-words whitespace-pre-wrap ${alignmentClass}`}
+        className={`font-bold break-words whitespace-pre-wrap ${alignmentClass}`}
+        style={{
+          fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
+        }}
       >
         {block.text || 'Título do e-mail'}
       </h1>
@@ -194,7 +330,10 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
   if (block.type === 'text') {
     return (
       <p
-        className={`text-sm leading-6 break-words whitespace-pre-wrap ${alignmentClass}`}
+        className={`leading-6 break-words whitespace-pre-wrap ${alignmentClass}`}
+        style={{
+          fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
+        }}
       >
         {block.text || 'Adicione o texto da sua mensagem aqui.'}
       </p>
@@ -222,7 +361,12 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
   if (block.type === 'button') {
     return (
       <div className={alignmentClass}>
-        <span className="inline-flex rounded-md bg-fuchsia-600 px-5 py-2.5 text-sm font-semibold text-white">
+        <span
+          className="inline-flex rounded-md bg-fuchsia-600 px-5 py-2.5 font-semibold text-white"
+          style={{
+            fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
+          }}
+        >
           {block.text || 'Saiba mais'}
         </span>
         {block.url && (
@@ -241,7 +385,10 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
   }
   return (
     <div
-      className={`border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500 ${alignmentClass}`}
+      className={`border-t border-slate-200 pt-4 leading-5 text-slate-500 ${alignmentClass}`}
+      style={{
+        fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
+      }}
     >
       <p className="whitespace-pre-wrap">
         {block.text || 'Informações da instituição'}
@@ -352,6 +499,7 @@ export function EmailCampaignEditor({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [dispatchingCampaign, setDispatchingCampaign] = useState(false);
   const [activeCampaignId, setActiveCampaignId] = useState(campaignId);
@@ -375,11 +523,15 @@ export function EmailCampaignEditor({
   const [designMode, setDesignMode] = useState(false);
   const [designTab, setDesignTab] = useState<'blocks' | 'settings'>('blocks');
   const [blockHistory, setBlockHistory] = useState<{
-    past: EmailBlock[][];
-    future: EmailBlock[][];
+    past: EditorSnapshot[];
+    future: EditorSnapshot[];
   }>({ past: [], future: [] });
   const blocksRef = useRef(blocks);
-  const [selectedBlockId, setSelectedBlockId] = useState(INITIAL_BLOCKS[0].id);
+  const designRef = useRef(design);
+  const editRevisionRef = useRef(0);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(
+    INITIAL_BLOCKS[0].id
+  );
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>(
     'desktop'
   );
@@ -394,6 +546,35 @@ export function EmailCampaignEditor({
   const filteredStages = stages.filter(
     (stage) => stage.pipeline_id === pipelineId
   );
+
+  function markDraftChanged() {
+    editRevisionRef.current += 1;
+    setHasUnsavedChanges(true);
+  }
+
+  function confirmLeaveIfDirty(): boolean {
+    return !hasUnsavedChanges || window.confirm(t('unsavedChangesConfirm'));
+  }
+
+  function currentSnapshot(): EditorSnapshot {
+    return { blocks: blocksRef.current, design: designRef.current };
+  }
+
+  const replaceLoadedDesign = useCallback((nextDesign: EmailDesignSettings) => {
+    designRef.current = nextDesign;
+    setDesign(nextDesign);
+  }, []);
+
+  function updateDesign(patch: Partial<EmailDesignSettings>) {
+    const nextDesign = { ...designRef.current, ...patch };
+    setBlockHistory((history) => ({
+      past: [...history.past.slice(-49), currentSnapshot()],
+      future: [],
+    }));
+    designRef.current = nextDesign;
+    setDesign(nextDesign);
+    markDraftChanged();
+  }
 
   const loadSenderAndPipelineOptions = useCallback(async () => {
     try {
@@ -434,6 +615,9 @@ export function EmailCampaignEditor({
   useEffect(() => {
     const sourceId = campaignId ?? cloneFromId;
     if (!sourceId) {
+      setHasUnsavedChanges(false);
+      editRevisionRef.current = 0;
+      setBlockHistory({ past: [], future: [] });
       const template = getEmailTemplate(templateId);
       if (template) {
         const templateBlocks = buildTemplateBlocks(template);
@@ -442,7 +626,7 @@ export function EmailCampaignEditor({
         setPreheader(template.preheader);
         setBlocks(templateBlocks);
         blocksRef.current = templateBlocks;
-        setDesign(DEFAULT_EMAIL_DESIGN);
+        replaceLoadedDesign(DEFAULT_EMAIL_DESIGN);
         setSelectedBlockId(templateBlocks[0].id);
       } else {
         setName(t('newCampaignDefault'));
@@ -483,7 +667,10 @@ export function EmailCampaignEditor({
           setPreheader(campaign.preheader ?? '');
           setBlocks(clonedBlocks);
           blocksRef.current = clonedBlocks;
-          setDesign(parsedContent.design);
+          replaceLoadedDesign(parsedContent.design);
+          setHasUnsavedChanges(false);
+          editRevisionRef.current = 0;
+          setBlockHistory({ past: [], future: [] });
           setSelectedBlockId(clonedBlocks[0]?.id ?? INITIAL_BLOCKS[0].id);
           return;
         }
@@ -497,7 +684,10 @@ export function EmailCampaignEditor({
         setStageId(campaign.audience_stage_id ?? '');
         setBlocks(savedBlocks);
         blocksRef.current = savedBlocks;
-        setDesign(parsedContent.design);
+        replaceLoadedDesign(parsedContent.design);
+        setHasUnsavedChanges(false);
+        editRevisionRef.current = 0;
+        setBlockHistory({ past: [], future: [] });
         setSelectedBlockId(savedBlocks[0]?.id ?? INITIAL_BLOCKS[0].id);
       } catch (error) {
         if (!cancelled) {
@@ -514,7 +704,17 @@ export function EmailCampaignEditor({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, templateId, cloneFromId, router, t]);
+  }, [campaignId, templateId, cloneFromId, replaceLoadedDesign, router, t]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    function warnBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasUnsavedChanges]);
 
   useEffect(() => {
     if (audienceType !== 'selected_contacts') return;
@@ -570,19 +770,26 @@ export function EmailCampaignEditor({
     const current = blocksRef.current;
     if (current === nextBlocks) return;
     setBlockHistory((history) => ({
-      past: [...history.past.slice(-49), current],
+      past: [
+        ...history.past.slice(-49),
+        { blocks: current, design: designRef.current },
+      ],
       future: [],
     }));
     blocksRef.current = nextBlocks;
     setBlocks(nextBlocks);
+    markDraftChanged();
   }
 
   function undoBlocks() {
     const previous = blockHistory.past.at(-1);
     if (!previous) return;
-    const current = blocksRef.current;
-    blocksRef.current = previous;
-    setBlocks(previous);
+    const current = currentSnapshot();
+    blocksRef.current = previous.blocks;
+    designRef.current = previous.design;
+    setBlocks(previous.blocks);
+    setDesign(previous.design);
+    markDraftChanged();
     setBlockHistory({
       past: blockHistory.past.slice(0, -1),
       future: [current, ...blockHistory.future],
@@ -592,9 +799,12 @@ export function EmailCampaignEditor({
   function redoBlocks() {
     const next = blockHistory.future[0];
     if (!next) return;
-    const current = blocksRef.current;
-    blocksRef.current = next;
-    setBlocks(next);
+    const current = currentSnapshot();
+    blocksRef.current = next.blocks;
+    designRef.current = next.design;
+    setBlocks(next.blocks);
+    setDesign(next.design);
+    markDraftChanged();
     setBlockHistory({
       past: [...blockHistory.past, current],
       future: blockHistory.future.slice(1),
@@ -655,15 +865,19 @@ export function EmailCampaignEditor({
   }
 
   function toggleContact(id: string) {
-    setContactIds((current) => {
-      if (current.includes(id))
-        return current.filter((contactId) => contactId !== id);
-      if (current.length >= 1000) {
-        toast.error(t('contactSelectionLimit'));
-        return current;
-      }
-      return [...current, id];
-    });
+    if (contactIds.includes(id)) {
+      markDraftChanged();
+      setContactIds((current) =>
+        current.filter((contactId) => contactId !== id)
+      );
+      return;
+    }
+    if (contactIds.length >= 1000) {
+      toast.error(t('contactSelectionLimit'));
+      return;
+    }
+    markDraftChanged();
+    setContactIds((current) => [...current, id]);
   }
 
   function getDraftPayload() {
@@ -687,13 +901,14 @@ export function EmailCampaignEditor({
         audienceType === 'selected_contacts' ? contactIds : [],
       audiencePipelineId: audienceType === 'pipeline_stage' ? pipelineId : null,
       audienceStageId: audienceType === 'pipeline_stage' ? stageId : null,
-      content: blocks,
-      design,
+      content: blocksRef.current,
+      design: designRef.current,
     };
   }
 
   async function persistDraft(): Promise<string> {
     const payload = getDraftPayload();
+    const saveRevision = editRevisionRef.current;
 
     const response = await fetch(
       activeCampaignId
@@ -709,6 +924,9 @@ export function EmailCampaignEditor({
     if (!response.ok) throw new Error(result.error || t('saveFailed'));
     const savedId = result.campaign?.id ?? activeCampaignId;
     if (typeof savedId !== 'string') throw new Error(t('saveFailed'));
+    if (editRevisionRef.current === saveRevision) {
+      setHasUnsavedChanges(false);
+    }
     if (!activeCampaignId) {
       setActiveCampaignId(savedId);
       window.history.replaceState(
@@ -750,7 +968,7 @@ export function EmailCampaignEditor({
       return;
     }
     if (
-      !blocks.some(
+      !blocksRef.current.some(
         (block) => block.text.trim() || (block.type === 'image' && block.url)
       )
     ) {
@@ -1073,7 +1291,7 @@ export function EmailCampaignEditor({
                   selectedId={selectedBlockId}
                   mobile={previewMode === 'mobile'}
                   labels={canvasLabels}
-                  onSelect={(id) => setSelectedBlockId(id ?? '')}
+                  onSelect={setSelectedBlockId}
                   onTextCommit={commitBlockText}
                   onMove={moveBlock}
                   onDuplicate={duplicateBlock}
@@ -1174,21 +1392,53 @@ export function EmailCampaignEditor({
                     {['hero', 'heading', 'text', 'button', 'footer'].includes(
                       selectedBlock.type
                     ) && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="design-block-text">
-                          {t('blockText')}
-                        </Label>
-                        <textarea
-                          id="design-block-text"
+                      <>
+                        <EmailBlockTextField
+                          key={selectedBlock.id}
+                          id={`design-block-text-${selectedBlock.id}`}
+                          label={t('blockText')}
                           rows={selectedBlock.type === 'hero' ? 2 : 4}
                           value={selectedBlock.text}
-                          onChange={(event) =>
-                            updateSelectedBlock({ text: event.target.value })
-                          }
-                          maxLength={10_000}
-                          className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+                          onChange={(text) => updateSelectedBlock({ text })}
+                          insertLinkLabel={t('insertLink')}
+                          linkUrlLabel={t('linkUrl')}
+                          applyLinkLabel={t('applyLink')}
+                          linkHint={t('inlineLinkHint')}
+                          allowInlineLinks={selectedBlock.type !== 'button'}
                         />
-                      </div>
+                        {[
+                          'hero',
+                          'heading',
+                          'text',
+                          'button',
+                          'footer',
+                        ].includes(selectedBlock.type) && (
+                          <div className="grid gap-2">
+                            <Label htmlFor="design-block-font-size">
+                              {t('fontSize')} (
+                              {selectedBlock.fontSize ??
+                                defaultEmailBlockFontSize(selectedBlock.type)}
+                              px)
+                            </Label>
+                            <Input
+                              id="design-block-font-size"
+                              type="range"
+                              min={10}
+                              max={72}
+                              step={1}
+                              value={
+                                selectedBlock.fontSize ??
+                                defaultEmailBlockFontSize(selectedBlock.type)
+                              }
+                              onChange={(event) =>
+                                updateSelectedBlock({
+                                  fontSize: Number(event.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                     {selectedBlock.type === 'image' && (
                       <>
@@ -1281,11 +1531,10 @@ export function EmailCampaignEditor({
                     id="design-font"
                     value={design.fontFamily}
                     onChange={(event) =>
-                      setDesign((current) => ({
-                        ...current,
+                      updateDesign({
                         fontFamily: event.target
                           .value as EmailDesignSettings['fontFamily'],
-                      }))
+                      })
                     }
                     className="border-border bg-background h-9 rounded-lg border px-3 text-sm"
                   >
@@ -1312,10 +1561,7 @@ export function EmailCampaignEditor({
                         type="color"
                         value={design[key]}
                         onChange={(event) =>
-                          setDesign((current) => ({
-                            ...current,
-                            [key]: event.target.value,
-                          }))
+                          updateDesign({ [key]: event.target.value })
                         }
                         className="h-10 w-14 p-1"
                       />
@@ -1343,10 +1589,7 @@ export function EmailCampaignEditor({
                       max={max}
                       value={design[key]}
                       onChange={(event) =>
-                        setDesign((current) => ({
-                          ...current,
-                          [key]: Number(event.target.value),
-                        }))
+                        updateDesign({ [key]: Number(event.target.value) })
                       }
                     />
                   </div>
@@ -1368,7 +1611,9 @@ export function EmailCampaignEditor({
             variant="ghost"
             size="icon"
             aria-label={t('backToCampaigns')}
-            onClick={() => router.push('/broadcasts/email')}
+            onClick={() => {
+              if (confirmLeaveIfDirty()) router.push('/broadcasts/email');
+            }}
           >
             <ArrowLeft />
           </Button>
@@ -1458,7 +1703,10 @@ export function EmailCampaignEditor({
                   <Input
                     id="campaign-name"
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setName(event.target.value);
+                    }}
                     maxLength={120}
                     required
                   />
@@ -1468,7 +1716,10 @@ export function EmailCampaignEditor({
                   <select
                     id="campaign-sender"
                     value={senderId}
-                    onChange={(event) => setSenderId(event.target.value)}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setSenderId(event.target.value);
+                    }}
                     required
                     className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
                   >
@@ -1485,7 +1736,10 @@ export function EmailCampaignEditor({
                   <Input
                     id="campaign-subject"
                     value={subject}
-                    onChange={(event) => setSubject(event.target.value)}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setSubject(event.target.value);
+                    }}
                     maxLength={255}
                     placeholder={t('subjectPlaceholder')}
                   />
@@ -1495,7 +1749,10 @@ export function EmailCampaignEditor({
                   <Input
                     id="campaign-preheader"
                     value={preheader}
-                    onChange={(event) => setPreheader(event.target.value)}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setPreheader(event.target.value);
+                    }}
                     maxLength={250}
                     placeholder={t('preheaderPlaceholder')}
                   />
@@ -1647,7 +1904,10 @@ export function EmailCampaignEditor({
                         name="email-audience"
                         value={type}
                         checked={audienceType === type}
-                        onChange={() => setAudienceType(type)}
+                        onChange={() => {
+                          if (audienceType !== type) markDraftChanged();
+                          setAudienceType(type);
+                        }}
                         className="accent-primary mt-0.5"
                       />
                       <span>
@@ -1762,6 +2022,7 @@ export function EmailCampaignEditor({
                         value={pipelineId}
                         onChange={(event) => {
                           const nextPipelineId = event.target.value;
+                          markDraftChanged();
                           setPipelineId(nextPipelineId);
                           setStageId(
                             stages.find(
@@ -1784,7 +2045,10 @@ export function EmailCampaignEditor({
                       <select
                         id="audience-stage"
                         value={stageId}
-                        onChange={(event) => setStageId(event.target.value)}
+                        onChange={(event) => {
+                          markDraftChanged();
+                          setStageId(event.target.value);
+                        }}
                         disabled={!pipelineId}
                         className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm disabled:opacity-50"
                       >
@@ -1849,10 +2113,11 @@ export function EmailCampaignEditor({
                     {['hero', 'heading', 'text', 'button', 'footer'].includes(
                       selectedBlock.type
                     ) && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="block-text">{t('blockText')}</Label>
-                        <textarea
-                          id="block-text"
+                      <>
+                        <EmailBlockTextField
+                          key={selectedBlock.id}
+                          id={`block-text-${selectedBlock.id}`}
+                          label={t('blockText')}
                           rows={
                             selectedBlock.type === 'heading' ||
                             selectedBlock.type === 'hero'
@@ -1860,13 +2125,38 @@ export function EmailCampaignEditor({
                               : 5
                           }
                           value={selectedBlock.text}
-                          onChange={(event) =>
-                            updateSelectedBlock({ text: event.target.value })
-                          }
-                          maxLength={10_000}
-                          className="border-border bg-background text-foreground min-h-20 rounded-lg border px-3 py-2 text-sm"
+                          onChange={(text) => updateSelectedBlock({ text })}
+                          insertLinkLabel={t('insertLink')}
+                          linkUrlLabel={t('linkUrl')}
+                          applyLinkLabel={t('applyLink')}
+                          linkHint={t('inlineLinkHint')}
+                          allowInlineLinks={selectedBlock.type !== 'button'}
                         />
-                      </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="block-font-size">
+                            {t('fontSize')} (
+                            {selectedBlock.fontSize ??
+                              defaultEmailBlockFontSize(selectedBlock.type)}
+                            px)
+                          </Label>
+                          <Input
+                            id="block-font-size"
+                            type="range"
+                            min={10}
+                            max={72}
+                            step={1}
+                            value={
+                              selectedBlock.fontSize ??
+                              defaultEmailBlockFontSize(selectedBlock.type)
+                            }
+                            onChange={(event) =>
+                              updateSelectedBlock({
+                                fontSize: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                      </>
                     )}
                     {selectedBlock.type === 'image' && (
                       <>

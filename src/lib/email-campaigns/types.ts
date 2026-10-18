@@ -20,6 +20,22 @@ export interface EmailBlock {
   url: string;
   alt: string;
   alignment: EmailBlockAlignment;
+  fontSize?: number;
+}
+
+export function defaultEmailBlockFontSize(type: EmailBlockType): number {
+  switch (type) {
+    case 'hero':
+      return 32;
+    case 'heading':
+      return 28;
+    case 'button':
+      return 15;
+    case 'footer':
+      return 12;
+    default:
+      return 16;
+  }
 }
 
 export interface EmailDesignSettings {

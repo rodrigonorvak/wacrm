@@ -8,6 +8,7 @@ import type {
   EmailBlockType,
   EmailDesignSettings,
 } from '@/lib/email-campaigns/types';
+import { defaultEmailBlockFontSize } from '@/lib/email-campaigns/types';
 
 const INLINE_EDITABLE: EmailBlockType[] = ['hero', 'heading', 'text', 'footer'];
 
@@ -43,13 +44,13 @@ function textStyle(
   const base: CSSProperties = {
     fontFamily: `${design.fontFamily}, sans-serif`,
     textAlign: block.alignment,
+    fontSize: block.fontSize ?? defaultEmailBlockFontSize(block.type),
   };
   switch (block.type) {
     case 'hero':
       return {
         ...base,
         color: '#ffffff',
-        fontSize: 32,
         fontWeight: 'bold',
         lineHeight: 1.2,
       };
@@ -57,7 +58,6 @@ function textStyle(
       return {
         ...base,
         color: design.primaryText,
-        fontSize: 28,
         fontWeight: 'bold',
         lineHeight: 1.25,
       };
@@ -65,14 +65,12 @@ function textStyle(
       return {
         ...base,
         color: design.secondaryText,
-        fontSize: 12,
         lineHeight: 1.6,
       };
     default:
       return {
         ...base,
         color: design.secondaryText,
-        fontSize: 16,
         lineHeight: 1.6,
       };
   }
@@ -282,7 +280,7 @@ export function EmailCanvas({
                 </div>
                 {selected && !editing && (
                   <div
-                    className="absolute top-0 left-full z-10 ml-2 flex flex-col gap-1 rounded-md border border-slate-200 bg-white p-1 shadow-md"
+                    className="absolute top-1 right-1 z-10 flex gap-1 rounded-md border border-slate-200 bg-white/95 p-1 shadow-md"
                     onClick={(event) => event.stopPropagation()}
                     onDoubleClick={(event) => event.stopPropagation()}
                   >

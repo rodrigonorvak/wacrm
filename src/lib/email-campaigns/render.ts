@@ -1,5 +1,6 @@
 import {
   DEFAULT_EMAIL_DESIGN,
+  defaultEmailBlockFontSize,
   type EmailBlock,
   type EmailDesignSettings,
 } from './types';
@@ -17,45 +18,89 @@ function renderText(value: string): string {
   return escapeHtml(value).replace(/\r\n?|\n/g, '<br />');
 }
 
-function isAllowedUrl(value: string, allowMailto: boolean): boolean {
+function safeUrl(value: string, allowMailto: boolean): string | null {
   try {
-    const { protocol } = new URL(value);
-    return (
-      protocol === 'https:' ||
-      protocol === 'http:' ||
-      (allowMailto && protocol === 'mailto:')
-    );
+    const url = new URL(value);
+    const allowed =
+      url.protocol === 'https:' ||
+      url.protocol === 'http:' ||
+      (allowMailto && url.protocol === 'mailto:');
+    return allowed ? url.toString() : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function getSafeEmailLinkUrl(value: string): string | null {
+  return safeUrl(value, true);
+}
+
+function isAllowedUrl(value: string, allowMailto: boolean): boolean {
+  return safeUrl(value, allowMailto) !== null;
+}
+
+function renderRichText(value: string): string {
+  const pattern = /\[((?:\\\]|[^\]\r\n])+)\]\(([^)\s]+)\)/g;
+  let result = '';
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(value))) {
+    const url = getSafeEmailLinkUrl(match[2]);
+    if (!url) continue;
+    result += renderText(value.slice(cursor, match.index));
+    result += `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${renderText(
+      match[1].replace(/\\\]/g, ']')
+    )}</a>`;
+    cursor = pattern.lastIndex;
+  }
+
+  return result + renderText(value.slice(cursor));
+}
+
+function renderPlainText(value: string): string {
+  const pattern = /\[((?:\\\]|[^\]\r\n])+)\]\(([^)\s]+)\)/g;
+  return value.replace(pattern, (match, rawLabel: string, rawUrl: string) => {
+    const url = getSafeEmailLinkUrl(rawUrl);
+    return url ? `${rawLabel.replace(/\\\]/g, ']')} (${url})` : match;
+  });
 }
 
 function renderBlock(block: EmailBlock, design: EmailDesignSettings): string {
   const alignment = `text-align:${block.alignment};`;
   const text = renderText(block.text);
+  const richText = renderRichText(block.text);
   const font = design.fontFamily;
+  const requestedFontSize = block.fontSize;
+  const fontSize =
+    typeof requestedFontSize === 'number' &&
+    Number.isInteger(requestedFontSize) &&
+    requestedFontSize >= 10 &&
+    requestedFontSize <= 72
+      ? requestedFontSize
+      : defaultEmailBlockFontSize(block.type);
 
   switch (block.type) {
     case 'hero':
-      return `<div style="margin:0 0 20px;padding:40px 24px;border-radius:${design.cornerRadius}px;background:${design.accentColor};color:#ffffff;font-family:${font},sans-serif;font-size:32px;font-weight:bold;line-height:1.2;${alignment}">${text}</div>`;
+      return `<div style="margin:0 0 20px;padding:40px 24px;border-radius:${design.cornerRadius}px;background:${design.accentColor};color:#ffffff;font-family:${font},sans-serif;font-size:${fontSize}px;font-weight:bold;line-height:1.2;${alignment}">${richText}</div>`;
     case 'heading':
-      return `<h1 style="margin:0 0 20px;color:${design.primaryText};font-family:${font},sans-serif;font-size:28px;line-height:1.25;${alignment}">${text}</h1>`;
+      return `<h1 style="margin:0 0 20px;color:${design.primaryText};font-family:${font},sans-serif;font-size:${fontSize}px;line-height:1.25;${alignment}">${richText}</h1>`;
     case 'text':
-      return `<p style="margin:0 0 20px;color:${design.secondaryText};font-family:${font},sans-serif;font-size:16px;line-height:1.6;${alignment}">${text}</p>`;
+      return `<p style="margin:0 0 20px;color:${design.secondaryText};font-family:${font},sans-serif;font-size:${fontSize}px;line-height:1.6;${alignment}">${richText}</p>`;
     case 'image':
       if (!isAllowedUrl(block.url, false)) return '';
       return `<img src="${escapeHtml(block.url)}" alt="${escapeHtml(block.alt)}" width="640" style="display:block;width:100%;max-width:640px;height:auto;margin:0 auto 20px;border:0;" />`;
     case 'button':
       if (!isAllowedUrl(block.url, true)) {
-        return `<div style="margin:0 0 20px;${alignment}"><span style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:15px;font-weight:bold;">${text}</span></div>`;
+        return `<div style="margin:0 0 20px;${alignment}"><span style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:${fontSize}px;font-weight:bold;">${text}</span></div>`;
       }
-      return `<div style="margin:0 0 20px;${alignment}"><a href="${escapeHtml(block.url)}" style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:15px;font-weight:bold;text-decoration:none;">${text}</a></div>`;
+      return `<div style="margin:0 0 20px;${alignment}"><a href="${escapeHtml(block.url)}" style="display:inline-block;padding:12px 22px;border-radius:${design.buttonRadius}px;background:${design.buttonColor};color:#ffffff;font-family:${font},sans-serif;font-size:${fontSize}px;font-weight:bold;text-decoration:none;">${text}</a></div>`;
     case 'divider':
       return '<hr style="margin:20px 0;border:0;border-top:1px solid #e4e7ec;" />';
     case 'spacer':
       return '<div style="height:24px;line-height:24px;font-size:1px;">&nbsp;</div>';
     case 'footer':
-      return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e4e7ec;color:${design.secondaryText};font-family:${font},sans-serif;font-size:12px;line-height:1.6;${alignment}">${text}</div>`;
+      return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e4e7ec;color:${design.secondaryText};font-family:${font},sans-serif;font-size:${fontSize}px;line-height:1.6;${alignment}">${richText}</div>`;
   }
 }
 
@@ -90,7 +135,7 @@ export function renderEmailCampaign(
       }
       if (block.type === 'divider') return '--------------------';
       if (block.type === 'spacer') return '';
-      return block.text;
+      return renderPlainText(block.text);
     })
     .filter((text) => text.trim())
     .join('\n\n');

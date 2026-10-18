@@ -65,9 +65,50 @@ describe('email campaign renderer', () => {
       }
     );
     expect(rendered.html).toContain('Nova coleção');
+    expect(rendered.html).toContain('font-size:32px');
     expect(rendered.html).toContain('background:#eeeeee');
     expect(rendered.html).toContain('background:#abcdef');
     expect(rendered.html).toContain('padding:40px');
+  });
+
+  it('renders per-block font sizes and safe inline text links', () => {
+    const rendered = renderEmailCampaign('', '', [
+      {
+        id: 'text',
+        type: 'text',
+        text: 'Leia [as novidades](https://example.com/news?a=1&b=2).',
+        url: '',
+        alt: '',
+        alignment: 'left',
+        fontSize: 22,
+      },
+    ]);
+
+    expect(rendered.html).toContain('font-size:22px');
+    expect(rendered.html).toContain(
+      '<a href="https://example.com/news?a=1&amp;b=2"'
+    );
+    expect(rendered.html).toContain('>as novidades</a>');
+    expect(rendered.text).toContain(
+      'Leia as novidades (https://example.com/news?a=1&b=2).'
+    );
+  });
+
+  it('escapes inline link text and does not render unsafe protocols', () => {
+    const rendered = renderEmailCampaign('', '', [
+      {
+        id: 'text',
+        type: 'text',
+        text: '[<img src=x onerror=alert(1)>](javascript:alert(1))',
+        url: '',
+        alt: '',
+        alignment: 'left',
+      },
+    ]);
+
+    expect(rendered.html).not.toContain('<img src=x');
+    expect(rendered.html).not.toContain('href="javascript:');
+    expect(rendered.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
   });
 
   it('escapes user-controlled text and URLs before inserting HTML', () => {

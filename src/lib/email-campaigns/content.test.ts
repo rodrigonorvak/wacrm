@@ -28,4 +28,15 @@ describe('email campaign content parsing', () => {
       parseEmailCampaignContent({ version: 1, blocks: [block], design })
     ).toEqual({ blocks: [block], design });
   });
+
+  it('preserves optional font sizes on versioned blocks', () => {
+    const blockWithFontSize = { ...block, fontSize: 24 };
+    expect(
+      parseEmailCampaignContent({
+        version: 1,
+        blocks: [blockWithFontSize],
+        design: DEFAULT_EMAIL_DESIGN,
+      }).blocks
+    ).toEqual([blockWithFontSize]);
+  });
 });

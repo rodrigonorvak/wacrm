@@ -66,6 +66,7 @@ function parseBlocks(value: unknown): EmailBlock[] | null {
 
     const text = typeof item.text === 'string' ? item.text : '';
     const alt = typeof item.alt === 'string' ? item.alt : '';
+    const fontSize = item.fontSize;
     const alignment =
       typeof item.alignment === 'string' &&
       ALIGNMENTS.has(item.alignment as EmailBlockAlignment)
@@ -73,7 +74,18 @@ function parseBlocks(value: unknown): EmailBlock[] | null {
         : 'left';
     const url = safeUrl(item.url, type === 'image');
 
-    if (text.length > 10_000 || alt.length > 500 || url === null) return null;
+    if (
+      text.length > 10_000 ||
+      alt.length > 500 ||
+      url === null ||
+      (fontSize !== undefined &&
+        (typeof fontSize !== 'number' ||
+          !Number.isInteger(fontSize) ||
+          fontSize < 10 ||
+          fontSize > 72))
+    ) {
+      return null;
+    }
     blocks.push({
       id,
       type: type as EmailBlockType,
@@ -81,6 +93,7 @@ function parseBlocks(value: unknown): EmailBlock[] | null {
       url,
       alt,
       alignment,
+      ...(typeof fontSize === 'number' ? { fontSize } : {}),
     });
   }
   return blocks;

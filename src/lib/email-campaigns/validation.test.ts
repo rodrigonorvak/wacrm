@@ -110,6 +110,30 @@ describe('email campaign draft validation', () => {
     expect('error' in result).toBe(true);
   });
 
+  it('accepts bounded block font sizes and rejects invalid sizes', () => {
+    const valid = validateEmailCampaignDraft({
+      ...validDraft,
+      content: [{ ...validDraft.content[0], fontSize: 72 }],
+    });
+    const tooSmall = validateEmailCampaignDraft({
+      ...validDraft,
+      content: [{ ...validDraft.content[0], fontSize: 9 }],
+    });
+    const fractional = validateEmailCampaignDraft({
+      ...validDraft,
+      content: [{ ...validDraft.content[0], fontSize: 16.5 }],
+    });
+    const tooLarge = validateEmailCampaignDraft({
+      ...validDraft,
+      content: [{ ...validDraft.content[0], fontSize: 73 }],
+    });
+
+    expect('input' in valid && valid.input.content[0].fontSize).toBe(72);
+    expect('error' in tooSmall).toBe(true);
+    expect('error' in fractional).toBe(true);
+    expect('error' in tooLarge).toBe(true);
+  });
+
   it('rejects line breaks in the subject', () => {
     const result = validateEmailCampaignDraft({
       ...validDraft,

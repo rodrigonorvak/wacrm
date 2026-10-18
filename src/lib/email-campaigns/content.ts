@@ -17,7 +17,12 @@ function isEmailBlockArray(value: unknown): value is EmailBlock[] {
         typeof item.text === 'string' &&
         typeof item.url === 'string' &&
         typeof item.alt === 'string' &&
-        typeof item.alignment === 'string'
+        typeof item.alignment === 'string' &&
+        (item.fontSize === undefined ||
+          (typeof item.fontSize === 'number' &&
+            Number.isInteger(item.fontSize) &&
+            item.fontSize >= 10 &&
+            item.fontSize <= 72))
     )
   );
 }
