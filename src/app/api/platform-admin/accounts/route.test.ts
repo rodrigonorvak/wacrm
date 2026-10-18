@@ -22,6 +22,7 @@ import { GET } from './route'
 function makeQuery(table: string) {
   const query = {
     select: vi.fn(() => query),
+    is: vi.fn(() => query),
     order: vi.fn(() => query),
     limit: vi.fn(() => query),
     in: vi.fn(() => query),
@@ -100,11 +101,13 @@ describe('GET /api/platform-admin/accounts', () => {
       name: 'Acme CRM',
       created_at: '2026-01-01T00:00:00Z',
       member_count: 2,
+      features: {},
       owner: {
         user_id: 'owner-1',
         full_name: 'Account Owner',
         email: 'owner@example.com',
       },
+      access_status: 'approved',
     }])
     expect(JSON.stringify(body)).not.toContain('agent@example.com')
   })

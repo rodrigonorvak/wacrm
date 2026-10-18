@@ -116,7 +116,7 @@ export function parseContactCsv(
   for (const values of document.records) {
     const phone = phoneIdx >= 0 ? cleanCell(values[phoneIdx]) : '';
     const name = nameIdx >= 0 ? cleanCell(values[nameIdx]) : '';
-    if (!name) continue;
+    if (!name && !phone) continue;
 
     rows.push({
       phone,

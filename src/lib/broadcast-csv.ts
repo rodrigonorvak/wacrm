@@ -19,7 +19,7 @@
  * logic has to live outside the component to be testable.
  */
 
-import { dedupeByPhone } from '@/lib/contacts/dedupe';
+import { dedupeByPhone, normalizeKey } from '@/lib/contacts/dedupe';
 import { parseContactCsv } from '@/lib/contacts/parse-contact-csv';
 
 /** The shape the wizard hands to `createAndSendBroadcast`. */
@@ -48,7 +48,8 @@ export function parseBroadcastCsv(text: string): ParseBroadcastCsvResult {
 
   if (!hasPhoneColumn) return { ok: false, error: 'missing_phone_column' };
 
-  const { unique, duplicates } = dedupeByPhone(rows);
+  const phoneRows = rows.filter((row) => normalizeKey(row.phone));
+  const { unique, duplicates } = dedupeByPhone(phoneRows);
   if (unique.length === 0) return { ok: false, error: 'no_valid_rows' };
 
   return {

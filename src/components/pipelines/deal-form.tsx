@@ -94,6 +94,11 @@ export function DealForm({
   const [contactSearch, setContactSearch] = useState("");
   const [contactOptions, setContactOptions] = useState<Contact[]>([]);
   const [searchingContacts, setSearchingContacts] = useState(false);
+  const canSearchContacts =
+    open &&
+    Boolean(accountId) &&
+    contactId === "" &&
+    contactSearch.trim().length >= 2;
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [linkedConversation, setLinkedConversation] =
     useState<Conversation | null>(null);
@@ -206,13 +211,7 @@ export function DealForm({
   // whenever a deal card is opened. A small delay prevents a request for
   // every keystroke while still keeping selection responsive.
   useEffect(() => {
-    if (!open || !accountId || contactId !== "" || contactSearch.trim().length < 2) {
-      setContactOptions((current) =>
-        deal?.contact ? current.filter((contact) => contact.id === deal.contact?.id) : [],
-      );
-      setSearchingContacts(false);
-      return;
-    }
+    if (!canSearchContacts || !accountId) return;
 
     let cancelled = false;
     const query = contactSearch.trim().replace(/[(),.%]/g, "");
@@ -235,7 +234,7 @@ export function DealForm({
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [open, accountId, contactId, contactSearch, deal?.contact, supabase]);
+  }, [canSearchContacts, accountId, contactSearch, supabase]);
 
   // Fetch linked conversation for the selected contact (newest open one).
   // Clearing on no-selection is sync with prop state; the populated
@@ -567,7 +566,7 @@ export function DealForm({
                   placeholder={t("selectContact")}
                   className="border-border bg-muted text-foreground"
                 />
-                {searchingContacts && (
+                {canSearchContacts && searchingContacts && (
                   <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                 )}
               </div>
