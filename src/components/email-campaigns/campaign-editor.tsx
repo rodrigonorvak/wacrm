@@ -71,6 +71,10 @@ import {
   type EmailDesignSettings,
 } from '@/lib/email-campaigns/types';
 import { getSafeEmailLinkUrl } from '@/lib/email-campaigns/render';
+import {
+  MEDIA_MAX_BYTES_BY_KIND,
+  uploadAccountMedia,
+} from '@/lib/storage/upload-media';
 import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
 import {
   buildTemplateBlocks,
@@ -399,6 +403,69 @@ function EmailBlockPreview({ block }: { block: EmailBlock }) {
           O link de descadastro será incluído automaticamente no envio.
         </span>
       </p>
+    </div>
+  );
+}
+
+function EmailImageUpload({
+  labels,
+  onUploaded,
+}: {
+  labels: {
+    upload: string;
+    uploading: string;
+    invalidType: string;
+    tooLarge: string;
+    failed: string;
+    orUrl: string;
+  };
+  onUploaded: (url: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(file: File | undefined) {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g|gif|webp)$/i.test(file.type)) {
+      toast.error(labels.invalidType);
+      return;
+    }
+    if (file.size > MEDIA_MAX_BYTES_BY_KIND.image) {
+      toast.error(labels.tooLarge);
+      return;
+    }
+    setUploading(true);
+    try {
+      const { publicUrl } = await uploadAccountMedia('chat-media', file);
+      onUploaded(publicUrl);
+    } catch {
+      toast.error(labels.failed);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="grid gap-1">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        className="hidden"
+        onChange={(event) => void handleFile(event.target.files?.[0])}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {uploading ? <Loader2 className="animate-spin" /> : <ImageIcon />}
+        {uploading ? labels.uploading : labels.upload}
+      </Button>
+      <p className="text-muted-foreground text-xs">{labels.orUrl}</p>
     </div>
   );
 }
@@ -1063,6 +1130,14 @@ export function EmailCampaignEditor({
     spacer: Space,
     footer: PanelBottom,
   };
+  const imageUploadLabels = {
+    upload: t('uploadImage'),
+    uploading: t('uploadingImage'),
+    invalidType: t('imageInvalidType'),
+    tooLarge: t('imageTooLarge'),
+    failed: t('imageUploadFailed'),
+    orUrl: t('imageOrUrl'),
+  };
   const canvasLabels: EmailCanvasLabels = {
     blockTypes: {
       hero: t('blockTypes.hero'),
@@ -1446,6 +1521,10 @@ export function EmailCampaignEditor({
                           <Label htmlFor="design-image-url">
                             {t('imageUrl')}
                           </Label>
+                          <EmailImageUpload
+                            labels={imageUploadLabels}
+                            onUploaded={(url) => updateSelectedBlock({ url })}
+                          />
                           <Input
                             id="design-image-url"
                             type="url"
@@ -2164,6 +2243,10 @@ export function EmailCampaignEditor({
                           <Label htmlFor="block-image-url">
                             {t('imageUrl')}
                           </Label>
+                          <EmailImageUpload
+                            labels={imageUploadLabels}
+                            onUploaded={(url) => updateSelectedBlock({ url })}
+                          />
                           <Input
                             id="block-image-url"
                             type="url"
@@ -2295,32 +2378,19 @@ export function EmailCampaignEditor({
                     {preheader || t('preheaderPlaceholder')}
                   </p>
                 </div>
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={blocks.map((block) => block.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="space-y-3 p-5 sm:p-8">
-                      {blocks.map((block) => (
-                        <SortableEmailBlock
-                          key={block.id}
-                          block={block}
-                          selected={block.id === selectedBlockId}
-                          label={t(`blockTypes.${block.type}`)}
-                          removeLabel={t('removeBlock')}
-                          duplicateLabel={t('duplicateBlock')}
-                          onSelect={() => setSelectedBlockId(block.id)}
-                          onRemove={() => removeBlock(block.id)}
-                          onDuplicate={() => duplicateBlock(block.id)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
+                <div className="space-y-3 p-5 sm:p-8">
+                  {blocks.map((block) => (
+                    <article
+                      key={block.id}
+                      className="rounded-lg border border-slate-200 bg-white p-4 text-slate-900 shadow-sm"
+                    >
+                      <p className="mb-3 border-b border-slate-100 pb-2 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
+                        {t(`blockTypes.${block.type}`)}
+                      </p>
+                      <EmailBlockPreview block={block} />
+                    </article>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="text-muted-foreground flex items-center gap-2 text-xs">
