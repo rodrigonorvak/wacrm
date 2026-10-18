@@ -1104,6 +1104,16 @@ export function EmailCampaignEditor({
         );
       } else {
         toast.success(t('campaignQueued', { count: result.queuedCount }));
+        // Flush the queue now; batches are small, so loop until drained.
+        const maxRuns = Math.min(Math.ceil(result.queuedCount / 2) + 1, 50);
+        for (let run = 0; run < maxRuns; run += 1) {
+          const dispatch = await fetch('/api/email/campaigns/dispatch', {
+            method: 'POST',
+          }).catch(() => null);
+          if (!dispatch?.ok) break;
+          const progress = await dispatch.json().catch(() => null);
+          if (!progress || !progress.processed) break;
+        }
       }
       router.replace('/broadcasts/email');
     } catch (error) {
@@ -1921,6 +1931,17 @@ export function EmailCampaignEditor({
                     }
                     disabled={dispatchingCampaign}
                   />
+                  {scheduledAtLocal ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setScheduledAtLocal('')}
+                      disabled={dispatchingCampaign}
+                    >
+                      {t('sendImmediately')}
+                    </Button>
+                  ) : null}
                 </div>
               </section>
             </details>

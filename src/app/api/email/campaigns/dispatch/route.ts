@@ -1,5 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { toErrorResponse } from '@/lib/auth/account';
+import { requireEmailSenderAdmin } from '@/lib/email-senders/access';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
 import {
   createEmailUnsubscribeLink,
@@ -136,7 +138,20 @@ export async function GET(request: Request) {
   if (!isAuthorized(request, secrets)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  return processDeliveryBatch(request);
+}
 
+// Lets a signed-in admin flush due deliveries without an external cron.
+export async function POST(request: Request) {
+  try {
+    await requireEmailSenderAdmin();
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+  return processDeliveryBatch(request);
+}
+
+async function processDeliveryBatch(request: Request) {
   const admin = supabaseAdmin();
   const { data: recoveredCount, error: recoverError } = await admin.rpc(
     'recover_stale_email_campaign_deliveries'
