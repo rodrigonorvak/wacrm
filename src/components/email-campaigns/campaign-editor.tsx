@@ -33,7 +33,6 @@ import {
   AlignLeft,
   AlignRight,
   ArrowLeft,
-  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -78,7 +77,10 @@ import {
   defaultEmailBlockFontSize,
   type EmailDesignSettings,
 } from '@/lib/email-campaigns/types';
-import { getSafeEmailLinkUrl } from '@/lib/email-campaigns/render';
+import {
+  getSafeEmailLinkUrl,
+  renderEmailBlock,
+} from '@/lib/email-campaigns/render';
 import {
   MEDIA_MAX_BYTES_BY_KIND,
   uploadAccountMedia,
@@ -1692,8 +1694,11 @@ export function EmailCampaignEditor({
   }
 
   return (
-    <form onSubmit={saveDraft} className="mx-auto max-w-[1500px] space-y-5">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <form
+      onSubmit={saveDraft}
+      className="-mx-4 -mt-4 -mb-6 flex h-[calc(100dvh-3.5rem)] min-h-[560px] flex-col overflow-hidden bg-slate-50 sm:-mx-6"
+    >
+      <header className="sticky top-0 z-20 flex min-h-14 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <Button
             type="button"
@@ -1707,20 +1712,39 @@ export function EmailCampaignEditor({
             <ArrowLeft />
           </Button>
           <div className="min-w-0">
-            <p className="text-primary text-sm font-medium">{t('section')}</p>
-            <h1 className="text-foreground truncate text-xl font-bold">
-              {campaignId ? t('editCampaign') : t('newCampaign')}
+            <h1 className="text-foreground truncate text-base font-bold">
+              {t('section')}
             </h1>
+            <select
+              id="campaign-sender"
+              value={senderId}
+              onChange={(event) => {
+                markDraftChanged();
+                setSenderId(event.target.value);
+              }}
+              required
+              aria-label={t('sender')}
+              className="mt-0.5 max-w-[min(50vw,360px)] truncate border-0 bg-transparent p-0 text-xs text-slate-500 outline-none"
+            >
+              <option value="">{t('selectSender')}</option>
+              {senders.map((sender) => (
+                <option key={sender.id} value={sender.id}>
+                  {sender.name} · {sender.from_email}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
-            type="button"
-            variant="outline"
-            onClick={() => setDesignMode(true)}
+            type="submit"
+            size="icon"
+            variant="ghost"
+            aria-label={saving ? t('saving') : t('saveDraft')}
+            title={saving ? t('saving') : t('saveDraft')}
+            disabled={saving || sendingTest || dispatchingCampaign}
           >
-            <Type />
-            {t('editDesign')}
+            {saving ? <Loader2 className="animate-spin" /> : <Save />}
           </Button>
           <Button
             type="button"
@@ -1790,16 +1814,24 @@ export function EmailCampaignEditor({
             </DialogContent>
           </Dialog>
           <Button
-            type="submit"
+            type="button"
+            className="bg-blue-600 text-white hover:bg-blue-700"
             disabled={
               saving ||
               sendingTest ||
               dispatchingCampaign ||
               senders.length === 0
             }
+            onClick={() =>
+              scheduledAtLocal ? scheduleCampaign() : void queueCampaign(null)
+            }
           >
-            {saving ? <Loader2 className="animate-spin" /> : <Save />}
-            {saving ? t('saving') : t('saveDraft')}
+            {dispatchingCampaign ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Send />
+            )}
+            {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
           </Button>
         </div>
       </header>
@@ -1832,16 +1864,21 @@ export function EmailCampaignEditor({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <aside className="order-2 space-y-4">
-            <details open className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('campaignDetails')}
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 xl:grid-cols-[minmax(0,1fr)_360px] xl:overflow-hidden">
+          <aside className="order-2 flex flex-col gap-3 overflow-y-auto xl:order-2">
+            <details open className="group" style={{ order: 1 }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
+                {t('campaignName')}
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
               </summary>
-              <section className="border-border bg-card space-y-4 rounded-xl border p-4">
+              <section className="space-y-3 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="campaign-name">{t('campaignName')}</Label>
+                  <Label
+                    htmlFor="campaign-name"
+                    className="text-xs text-slate-600"
+                  >
+                    {t('campaignName')}
+                  </Label>
                   <Input
                     id="campaign-name"
                     value={name}
@@ -1853,82 +1890,23 @@ export function EmailCampaignEditor({
                     required
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="campaign-sender">{t('sender')}</Label>
-                  <select
-                    id="campaign-sender"
-                    value={senderId}
-                    onChange={(event) => {
-                      markDraftChanged();
-                      setSenderId(event.target.value);
-                    }}
-                    required
-                    className="border-border bg-background text-foreground h-9 rounded-lg border px-3 text-sm"
-                  >
-                    <option value="">{t('selectSender')}</option>
-                    {senders.map((sender) => (
-                      <option key={sender.id} value={sender.id}>
-                        {sender.name} · {sender.from_email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="campaign-subject">{t('subject')}</Label>
-                  <Input
-                    id="campaign-subject"
-                    value={subject}
-                    onChange={(event) => {
-                      markDraftChanged();
-                      setSubject(event.target.value);
-                    }}
-                    maxLength={255}
-                    placeholder={t('subjectPlaceholder')}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="campaign-preheader">{t('preheader')}</Label>
-                  <Input
-                    id="campaign-preheader"
-                    value={preheader}
-                    onChange={(event) => {
-                      markDraftChanged();
-                      setPreheader(event.target.value);
-                    }}
-                    maxLength={250}
-                    placeholder={t('preheaderPlaceholder')}
-                  />
-                </div>
               </section>
             </details>
 
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('deliverySchedule')}
+            <details className="group" style={{ order: 3 }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
+                {t('sendDate')}
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
               </summary>
-              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
+              <section className="space-y-3 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
                 <p className="text-muted-foreground text-xs">
                   {t('deliveryScheduleHint')}
                 </p>
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={
-                    saving ||
-                    sendingTest ||
-                    dispatchingCampaign ||
-                    senders.length === 0
-                  }
-                  onClick={() => void queueCampaign(null)}
-                >
-                  {dispatchingCampaign ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Send />
-                  )}
-                  {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
-                </Button>
+                <p className="text-sm font-medium text-slate-700">
+                  {scheduledAtLocal
+                    ? new Date(scheduledAtLocal).toLocaleString()
+                    : t('sendImmediately')}
+                </p>
                 <div className="grid gap-2">
                   <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
                   <Input
@@ -1944,62 +1922,49 @@ export function EmailCampaignEditor({
                     disabled={dispatchingCampaign}
                   />
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={
-                    saving ||
-                    sendingTest ||
-                    dispatchingCampaign ||
-                    senders.length === 0 ||
-                    !scheduledAtLocal
-                  }
-                  onClick={scheduleCampaign}
-                >
-                  {dispatchingCampaign ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <CalendarClock />
-                  )}
-                  {t('scheduleCampaign')}
-                </Button>
               </section>
             </details>
 
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('advancedDelivery')}
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <section className="border-border bg-card space-y-2 rounded-xl border p-4">
-                {(
-                  [
-                    'abTesting',
-                    'recurringCampaign',
-                    'automaticResend',
-                    'gradualDelivery',
-                  ] as const
-                ).map((key) => (
-                  <div
-                    key={key}
-                    className="border-border flex items-center justify-between gap-3 rounded-lg border p-3"
-                  >
-                    <span className="text-foreground text-sm">{t(key)}</span>
-                    <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[10px] font-medium">
+            <section
+              className="space-y-1 rounded-lg border border-slate-200 bg-white px-4 shadow-sm"
+              style={{ order: 5 }}
+            >
+              {(
+                [
+                  'abTesting',
+                  'recurringCampaign',
+                  'automaticResend',
+                  'gradualDelivery',
+                ] as const
+              ).map((key) => (
+                <div
+                  key={key}
+                  className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-b-0"
+                >
+                  <span className="text-sm text-slate-700">{t(key)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-[10px]">
                       {t('comingSoon')}
                     </span>
+                    <button
+                      type="button"
+                      disabled
+                      aria-label={`${t(key)} — ${t('comingSoon')}`}
+                      className="relative h-5 w-9 cursor-not-allowed rounded-full bg-slate-200 opacity-70"
+                    >
+                      <span className="absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow-sm" />
+                    </button>
                   </div>
-                ))}
-              </section>
-            </details>
+                </div>
+              ))}
+            </section>
 
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
+            <details className="group" style={{ order: 2 }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
                 {t('audience')}
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
               </summary>
-              <section className="border-border bg-card space-y-4 rounded-xl border p-4">
+              <section className="space-y-4 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
                 <div className="grid gap-2">
                   {(
                     [
@@ -2185,208 +2150,65 @@ export function EmailCampaignEditor({
               </section>
             </details>
 
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('addBlock')}
+            <details className="group" style={{ order: 4 }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
+                {t('subjectAndPreheader')}
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
               </summary>
-              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-                <div className="grid grid-cols-2 gap-2">
-                  {BLOCK_TYPE_ORDER.map((type) => {
-                    const Icon = blockIcons[type];
-                    return (
-                      <Button
-                        key={type}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => addBlock(type)}
-                      >
-                        <Icon />
-                        {t(`blockTypes.${type}`)}
-                      </Button>
-                    );
-                  })}
+              <section className="space-y-3 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
+                <div className="grid gap-2">
+                  <Label
+                    htmlFor="campaign-subject"
+                    className="text-xs text-slate-600"
+                  >
+                    {t('subject')}
+                  </Label>
+                  <Input
+                    id="campaign-subject"
+                    value={subject}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setSubject(event.target.value);
+                    }}
+                    maxLength={255}
+                    placeholder={t('subjectPlaceholder')}
+                  />
                 </div>
-              </section>
-            </details>
-
-            <details className="group">
-              <summary className="border-border bg-card text-foreground flex cursor-pointer list-none items-center justify-between rounded-xl border p-4 font-semibold">
-                {t('blockSettings')}
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-              </summary>
-              <section className="border-border bg-card space-y-3 rounded-xl border p-4">
-                {!selectedBlock ? (
-                  <p className="text-muted-foreground text-sm">
-                    {t('selectBlockHint')}
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                      {t(`blockTypes.${selectedBlock.type}`)}
-                    </p>
-                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
-                      selectedBlock.type
-                    ) && (
-                      <>
-                        <EmailBlockTextField
-                          key={selectedBlock.id}
-                          id={`block-text-${selectedBlock.id}`}
-                          label={t('blockText')}
-                          rows={
-                            selectedBlock.type === 'heading' ||
-                            selectedBlock.type === 'hero'
-                              ? 2
-                              : 5
-                          }
-                          value={selectedBlock.text}
-                          onChange={(text) => updateSelectedBlock({ text })}
-                          insertLinkLabel={t('insertLink')}
-                          linkUrlLabel={t('linkUrl')}
-                          applyLinkLabel={t('applyLink')}
-                          linkHint={t('inlineLinkHint')}
-                          allowInlineLinks={selectedBlock.type !== 'button'}
-                        />
-                        <div className="grid gap-2">
-                          <Label htmlFor="block-font-size">
-                            {t('fontSize')} (
-                            {selectedBlock.fontSize ??
-                              defaultEmailBlockFontSize(selectedBlock.type)}
-                            px)
-                          </Label>
-                          <Input
-                            id="block-font-size"
-                            type="range"
-                            min={10}
-                            max={72}
-                            step={1}
-                            value={
-                              selectedBlock.fontSize ??
-                              defaultEmailBlockFontSize(selectedBlock.type)
-                            }
-                            onChange={(event) =>
-                              updateSelectedBlock({
-                                fontSize: Number(event.target.value),
-                              })
-                            }
-                          />
-                        </div>
-                      </>
-                    )}
-                    {selectedBlock.type === 'image' && (
-                      <>
-                        <div className="grid gap-2">
-                          <Label htmlFor="block-image-url">
-                            {t('imageUrl')}
-                          </Label>
-                          <EmailImageUpload
-                            labels={imageUploadLabels}
-                            onUploaded={(url) => updateSelectedBlock({ url })}
-                          />
-                          <Input
-                            id="block-image-url"
-                            type="url"
-                            value={selectedBlock.url}
-                            onChange={(event) =>
-                              updateSelectedBlock({ url: event.target.value })
-                            }
-                            placeholder="https://..."
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="block-image-alt">
-                            {t('imageAlt')}
-                          </Label>
-                          <Input
-                            id="block-image-alt"
-                            value={selectedBlock.alt}
-                            onChange={(event) =>
-                              updateSelectedBlock({ alt: event.target.value })
-                            }
-                          />
-                        </div>
-                      </>
-                    )}
-                    {selectedBlock.type === 'button' && (
-                      <div className="grid gap-2">
-                        <Label htmlFor="block-button-url">
-                          {t('buttonUrl')}
-                        </Label>
-                        <Input
-                          id="block-button-url"
-                          type="url"
-                          value={selectedBlock.url}
-                          onChange={(event) =>
-                            updateSelectedBlock({ url: event.target.value })
-                          }
-                          placeholder="https://..."
-                        />
-                      </div>
-                    )}
-                    {['hero', 'heading', 'text', 'button', 'footer'].includes(
-                      selectedBlock.type
-                    ) && (
-                      <div className="grid gap-2">
-                        <Label>{t('alignment')}</Label>
-                        <div className="flex gap-1">
-                          {(
-                            [
-                              ['left', AlignLeft],
-                              ['center', AlignCenter],
-                              ['right', AlignRight],
-                            ] as const
-                          ).map(([alignment, Icon]) => (
-                            <Button
-                              key={alignment}
-                              type="button"
-                              variant={
-                                selectedBlock.alignment === alignment
-                                  ? 'secondary'
-                                  : 'outline'
-                              }
-                              size="icon-sm"
-                              aria-label={t(`alignments.${alignment}`)}
-                              onClick={() =>
-                                updateSelectedBlock({
-                                  alignment,
-                                })
-                              }
-                            >
-                              <Icon />
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {['divider', 'spacer'].includes(selectedBlock.type) && (
-                      <p className="text-muted-foreground text-xs">
-                        {t('noBlockSettings')}
-                      </p>
-                    )}
-                  </>
-                )}
+                <div className="grid gap-2">
+                  <Label
+                    htmlFor="campaign-preheader"
+                    className="text-xs text-slate-600"
+                  >
+                    {t('preheader')}
+                  </Label>
+                  <Input
+                    id="campaign-preheader"
+                    value={preheader}
+                    onChange={(event) => {
+                      markDraftChanged();
+                      setPreheader(event.target.value);
+                    }}
+                    maxLength={250}
+                    placeholder={t('preheaderPlaceholder')}
+                  />
+                </div>
               </section>
             </details>
           </aside>
 
-          <section className="order-1 min-w-0 space-y-3">
-            <div className="border-border bg-card flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
-              <div>
-                <h2 className="text-foreground font-semibold">
-                  {t('preview')}
-                </h2>
-                <p className="text-muted-foreground text-xs">
-                  {t('previewHint')}
-                </p>
-              </div>
-              <div className="border-border flex rounded-lg border p-1">
+          <section className="flex min-h-[480px] min-w-0 flex-col gap-3 xl:min-h-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+              <div className="flex items-center gap-1 rounded-md bg-slate-100 p-1">
                 <Button
                   type="button"
                   size="sm"
-                  variant={previewMode === 'desktop' ? 'secondary' : 'ghost'}
+                  variant={previewMode === 'desktop' ? 'default' : 'ghost'}
                   onClick={() => setPreviewMode('desktop')}
+                  className={
+                    previewMode === 'desktop'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'text-slate-600'
+                  }
                 >
                   <Laptop />
                   {t('desktop')}
@@ -2401,14 +2223,29 @@ export function EmailCampaignEditor({
                   {t('mobile')}
                 </Button>
               </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDesignMode(true)}
+              >
+                <Type />
+                {t('editDesign')}
+              </Button>
             </div>
-            <div className="border-border min-h-[680px] overflow-x-auto rounded-xl border bg-slate-100 p-4 sm:p-8">
+            <div
+              className="relative min-h-[560px] flex-1 overflow-auto rounded-lg border border-slate-200 bg-white p-4 sm:p-8"
+              style={{
+                backgroundImage:
+                  'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
+                backgroundSize: '16px 16px',
+              }}
+            >
               <div
                 className={`mx-auto overflow-hidden rounded-lg bg-white shadow-lg transition-[max-width] ${
                   previewMode === 'mobile' ? 'max-w-[390px]' : 'max-w-[680px]'
                 }`}
               >
-                <div className="border-b border-slate-200 bg-slate-50 px-5 py-3">
+                <div className="border-b border-slate-200 bg-white px-5 py-3">
                   <p className="truncate text-xs font-semibold text-slate-700">
                     {subject || t('subjectPlaceholder')}
                   </p>
@@ -2416,24 +2253,33 @@ export function EmailCampaignEditor({
                     {preheader || t('preheaderPlaceholder')}
                   </p>
                 </div>
-                <div className="space-y-3 p-5 sm:p-8">
-                  {blocks.map((block) => (
-                    <article
-                      key={block.id}
-                      className="rounded-lg border border-slate-200 bg-white p-4 text-slate-900 shadow-sm"
-                    >
-                      <p className="mb-3 border-b border-slate-100 pb-2 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
-                        {t(`blockTypes.${block.type}`)}
-                      </p>
-                      <EmailBlockPreview block={block} />
-                    </article>
-                  ))}
+                <div
+                  className="space-y-0"
+                  style={{
+                    background: design.emailBackground,
+                    fontFamily: `${design.fontFamily}, sans-serif`,
+                  }}
+                >
+                  <div
+                    className="mx-auto"
+                    style={{
+                      maxWidth: 640,
+                      background: design.sectionBackground,
+                      borderRadius: design.cornerRadius,
+                      padding: design.sectionSpacing,
+                    }}
+                  >
+                    {blocks.map((block) => (
+                      <div
+                        key={block.id}
+                        dangerouslySetInnerHTML={{
+                          __html: renderEmailBlock(block, design),
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Mail className="size-4" />
-              {t('deliveryNotice')}
             </div>
           </section>
         </div>
