@@ -72,7 +72,7 @@ export function CreateMemberDialog({
         }),
       });
       if (!response.ok) {
-        toast.error(t('failed'));
+        toast.error(response.status === 409 ? t('emailExists') : t('failed'));
         return;
       }
 
@@ -124,7 +124,9 @@ export function CreateMemberDialog({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-member-password">{t('temporaryPasswordLabel')}</Label>
+            <Label htmlFor="new-member-password">
+              {t('temporaryPasswordLabel')}
+            </Label>
             <Input
               id="new-member-password"
               type="password"
@@ -135,11 +137,16 @@ export function CreateMemberDialog({
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <p className="text-xs text-muted-foreground">{t('temporaryPasswordHint')}</p>
+            <p className="text-muted-foreground text-xs">
+              {t('temporaryPasswordHint')}
+            </p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-member-role">{t('roleLabel')}</Label>
-            <Select value={role} onValueChange={(value) => value && setRole(value as typeof role)}>
+            <Select
+              value={role}
+              onValueChange={(value) => value && setRole(value as typeof role)}
+            >
               <SelectTrigger id="new-member-role" className="w-full">
                 <SelectValue>{tRoles(role)}</SelectValue>
               </SelectTrigger>

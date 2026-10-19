@@ -33,6 +33,7 @@ import {
   AlignLeft,
   AlignRight,
   ArrowLeft,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -57,6 +58,7 @@ import {
   Redo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SchedulePicker } from './schedule-picker';
 import {
   Dialog,
   DialogContent,
@@ -584,6 +586,9 @@ export function EmailCampaignEditor({
   const [testRecipient, setTestRecipient] = useState('');
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [scheduledAtLocal, setScheduledAtLocal] = useState('');
+  const [sendMode, setSendMode] = useState<'now' | 'schedule'>('now');
+  const [openPanel, setOpenPanel] = useState<'audience' | 'date' | null>(null);
+  const [savingPanel, setSavingPanel] = useState(false);
   const [senders, setSenders] = useState<SenderOption[]>([]);
   const [senderId, setSenderId] = useState('');
   const [name, setName] = useState('');
@@ -1107,6 +1112,7 @@ export function EmailCampaignEditor({
         toast.success(t('campaignQueued', { count: result.queuedCount }));
         // Flush the queue now; batches are small, so loop until drained.
         const maxRuns = Math.min(Math.ceil(result.queuedCount / 2) + 1, 50);
+        let failedCount = 0;
         for (let run = 0; run < maxRuns; run += 1) {
           const dispatch = await fetch('/api/email/campaigns/dispatch', {
             method: 'POST',
@@ -1114,6 +1120,10 @@ export function EmailCampaignEditor({
           if (!dispatch?.ok) break;
           const progress = await dispatch.json().catch(() => null);
           if (!progress || !progress.processed) break;
+          failedCount += Number(progress.failed ?? 0);
+        }
+        if (failedCount > 0) {
+          toast.error(t('deliveryFailures', { count: failedCount }));
         }
       }
       router.replace('/broadcasts/email');
@@ -1142,6 +1152,54 @@ export function EmailCampaignEditor({
     }
     void queueCampaign(scheduledAt.toISOString());
   }
+
+  function sendCampaign() {
+    if (sendMode === 'schedule') scheduleCampaign();
+    else void queueCampaign(null);
+  }
+
+  async function saveAudiencePanel() {
+    setSavingPanel(true);
+    try {
+      await persistDraft();
+      toast.success(t('audienceSaved'));
+      setOpenPanel(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('saveFailed'));
+    } finally {
+      setSavingPanel(false);
+    }
+  }
+
+  function saveDatePanel() {
+    if (sendMode === 'schedule') {
+      const scheduledAt = new Date(scheduledAtLocal);
+      if (
+        !scheduledAtLocal ||
+        !Number.isFinite(scheduledAt.getTime()) ||
+        scheduledAt.getTime() < Date.now() + 60_000
+      ) {
+        toast.error(t('scheduleTimeInvalid'));
+        return;
+      }
+    }
+    toast.success(t('dateSaved'));
+    setOpenPanel(null);
+  }
+
+  const audienceSummary =
+    audienceType === 'all_contacts'
+      ? t('allContacts')
+      : audienceType === 'selected_contacts'
+        ? t('selectedContactCount', { count: contactIds.length })
+        : (stages.find((stage) => stage.id === stageId)?.name ??
+          t('pipelineStage'));
+  const dateSummary =
+    sendMode === 'schedule' && scheduledAtLocal
+      ? new Date(scheduledAtLocal).toLocaleString()
+      : sendMode === 'schedule'
+        ? t('scheduleOption')
+        : t('sendNowOption');
 
   const blockIcons = {
     hero: Heading1,
@@ -1833,16 +1891,18 @@ export function EmailCampaignEditor({
               dispatchingCampaign ||
               senders.length === 0
             }
-            onClick={() =>
-              scheduledAtLocal ? scheduleCampaign() : void queueCampaign(null)
-            }
+            onClick={sendCampaign}
           >
             {dispatchingCampaign ? (
               <Loader2 className="animate-spin" />
             ) : (
               <Send />
             )}
-            {dispatchingCampaign ? t('preparingDelivery') : t('sendNow')}
+            {dispatchingCampaign
+              ? t('preparingDelivery')
+              : sendMode === 'schedule'
+                ? t('scheduleSend')
+                : t('sendNow')}
           </Button>
         </div>
       </header>
@@ -1904,40 +1964,99 @@ export function EmailCampaignEditor({
               </section>
             </details>
 
-            <details className="group" style={{ order: 3 }}>
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
-                {t('sendDate')}
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+            <details
+              open={openPanel === 'date'}
+              className="group"
+              style={{ order: 3 }}
+            >
+              <summary
+                onClick={(event) => {
+                  event.preventDefault();
+                  setOpenPanel((current) =>
+                    current === 'date' ? null : 'date'
+                  );
+                }}
+                className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm"
+              >
+                <span>{t('sendDate')}</span>
+                <span className="ml-auto truncate text-xs font-normal text-slate-500">
+                  {dateSummary}
+                </span>
+                <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
               </summary>
               <section className="space-y-3 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
                 <p className="text-muted-foreground text-xs">
                   {t('deliveryScheduleHint')}
                 </p>
-                <div className="grid gap-2">
-                  <Label htmlFor="campaign-schedule">{t('scheduleAt')}</Label>
-                  <Input
-                    id="campaign-schedule"
-                    type="datetime-local"
-                    min={toLocalDateTimeInputValue(
-                      new Date(Date.now() + 60_000)
-                    )}
-                    value={scheduledAtLocal}
-                    onChange={(event) =>
-                      setScheduledAtLocal(event.target.value)
-                    }
-                    disabled={dispatchingCampaign}
-                  />
-                  {scheduledAtLocal ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setScheduledAtLocal('')}
+                {(
+                  [
+                    ['now', 'sendNowOption', 'sendNowHint'],
+                    ['schedule', 'scheduleOption', 'scheduleHint'],
+                  ] as const
+                ).map(([mode, labelKey, hintKey]) => (
+                  <label
+                    key={mode}
+                    className={`flex cursor-pointer items-start gap-2 rounded-lg p-3 text-sm ${
+                      sendMode === mode
+                        ? 'bg-blue-50 text-slate-900'
+                        : 'bg-slate-50 text-slate-600'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="email-send-mode"
+                      checked={sendMode === mode}
                       disabled={dispatchingCampaign}
-                    >
-                      {t('clearSchedule')}
-                    </Button>
-                  ) : null}
+                      onChange={() => setSendMode(mode)}
+                      className="mt-0.5 accent-blue-600"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{t(labelKey)}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {t(hintKey)}
+                      </span>
+                      {mode === 'schedule' && sendMode === 'schedule' && (
+                        <span className="mt-3 block space-y-2">
+                          <span className="block rounded-md border border-blue-500 bg-white px-3 py-1.5 text-xs text-slate-800">
+                            {scheduledAtLocal
+                              ? new Date(scheduledAtLocal).toLocaleString()
+                              : t('scheduleAt')}
+                          </span>
+                          <SchedulePicker
+                            value={
+                              scheduledAtLocal
+                                ? new Date(scheduledAtLocal)
+                                : null
+                            }
+                            minDate={new Date(Date.now() + 2 * 60_000)}
+                            disabled={dispatchingCampaign}
+                            onChange={(date) =>
+                              setScheduledAtLocal(
+                                toLocalDateTimeInputValue(date)
+                              )
+                            }
+                          />
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                ))}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setOpenPanel(null)}
+                  >
+                    {t('closePanel')}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={saveDatePanel}
+                  >
+                    <Check />
+                    {t('savePanel')}
+                  </Button>
                 </div>
               </section>
             </details>
@@ -1976,10 +2095,25 @@ export function EmailCampaignEditor({
               ))}
             </section>
 
-            <details className="group" style={{ order: 2 }}>
-              <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm">
-                {t('audience')}
-                <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+            <details
+              open={openPanel === 'audience'}
+              className="group"
+              style={{ order: 2 }}
+            >
+              <summary
+                onClick={(event) => {
+                  event.preventDefault();
+                  setOpenPanel((current) =>
+                    current === 'audience' ? null : 'audience'
+                  );
+                }}
+                className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm"
+              >
+                <span>{t('audience')}</span>
+                <span className="ml-auto truncate text-xs font-normal text-slate-500">
+                  {audienceSummary}
+                </span>
+                <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
               </summary>
               <section className="space-y-4 rounded-b-lg border border-t-0 border-slate-200 bg-white p-4">
                 <div className="grid gap-2">
@@ -2164,6 +2298,29 @@ export function EmailCampaignEditor({
                     </p>
                   </div>
                 )}
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setOpenPanel(null)}
+                  >
+                    {t('closePanel')}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    disabled={savingPanel || saving || dispatchingCampaign}
+                    onClick={() => void saveAudiencePanel()}
+                  >
+                    {savingPanel ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Check />
+                    )}
+                    {t('savePanel')}
+                  </Button>
+                </div>
               </section>
             </details>
 
