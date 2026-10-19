@@ -1,0 +1,30 @@
+name: Dispatch scheduled email campaigns
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: email-campaign-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process due email deliveries
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          for batch in {1..50}; do
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              https://crm.integrado.malybo.com.br/api/email/campaigns/dispatch)"
+            printf '%s\n' "$response"
+
+            processed="$(jq -r '.processed // 0' <<< "$response")"
+            if [ "$processed" -eq 0 ]; then
+              break
+            fi
+          done
