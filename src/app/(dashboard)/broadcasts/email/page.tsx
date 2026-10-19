@@ -167,7 +167,7 @@ export default function EmailCampaignsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="dark:bg-muted/30 mx-auto max-w-5xl space-y-6 rounded-2xl bg-slate-100 p-4 sm:p-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-primary text-sm font-medium">{t('section')}</p>
@@ -199,7 +199,7 @@ export default function EmailCampaignsPage() {
           {stats.map((stat) => (
             <div
               key={stat.key}
-              className="border-border bg-card rounded-xl border p-4"
+              className="dark:bg-card rounded-2xl bg-white p-4 shadow-sm"
             >
               <p className="text-muted-foreground text-xs font-medium">
                 {t(stat.key)}
@@ -238,7 +238,7 @@ export default function EmailCampaignsPage() {
               <button
                 type="button"
                 onClick={() => router.push('/broadcasts/email/templates')}
-                className="border-border hover:border-primary rounded-xl border p-4 text-left transition-colors"
+                className="dark:bg-muted/40 rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100"
               >
                 <LayoutTemplate className="text-primary size-6" />
                 <span className="text-foreground mt-2 block font-semibold">
@@ -251,7 +251,7 @@ export default function EmailCampaignsPage() {
               <button
                 type="button"
                 onClick={() => router.push('/broadcasts/email/new')}
-                className="border-border hover:border-primary rounded-xl border p-4 text-left transition-colors"
+                className="dark:bg-muted/40 rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100"
               >
                 <FilePlus className="text-primary size-6" />
                 <span className="text-foreground mt-2 block font-semibold">
@@ -271,7 +271,7 @@ export default function EmailCampaignsPage() {
           <Loader2 className="text-primary size-6 animate-spin" />
         </div>
       ) : loadError ? (
-        <div className="border-border bg-card rounded-xl border p-8 text-center">
+        <div className="dark:bg-card rounded-2xl bg-white p-8 text-center shadow-sm">
           <p className="text-muted-foreground text-sm">{t('loadFailed')}</p>
           <Button
             type="button"
@@ -303,7 +303,7 @@ export default function EmailCampaignsPage() {
       ) : (
         <div className="space-y-4">
           <div className="border-border bg-card space-y-3 rounded-xl border p-3">
-            <label className="border-border bg-background text-muted-foreground flex h-10 items-center gap-2 rounded-lg border px-3">
+            <label className="dark:bg-muted/40 text-muted-foreground flex h-10 items-center gap-2 rounded-lg bg-slate-100 px-3">
               <Search className="size-4 shrink-0" aria-hidden="true" />
               <input
                 type="search"
@@ -331,10 +331,10 @@ export default function EmailCampaignsPage() {
                     type="button"
                     aria-pressed={statusFilter === status}
                     onClick={() => setStatusFilter(status)}
-                    className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    className={`flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                       statusFilter === status
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'dark:bg-muted/40 text-muted-foreground hover:text-foreground bg-slate-100 hover:bg-slate-200'
                     }`}
                   >
                     {status === 'all' ? t('filterAll') : t(status)}
@@ -346,7 +346,7 @@ export default function EmailCampaignsPage() {
           </div>
 
           {filteredCampaigns.length === 0 ? (
-            <div className="border-border bg-card rounded-xl border p-8 text-center">
+            <div className="dark:bg-card rounded-2xl bg-white p-8 text-center shadow-sm">
               <p className="text-muted-foreground text-sm">
                 {t('noCampaignMatches')}
               </p>
