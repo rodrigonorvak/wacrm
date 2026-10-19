@@ -188,6 +188,11 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     let cancelled = false;
     void (async () => {
       const base = "*, contact:contacts(*), stage:pipeline_stages(*), pipeline:pipelines(pipeline_type), assignee:profiles!deals_assigned_to_fkey(*)";
+      // Custom values do not depend on the deal row, so fetch them concurrently.
+      const customValuesPromise = supabase
+        .from("deal_custom_field_values")
+        .select("field_id, value, field:pipeline_custom_fields(field_name, show_on_card)")
+        .eq("deal_id", dealId);
       let result = await supabase
         .from("deals")
         .select(`${base}, deal_label_links(label:deal_labels(*))`)
@@ -214,10 +219,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           deal_label_links?: { label: DealLabel | null }[];
         };
         setLoadError(false);
-        const { data: customValueRows, error: customValuesError } = await supabase
-          .from("deal_custom_field_values")
-          .select("field_id, value, field:pipeline_custom_fields(field_name, show_on_card)")
-          .eq("deal_id", dealId);
+        const { data: customValueRows, error: customValuesError } = await customValuesPromise;
         if (customValuesError) {
           console.error("Failed to load pipeline custom values:", customValuesError.message);
         }
