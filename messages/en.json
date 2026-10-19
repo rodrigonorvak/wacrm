@@ -625,6 +625,7 @@
       "toastFailedMoveDeal": "Failed to move deal",
       "toastFailedStageColor": "Could not change the column color.",
       "toastFailedCreatePipeline": "Failed to create pipeline",
+      "pipelineOwnerOnly": "Only the account owner can create or delete pipelines.",
       "toastPipelineCreated": "Pipeline created",
       "toastNotLinkedToAccount": "Your profile is not linked to an account."
     },

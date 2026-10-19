@@ -957,6 +957,8 @@
       "addDeal": "Adicionar lead",
       "defaultPipelineName": "Funil de vendas",
       "defaultStagesDesc": "As etapas padrão (Novo lead → Ganho) serão criadas automaticamente.",
+      "toastFailedCreatePipeline": "Não foi possível criar o funil.",
+      "pipelineOwnerOnly": "Apenas a conta proprietária pode criar e excluir pipelines/funis.",
       "toastFailedStageColor": "Não foi possível alterar a cor da coluna.",
       "paidStageAmountTitle": "Informe o valor recebido",
       "paidStageAmountDescription": "Informe quanto foi pago pelo lead {dealTitle}. Esse valor será considerado nos totais do funil e do painel.",
