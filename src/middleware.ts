@@ -69,9 +69,13 @@ export async function middleware(request: NextRequest) {
     return withRefreshedCookies(NextResponse.redirect(url))
   }
 
-  const isApprovalPage = ['/signup/complete', '/account-pending', '/account-denied', '/account-status'].some(
-    path => request.nextUrl.pathname.startsWith(path),
-  )
+  const isApprovalPage = [
+    '/signup/complete',
+    '/account-pending',
+    '/account-denied',
+    '/account-status',
+    '/api/account-creation-request',
+  ].some(path => request.nextUrl.pathname.startsWith(path))
   if (
     user &&
     !isApprovalPage &&
