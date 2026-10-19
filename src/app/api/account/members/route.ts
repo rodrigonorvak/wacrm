@@ -113,6 +113,105 @@ export async function POST(request: Request) {
 
     let { data, error } = await createAuthUser();
 
+    if (error?.code === 'email_exists') {
+      const { data: existingProfile, error: lookupError } = await admin
+        .from('profiles')
+        .select('user_id, account_id, account_role, access_status')
+        .ilike('email', parsed.value.email)
+        .maybeSingle();
+
+      if (lookupError) {
+        console.error(
+          '[POST /api/account/members] existing profile lookup failed',
+          lookupError.code,
+          lookupError.message
+        );
+        return NextResponse.json(
+          {
+            error: 'Could not verify existing account',
+            code: 'profile_lookup_failed',
+          },
+          { status: 500 }
+        );
+      }
+
+      if (existingProfile?.access_status === 'pending') {
+        const { error: passwordError } = await admin.auth.admin.updateUserById(
+          existingProfile.user_id,
+          { password: parsed.value.password, email_confirm: true }
+        );
+
+        if (passwordError) {
+          console.error(
+            '[POST /api/account/members] pending member password setup failed',
+            passwordError.code,
+            passwordError.message
+          );
+          return NextResponse.json(
+            {
+              error: 'Could not set the member password',
+              code: passwordError.code ?? 'auth_update_failed',
+            },
+            { status: passwordError.code === 'weak_password' ? 400 : 500 }
+          );
+        }
+
+        const { data: promotedProfile, error: promoteError } = await admin
+          .from('profiles')
+          .update({
+            full_name:
+              parsed.value.fullName || parsed.value.email.split('@')[0],
+            email: parsed.value.email,
+            account_id: ctx.accountId,
+            account_role: parsed.value.role,
+            access_status: 'approved',
+          })
+          .eq('user_id', existingProfile.user_id)
+          .eq('access_status', 'pending')
+          .select('user_id')
+          .maybeSingle();
+
+        if (promoteError || !promotedProfile) {
+          console.error(
+            '[POST /api/account/members] pending profile promotion failed',
+            promoteError?.code,
+            promoteError?.message
+          );
+          return NextResponse.json(
+            {
+              error: 'Could not add the pending user to this account',
+              code: promoteError?.code ?? 'profile_promotion_failed',
+            },
+            { status: 500 }
+          );
+        }
+
+        const { error: requestCleanupError } = await admin
+          .from('account_creation_requests')
+          .delete()
+          .eq('user_id', existingProfile.user_id);
+        if (requestCleanupError) {
+          console.error(
+            '[POST /api/account/members] pending signup request cleanup failed',
+            requestCleanupError.code,
+            requestCleanupError.message
+          );
+        }
+
+        return NextResponse.json(
+          {
+            member: {
+              user_id: existingProfile.user_id,
+              email: parsed.value.email,
+              role: parsed.value.role,
+              requires_password_change: false,
+            },
+          },
+          { status: 201 }
+        );
+      }
+    }
+
     // A previous failed attempt can leave an auth user without a profile;
     // remove that orphan so the email can be used again.
     if (error?.code === 'email_exists') {
