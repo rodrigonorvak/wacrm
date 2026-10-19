@@ -311,6 +311,8 @@
       "creating": "Criando...",
       "created": "Acesso criado. O usuário deverá trocar a senha temporária no primeiro Login.",
       "emailExists": "Este e-mail já possui cadastro no CRM. Use outro e-mail.",
+      "weakPassword": "Senha recusada por ser fraca. Use uma senha mais forte, com letras, números e símbolos.",
+      "errorCode": "Código do erro",
       "failed": "Não foi possível criar o acesso. Confira os dados e tente novamente."
     },
     "aiConfig": {

@@ -1800,6 +1800,8 @@
       "creating": "Creating...",
       "created": "Access created. The user must change the temporary password at first sign-in.",
       "emailExists": "This email already has an account in the CRM. Use another email.",
+      "weakPassword": "Password rejected as too weak. Use a stronger one with letters, numbers and symbols.",
+      "errorCode": "Error code",
       "failed": "Could not create access. Check the details and try again."
     },
     "invite": {

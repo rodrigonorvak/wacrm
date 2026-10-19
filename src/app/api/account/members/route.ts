@@ -12,20 +12,20 @@
 //   phase: "agent/viewer sees names only".
 // ============================================================
 
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-import { getCurrentAccount, toErrorResponse } from "@/lib/auth/account";
-import { canManageMembers, isAccountRole } from "@/lib/auth/roles";
-import { requireRole } from "@/lib/auth/account";
-import { supabaseAdmin } from "@/lib/flows/admin-client";
-import { parseNewMemberInput } from "@/lib/auth/member-provisioning";
-import { privateAvatarUrl } from "@/lib/storage/avatar-url";
-import type { AccountMember } from "@/types";
+import { getCurrentAccount, toErrorResponse } from '@/lib/auth/account';
+import { canManageMembers, isAccountRole } from '@/lib/auth/roles';
+import { requireRole } from '@/lib/auth/account';
+import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { parseNewMemberInput } from '@/lib/auth/member-provisioning';
+import { privateAvatarUrl } from '@/lib/storage/avatar-url';
+import type { AccountMember } from '@/types';
 import {
   checkRateLimit,
   rateLimitResponse,
   RATE_LIMITS,
-} from "@/lib/rate-limit";
+} from '@/lib/rate-limit';
 
 interface ProfileRow {
   user_id: string;
@@ -43,16 +43,16 @@ export async function GET() {
     // RLS on profiles allows reading any row whose account matches
     // the caller's, so this query is naturally account-scoped.
     const { data, error } = await ctx.supabase
-      .from("profiles")
-      .select("user_id, full_name, email, avatar_url, account_role, created_at")
-      .eq("account_id", ctx.accountId)
-      .order("created_at", { ascending: true });
+      .from('profiles')
+      .select('user_id, full_name, email, avatar_url, account_role, created_at')
+      .eq('account_id', ctx.accountId)
+      .order('created_at', { ascending: true });
 
     if (error) {
-      console.error("[GET /api/account/members] fetch error:", error);
+      console.error('[GET /api/account/members] fetch error:', error);
       return NextResponse.json(
-        { error: "Failed to load members" },
-        { status: 500 },
+        { error: 'Failed to load members' },
+        { status: 500 }
       );
     }
 
@@ -66,7 +66,7 @@ export async function GET() {
       return [
         {
           user_id: row.user_id,
-          full_name: row.full_name ?? "",
+          full_name: row.full_name ?? '',
           email: canSeeEmails ? row.email : null,
           avatar_url: privateAvatarUrl(row.avatar_url, row.user_id),
           role: row.account_role,
@@ -83,10 +83,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const ctx = await requireRole("admin");
+    const ctx = await requireRole('admin');
     const limit = checkRateLimit(
       `admin:memberCreate:${ctx.userId}`,
-      RATE_LIMITS.adminAction,
+      RATE_LIMITS.adminAction
     );
     if (!limit.success) return rateLimitResponse(limit);
 
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       password: parsed.value.password,
       email_confirm: true,
       user_metadata: {
-        full_name: parsed.value.fullName || parsed.value.email.split("@")[0],
+        full_name: parsed.value.fullName || parsed.value.email.split('@')[0],
       },
       app_metadata: {
         must_change_password: true,
@@ -112,21 +112,40 @@ export async function POST(request: Request) {
     });
 
     if (error || !data.user) {
-      if (error?.code === "email_exists" || error?.status === 422) {
+      if (error?.code === 'email_exists') {
         return NextResponse.json(
-          { error: "An account with this email already exists" },
-          { status: 409 },
+          {
+            error: 'An account with this email already exists',
+            code: 'email_exists',
+          },
+          { status: 409 }
         );
       }
-      console.error("[POST /api/account/members] auth user creation failed", error?.code);
-      return NextResponse.json({ error: "Failed to create member" }, { status: 500 });
+      if (error?.code === 'weak_password') {
+        return NextResponse.json(
+          { error: 'Password rejected as too weak', code: 'weak_password' },
+          { status: 400 }
+        );
+      }
+      console.error(
+        '[POST /api/account/members] auth user creation failed',
+        error?.code,
+        error?.message
+      );
+      return NextResponse.json(
+        {
+          error: 'Failed to create member',
+          code: error?.code ?? 'auth_create_failed',
+        },
+        { status: 500 }
+      );
     }
 
     const user = data.user;
     const { data: profile, error: profileError } = await admin
-      .from("profiles")
-      .select("user_id, account_id, account_role")
-      .eq("user_id", user.id)
+      .from('profiles')
+      .select('user_id, account_id, account_role')
+      .eq('user_id', user.id)
       .maybeSingle();
 
     if (
@@ -135,13 +154,18 @@ export async function POST(request: Request) {
       profile.account_id !== ctx.accountId ||
       profile.account_role !== parsed.value.role
     ) {
-      const { error: cleanupError } = await admin.auth.admin.deleteUser(user.id);
-      console.error("[POST /api/account/members] profile provisioning failed", {
+      const { error: cleanupError } = await admin.auth.admin.deleteUser(
+        user.id
+      );
+      console.error('[POST /api/account/members] profile provisioning failed', {
         cleanupSucceeded: !cleanupError,
       });
       return NextResponse.json(
-        { error: "Member setup did not complete; no access was granted" },
-        { status: 500 },
+        {
+          error: 'Member setup did not complete; no access was granted',
+          code: 'profile_not_created',
+        },
+        { status: 500 }
       );
     }
 
@@ -151,11 +175,16 @@ export async function POST(request: Request) {
     };
     delete appMetadata.member_provisioning_account_id;
     delete appMetadata.member_provisioning_role;
-    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: appMetadata,
-    });
+    const { error: metadataError } = await admin.auth.admin.updateUserById(
+      user.id,
+      {
+        app_metadata: appMetadata,
+      }
+    );
     if (metadataError) {
-      console.error("[POST /api/account/members] temporary provisioning metadata cleanup failed");
+      console.error(
+        '[POST /api/account/members] temporary provisioning metadata cleanup failed'
+      );
     }
 
     return NextResponse.json(
@@ -167,7 +196,7 @@ export async function POST(request: Request) {
           requires_password_change: true,
         },
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (err) {
     return toErrorResponse(err);

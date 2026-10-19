@@ -72,7 +72,14 @@ export function CreateMemberDialog({
         }),
       });
       if (!response.ok) {
-        toast.error(response.status === 409 ? t('emailExists') : t('failed'));
+        const payload = await response.json().catch(() => null);
+        const code: string | undefined = payload?.code;
+        if (code === 'email_exists') toast.error(t('emailExists'));
+        else if (code === 'weak_password') toast.error(t('weakPassword'));
+        else
+          toast.error(t('failed'), {
+            description: code ? `${t('errorCode')}: ${code}` : undefined,
+          });
         return;
       }
 
