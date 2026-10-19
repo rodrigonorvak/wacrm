@@ -142,11 +142,37 @@ export async function POST(request: Request) {
     }
 
     const user = data.user;
-    const { data: profile, error: profileError } = await admin
-      .from('profiles')
-      .select('user_id, account_id, account_role')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const loadProfile = () =>
+      admin
+        .from('profiles')
+        .select('user_id, account_id, account_role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+    let { data: profile, error: profileError } = await loadProfile();
+    let insertErrorCode: string | undefined;
+
+    // The signup trigger swallows its own failures; create the profile
+    // directly when it did not run so the member is not lost.
+    if (!profile && !profileError) {
+      const { error: insertError } = await admin.from('profiles').insert({
+        user_id: user.id,
+        full_name: parsed.value.fullName || parsed.value.email.split('@')[0],
+        email: parsed.value.email,
+        account_id: ctx.accountId,
+        account_role: parsed.value.role,
+        access_status: 'approved',
+      });
+      if (insertError) {
+        insertErrorCode = insertError.code || 'profile_insert_failed';
+        console.error(
+          '[POST /api/account/members] profile insert failed',
+          insertError.code,
+          insertError.message
+        );
+      }
+      ({ data: profile, error: profileError } = await loadProfile());
+    }
 
     if (
       profileError ||
@@ -163,7 +189,9 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: 'Member setup did not complete; no access was granted',
-          code: 'profile_not_created',
+          code: insertErrorCode
+            ? `profile_not_created:${insertErrorCode}`
+            : 'profile_not_created',
         },
         { status: 500 }
       );
