@@ -97,19 +97,56 @@ export async function POST(request: Request) {
     }
 
     const admin = supabaseAdmin();
-    const { data, error } = await admin.auth.admin.createUser({
-      email: parsed.value.email,
-      password: parsed.value.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: parsed.value.fullName || parsed.value.email.split('@')[0],
-      },
-      app_metadata: {
-        must_change_password: true,
-        member_provisioning_account_id: ctx.accountId,
-        member_provisioning_role: parsed.value.role,
-      },
-    });
+    const createAuthUser = () =>
+      admin.auth.admin.createUser({
+        email: parsed.value.email,
+        password: parsed.value.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: parsed.value.fullName || parsed.value.email.split('@')[0],
+        },
+        app_metadata: {
+          member_provisioning_account_id: ctx.accountId,
+          member_provisioning_role: parsed.value.role,
+        },
+      });
+
+    let { data, error } = await createAuthUser();
+
+    // A previous failed attempt can leave an auth user without a profile;
+    // remove that orphan so the email can be used again.
+    if (error?.code === 'email_exists') {
+      const { data: existingProfile } = await admin
+        .from('profiles')
+        .select('user_id')
+        .ilike('email', parsed.value.email)
+        .maybeSingle();
+      if (!existingProfile) {
+        for (let page = 1; page <= 20; page++) {
+          const { data: list } = await admin.auth.admin.listUsers({
+            page,
+            perPage: 1000,
+          });
+          const users = list?.users ?? [];
+          const orphan = users.find(
+            (u) => u.email?.toLowerCase() === parsed.value.email
+          );
+          if (orphan) {
+            const { data: orphanProfile } = await admin
+              .from('profiles')
+              .select('user_id')
+              .eq('user_id', orphan.id)
+              .maybeSingle();
+            if (!orphanProfile) {
+              await admin.auth.admin.deleteUser(orphan.id);
+              ({ data, error } = await createAuthUser());
+            }
+            break;
+          }
+          if (users.length < 1000) break;
+        }
+      }
+    }
 
     if (error || !data.user) {
       if (error?.code === 'email_exists') {
@@ -197,10 +234,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const appMetadata: Record<string, unknown> = {
-      ...user.app_metadata,
-      must_change_password: true,
-    };
+    const appMetadata: Record<string, unknown> = { ...user.app_metadata };
+    delete appMetadata.must_change_password;
     delete appMetadata.member_provisioning_account_id;
     delete appMetadata.member_provisioning_role;
     const { error: metadataError } = await admin.auth.admin.updateUserById(
@@ -221,7 +256,7 @@ export async function POST(request: Request) {
           user_id: user.id,
           email: parsed.value.email,
           role: parsed.value.role,
-          requires_password_change: true,
+          requires_password_change: false,
         },
       },
       { status: 201 }

@@ -300,7 +300,7 @@
     },
     "createMember": {
       "title": "Adicionar usuário à equipe",
-      "description": "Crie o acesso diretamente. O usuário deverá definir uma nova senha antes de usar o CRM. Compartilhe a senha temporária por um canal seguro.",
+      "description": "Crie o acesso diretamente. O usuário entra com este e-mail e senha, e pode trocá-la depois em Configurações. Compartilhe a senha por um canal seguro.",
       "nameLabel": "Nome (opcional)",
       "emailLabel": "E-mail",
       "temporaryPasswordLabel": "Senha temporária",

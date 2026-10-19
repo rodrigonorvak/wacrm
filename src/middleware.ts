@@ -42,7 +42,8 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  const requiresPasswordChange = user?.app_metadata?.must_change_password === true
+  // Members use the password set by the account owner; changing it is optional.
+  const requiresPasswordChange = false
   const isPasswordChangePage = request.nextUrl.pathname === '/change-password'
   const isPasswordChangeApi = request.nextUrl.pathname === '/api/auth/change-password'
   const isPublicEmailUnsubscribeRoute =

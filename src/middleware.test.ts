@@ -115,23 +115,22 @@ describe('middleware — refreshed auth cookies survive redirects', () => {
     expect(res.cookies.get(ROTATED.name)?.value).toBe(ROTATED.value);
   });
 
-  it('forces provisioned members to the password change page', async () => {
+  it('does not force members to change their password', async () => {
     mockUser = { id: 'user-1', app_metadata: { must_change_password: true } };
 
     const res = await middleware(new NextRequest('https://app.test/dashboard'));
 
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toContain('/change-password');
+    expect(res.headers.get('location')).toBeNull();
   });
 
-  it('blocks API requests until the temporary password is changed', async () => {
+  it('does not block API requests for members with a legacy password flag', async () => {
     mockUser = { id: 'user-1', app_metadata: { must_change_password: true } };
 
     const res = await middleware(
       new NextRequest('https://app.test/api/account/members')
     );
 
-    expect(res.status).toBe(403);
+    expect(res.status).not.toBe(403);
   });
 
   it('allows the password change page and endpoint for provisioned members', async () => {
