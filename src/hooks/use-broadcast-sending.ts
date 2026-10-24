@@ -115,7 +115,7 @@ export function resolveVariables(
     if (v.type === 'field') {
       const fieldMap: Record<string, string | undefined> = {
         name: contact.name,
-        phone: contact.phone,
+        phone: contact.phone ?? undefined,
         email: contact.email,
         company: contact.company,
       };
@@ -168,9 +168,12 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     let contacts: Contact[] = [];
 
     if (audience.type === 'all') {
-      const { data, error } = await supabase.from('contacts').select('*');
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .not('phone', 'is', null);
       if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
-      contacts = data ?? [];
+      contacts = (data ?? []) as Contact[];
     } else if (
       audience.type === 'tags' &&
       audience.tagIds &&
@@ -191,9 +194,10 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
         const { data, error } = await supabase
           .from('contacts')
           .select('*')
-          .in('id', uniqueContactIds);
+          .in('id', uniqueContactIds)
+          .not('phone', 'is', null);
         if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
-        contacts = data ?? [];
+        contacts = (data ?? []) as Contact[];
       }
     } else if (audience.type === 'custom_field' && audience.customField) {
       contacts = await resolveCustomFieldAudience(supabase, audience.customField);
@@ -212,7 +216,7 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
       contacts = contacts.filter((c) => !excludedIds.has(c.id));
     }
 
-    return contacts;
+    return contacts.filter((contact) => Boolean(contact.phone));
   }
 
   /**
@@ -339,9 +343,10 @@ export function useBroadcastSending(): UseBroadcastSendingReturn {
     const { data, error } = await supabase
       .from('contacts')
       .select('*')
-      .in('id', contactIds);
+      .in('id', contactIds)
+      .not('phone', 'is', null);
     if (error) throw new Error(`Failed to fetch contacts: ${error.message}`);
-    return data ?? [];
+    return (data ?? []) as Contact[];
   }
 
   async function createAndSendBroadcast(payload: BroadcastPayload): Promise<string> {

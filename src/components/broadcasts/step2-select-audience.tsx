@@ -202,14 +202,31 @@ export function Step2SelectAudience({
         const effective = [...baseIds].filter(
           (id) => !excludeSet?.has(id),
         );
-        setEstimatedCount(effective.length);
-      } else {
-        // "All" — fetch the total, then subtract exclude set if any.
+        if (effective.length === 0) {
+          setEstimatedCount(0);
+          return;
+        }
         const { count } = await supabase
           .from('contacts')
-          .select('*', { count: 'exact', head: true });
-        const total = count ?? 0;
-        setEstimatedCount(excludeSet ? Math.max(0, total - excludeSet.size) : total);
+          .select('id', { count: 'exact', head: true })
+          .in('id', effective)
+          .not('phone', 'is', null);
+        setEstimatedCount(count ?? 0);
+      } else {
+        const { count: total } = await supabase
+          .from('contacts')
+          .select('id', { count: 'exact', head: true })
+          .not('phone', 'is', null);
+        if (!excludeSet?.size) {
+          setEstimatedCount(total ?? 0);
+          return;
+        }
+        const { count: excludedWithPhone } = await supabase
+          .from('contacts')
+          .select('id', { count: 'exact', head: true })
+          .in('id', [...excludeSet])
+          .not('phone', 'is', null);
+        setEstimatedCount(Math.max(0, (total ?? 0) - (excludedWithPhone ?? 0)));
       }
     } finally {
       setLoadingCount(false);

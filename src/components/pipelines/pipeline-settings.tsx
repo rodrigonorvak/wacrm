@@ -41,6 +41,16 @@ import {
   generateLeadIntegrationToken,
   hashLeadIntegrationToken,
 } from "@/lib/integrations/lead-token";
+import { flattenWebhookPayload } from "@/lib/integrations/universal-webhook";
+import type { LeadIntegrationMappingTarget } from "@/types";
+
+type UniversalMappingDraft = {
+  source_field_id: string;
+  source_label: string;
+  target_type: LeadIntegrationMappingTarget;
+  target_key: string;
+  is_required: boolean;
+};
 
 interface PipelineSettingsProps {
   open: boolean;
@@ -74,6 +84,8 @@ export function PipelineSettings({
   const [leadIntegration, setLeadIntegration] = useState<{
     id: string;
     is_active: boolean;
+    provider: "elementor" | "universal";
+    source_label: string | null;
   } | null>(null);
   const [metaIntegration, setMetaIntegration] = useState<{
     id: string;
@@ -89,7 +101,15 @@ export function PipelineSettings({
     external_event_id: string | null;
     error_message: string | null;
     received_at: string;
+    payload?: unknown;
   }>>([]);
+  const [universalFields, setUniversalFields] = useState<
+    Array<{ path: string; value: string }>
+  >([]);
+  const [universalMappings, setUniversalMappings] = useState<
+    UniversalMappingDraft[]
+  >([]);
+  const [savingMappings, setSavingMappings] = useState(false);
 
   // Reset form state when the dialog opens or its prop inputs change
   // — legitimate prop-driven sync.
@@ -102,26 +122,44 @@ export function PipelineSettings({
     setLeadIntegration(null);
     setMetaIntegration(null);
     setIntegrationEvents([]);
+    setUniversalFields([]);
+    setUniversalMappings([]);
     if (pipeline.pipeline_type === "integrated") {
-      void supabase
-        .from("lead_integrations")
-        .select("id, is_active")
-        .eq("pipeline_id", pipeline.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          const integration = (data as unknown as { id: string; is_active: boolean } | null) ?? null;
-          setLeadIntegration(integration);
-          if (!integration) return;
-          void supabase
+      void (async () => {
+        const { data } = await supabase
+          .from("lead_integrations")
+          .select("id, is_active, provider, source_label")
+          .eq("pipeline_id", pipeline.id)
+          .maybeSingle();
+        const integration = (data as unknown as typeof leadIntegration) ?? null;
+        setLeadIntegration(integration);
+        if (!integration) return;
+        const [eventResult, mappingResult] = await Promise.all([
+          supabase
             .from("lead_integration_events")
-            .select("id, status, external_event_id, error_message, received_at")
+            .select("id, status, external_event_id, error_message, received_at, payload")
             .eq("integration_id", integration.id)
             .order("received_at", { ascending: false })
-            .limit(8)
-            .then(({ data: events }) => {
-              setIntegrationEvents((events as unknown as typeof integrationEvents) ?? []);
-            });
-        });
+            .limit(8),
+          integration.provider === "universal"
+            ? supabase
+                .from("lead_integration_mappings")
+                .select("source_field_id, source_label, target_type, target_key, is_required")
+                .eq("integration_id", integration.id)
+            : Promise.resolve({ data: [] }),
+        ]);
+        const events = (eventResult.data as unknown as typeof integrationEvents) ?? [];
+        setIntegrationEvents(events);
+        setUniversalMappings(
+          (mappingResult.data as unknown as UniversalMappingDraft[]) ?? [],
+        );
+        const payloadWithFields = events.find((event) => event.payload !== undefined)?.payload;
+        setUniversalFields(
+          payloadWithFields === undefined
+            ? []
+            : flattenWebhookPayload(payloadWithFields),
+        );
+      })();
     }
     void supabase
       .from("meta_integrations")
@@ -298,9 +336,120 @@ export function PipelineSettings({
       return;
     }
     setRegeneratedWebhookUrl(
-      `${window.location.origin}/api/integrations/elementor/${pipeline.id}/${token}`,
+      `${window.location.origin}/api/integrations/${leadIntegration.provider === "elementor" ? "elementor" : "webhook"}/${pipeline.id}/${token}`,
     );
     toast.success("Webhook regenerado");
+  }
+
+  async function handleSaveUniversalMappings() {
+    if (!leadIntegration || leadIntegration.provider !== "universal") return;
+    const rows = universalMappings
+      .filter((mapping) => mapping.source_field_id.trim())
+      .map((mapping) => ({
+        integration_id: leadIntegration.id,
+        source_field_id: mapping.source_field_id.trim(),
+        source_label: mapping.source_label.trim() || mapping.source_field_id.trim(),
+        target_type: mapping.target_type,
+        target_key: mapping.target_key.trim(),
+        is_required: mapping.is_required,
+      }));
+    if (rows.some((row) => !row.target_key)) {
+      toast.error("Informe o destino de todos os campos mapeados.");
+      return;
+    }
+    if (new Set(rows.map((row) => row.source_field_id)).size !== rows.length) {
+      toast.error("Cada caminho recebido pode aparecer uma única vez no mapeamento.");
+      return;
+    }
+
+    setSavingMappings(true);
+    const { error: upsertError } = rows.length
+      ? await supabase
+          .from("lead_integration_mappings")
+          .upsert(rows, { onConflict: "integration_id,source_field_id" })
+      : { error: null };
+    if (upsertError) {
+      setSavingMappings(false);
+      toast.error("Não foi possível salvar o mapeamento.");
+      return;
+    }
+    const mappedPaths = rows.map((row) => row.source_field_id);
+    const { data: savedMappings, error: savedMappingsError } = await supabase
+      .from("lead_integration_mappings")
+      .select("source_field_id")
+      .eq("integration_id", leadIntegration.id);
+    if (savedMappingsError) {
+      setSavingMappings(false);
+      toast.error("O mapeamento foi salvo, mas não foi possível verificar campos antigos.");
+      return;
+    }
+    const stalePaths = (savedMappings ?? [])
+      .map((mapping) => mapping.source_field_id as string)
+      .filter((path) => !mappedPaths.includes(path));
+    if (stalePaths.length) {
+      const { error: deleteError } = await supabase
+        .from("lead_integration_mappings")
+        .delete()
+        .eq("integration_id", leadIntegration.id)
+        .in("source_field_id", stalePaths);
+      if (deleteError) {
+        setSavingMappings(false);
+        toast.error("O mapeamento foi salvo, mas não foi possível remover os campos antigos.");
+        return;
+      }
+    }
+
+    const { data: pendingEvents, error: pendingEventsError } = await supabase
+      .from("lead_integration_events")
+      .select("id")
+      .eq("integration_id", leadIntegration.id)
+      .in("status", ["failed", "received"])
+      .is("deal_id", null)
+      .order("received_at", { ascending: true })
+      .limit(1000);
+    if (pendingEventsError) {
+      setSavingMappings(false);
+      toast.error("Mapeamento salvo, mas não foi possível localizar eventos pendentes.");
+      return;
+    }
+    let failedReprocessing = 0;
+    for (const event of pendingEvents ?? []) {
+      try {
+        const response = await fetch(`/api/integrations/elementor/events/${event.id}/retry`, {
+          method: "POST",
+        });
+        if (!response.ok) {
+          failedReprocessing += 1;
+          const result = await response.json().catch(() => ({}));
+          console.error("Failed to reprocess universal webhook event:", result);
+        }
+      } catch (error) {
+        failedReprocessing += 1;
+        console.error("Failed to reprocess universal webhook event:", error);
+      }
+    }
+
+    const { data: refreshedEvents, error: refreshError } = await supabase
+      .from("lead_integration_events")
+      .select("id, status, external_event_id, error_message, received_at, payload")
+      .eq("integration_id", leadIntegration.id)
+      .order("received_at", { ascending: false })
+      .limit(8);
+    setSavingMappings(false);
+    if (refreshError) {
+      toast.error("Mapeamento salvo, mas não foi possível atualizar o histórico.");
+      return;
+    }
+    setIntegrationEvents(
+      (refreshedEvents as unknown as typeof integrationEvents) ?? [],
+    );
+    if (failedReprocessing) {
+      toast.error(
+        `Mapeamento salvo; ${failedReprocessing} evento(s) não puderam ser reprocessados. Confira o histórico.`,
+      );
+    } else {
+      toast.success("Mapeamento salvo e eventos pendentes reprocessados.");
+    }
   }
 
   async function handleRetryEvent(eventId: string) {
@@ -364,7 +513,11 @@ export function PipelineSettings({
             <div className="grid gap-4 py-2">
               {leadIntegration && (
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                  <p className="text-sm font-medium text-foreground">Integração Elementor</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {leadIntegration.provider === "elementor"
+                      ? "Integração Elementor"
+                      : `Webhook Universal${leadIntegration.source_label ? ` · ${leadIntegration.source_label}` : ""}`}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Webhook: {leadIntegration.is_active ? "ativo" : "desativado"}
                   </p>
@@ -390,6 +543,193 @@ export function PipelineSettings({
                       </Button>
                     </div>
                   )}
+                  {leadIntegration.provider === "universal" && (
+                    <div className="mt-3 space-y-3 border-t border-border pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        {leadIntegration.source_label || "Webhook Universal"} · campos recebidos
+                      </p>
+                      {universalFields.length > 0 ? (
+                        <div className="max-h-36 space-y-1 overflow-y-auto rounded border border-border bg-background p-2">
+                          {universalFields.map((field) => (
+                            <button
+                              key={field.path}
+                              type="button"
+                              className="flex w-full items-center justify-between gap-2 text-left text-xs hover:text-primary"
+                              onClick={() =>
+                                setUniversalMappings((current) =>
+                                  current.some((mapping) => mapping.source_field_id === field.path)
+                                    ? current
+                                    : [
+                                        ...current,
+                                        {
+                                          source_field_id: field.path,
+                                          source_label: field.path,
+                                          target_type: "contact",
+                                          target_key: "",
+                                          is_required: false,
+                                        },
+                                      ],
+                                )
+                              }
+                            >
+                              <code className="truncate">{field.path}</code>
+                              <span className="max-w-28 truncate text-muted-foreground">
+                                {field.value}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Envie um teste à URL para descobrir os campos. Você também pode informar caminhos manualmente.
+                        </p>
+                      )}
+                      <div className="space-y-2">
+                        {universalMappings.map((mapping, index) => (
+                          <div
+                            key={`${mapping.source_field_id}-${index}`}
+                            className="grid gap-2 rounded border border-border bg-background p-2"
+                          >
+                            <Input
+                              list="universal-webhook-field-paths"
+                              value={mapping.source_field_id}
+                              onChange={(event) =>
+                                setUniversalMappings((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...item, source_field_id: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                              placeholder="Caminho recebido (ex.: data.buyer.email)"
+                              className="h-8 border-border bg-muted text-xs"
+                            />
+                            <Input
+                              value={mapping.source_label}
+                              onChange={(event) =>
+                                setUniversalMappings((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...item, source_label: event.target.value }
+                                      : item,
+                                  ),
+                                )
+                              }
+                              placeholder="Nome exibido do campo"
+                              className="h-8 border-border bg-muted text-xs"
+                            />
+                            <select
+                              value={`${mapping.target_type}:${mapping.target_type === "contact_custom_field" ? "custom" : mapping.target_key}`}
+                              onChange={(event) => {
+                                const [targetType, targetKey] = event.target.value.split(":");
+                                setUniversalMappings((current) =>
+                                  current.map((item, itemIndex) =>
+                                    itemIndex === index
+                                      ? {
+                                          ...item,
+                                          target_type: targetType as LeadIntegrationMappingTarget,
+                                          target_key: targetKey === "custom" ? "" : targetKey,
+                                        }
+                                      : item,
+                                  ),
+                                );
+                              }}
+                              className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
+                            >
+                              <option value="contact:name">Nome do contato</option>
+                              <option value="contact:phone">Telefone</option>
+                              <option value="contact:email">E-mail</option>
+                              <option value="contact:company">Empresa</option>
+                              <option value="deal:notes">Observações do lead</option>
+                              <option value="deal:title">Título do lead</option>
+                              <option value="contact_custom_field:custom">Campo personalizado do contato</option>
+                            </select>
+                            {mapping.target_type === "contact_custom_field" && (
+                              <Input
+                                value={mapping.target_key}
+                                onChange={(event) =>
+                                  setUniversalMappings((current) =>
+                                    current.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? { ...item, target_key: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                                placeholder="Nome do campo personalizado"
+                                className="h-8 border-border bg-muted text-xs"
+                              />
+                            )}
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  checked={mapping.is_required}
+                                  onChange={(event) =>
+                                    setUniversalMappings((current) =>
+                                      current.map((item, itemIndex) =>
+                                        itemIndex === index
+                                          ? { ...item, is_required: event.target.checked }
+                                          : item,
+                                      ),
+                                    )
+                                  }
+                                />
+                                Obrigatório
+                              </label>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setUniversalMappings((current) =>
+                                    current.filter((_, itemIndex) => itemIndex !== index),
+                                  )
+                                }
+                              >
+                                Remover
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <datalist id="universal-webhook-field-paths">
+                          {universalFields.map((field) => (
+                            <option key={field.path} value={field.path} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setUniversalMappings((current) => [
+                              ...current,
+                              {
+                                source_field_id: "",
+                                source_label: "",
+                                target_type: "contact",
+                                target_key: "",
+                                is_required: false,
+                              },
+                            ])
+                          }
+                        >
+                          <Plus className="mr-1 size-3" /> Adicionar mapeamento
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => void handleSaveUniversalMappings()}
+                          disabled={savingMappings}
+                        >
+                          {savingMappings ? "Salvando..." : "Salvar e reprocessar"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   {integrationEvents.length > 0 && (
                     <div className="mt-3 space-y-2 border-t border-border pt-3">
                       <p className="text-xs font-medium text-muted-foreground">Últimos recebimentos</p>
@@ -405,7 +745,8 @@ export function PipelineSettings({
                           {event.error_message && (
                             <p className="mt-1 text-red-400">{event.error_message}</p>
                           )}
-                          {event.status === "failed" && (
+                          {(event.status === "failed" ||
+                            (leadIntegration.provider === "universal" && event.status === "received")) && (
                             <Button
                               type="button"
                               variant="outline"

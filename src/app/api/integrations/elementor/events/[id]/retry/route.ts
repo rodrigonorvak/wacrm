@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/auth/account';
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { readElementorField, type JsonObject } from '@/lib/integrations/elementor';
 import { sendMetaEvent } from '@/lib/integrations/meta-events';
+import { processUniversalLeadEvent } from '@/lib/integrations/process-universal-lead';
 
 type Mapping = { source_field_id: string; target_key: string; target_type: string; is_required: boolean };
 
@@ -17,7 +18,7 @@ export async function POST(
     .from('lead_integration_events')
     .select('id, integration_id, payload, status, contact_id, deal_id')
     .eq('id', id)
-    .eq('status', 'failed')
+    .in('status', ['failed', 'received'])
     .maybeSingle();
   if (eventError || !event) {
     return NextResponse.json({ error: 'Failed event not found' }, { status: 404 });
@@ -37,12 +38,37 @@ export async function POST(
 
   const { data: integration } = await supabase
     .from('lead_integrations')
-    .select('id, account_id, pipeline_id')
+    .select('id, account_id, pipeline_id, provider, source_label')
     .eq('id', event.integration_id)
     .eq('account_id', accountId)
     .maybeSingle();
   if (!integration) {
     return NextResponse.json({ error: 'Integration not found' }, { status: 404 });
+  }
+
+  if (integration.provider === 'universal') {
+    try {
+      const status = await processUniversalLeadEvent(
+        supabase,
+        integration,
+        event.id,
+        event.payload,
+      );
+      if (status === 'failed') {
+        return NextResponse.json(
+          { error: 'O evento continua sem os dados necessários para criar o lead.' },
+          { status: 422 },
+        );
+      }
+      return NextResponse.json({ success: true, status });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to retry event';
+      await supabase
+        .from('lead_integration_events')
+        .update({ error_message: message })
+        .eq('id', id);
+      return NextResponse.json({ error: 'Failed to retry event' }, { status: 500 });
+    }
   }
 
   const { data: mappings } = await supabase

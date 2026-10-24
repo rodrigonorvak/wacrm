@@ -91,6 +91,11 @@ export function PipelineList({
                     <span className="block truncate text-sm font-semibold text-foreground">
                       {deal.title}
                     </span>
+                    {deal.source && (
+                      <span className="mt-1 inline-flex max-w-full rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="truncate">{deal.source}</span>
+                      </span>
+                    )}
                     {details.length > 0 && (
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">
                         {details.join(" · ")}

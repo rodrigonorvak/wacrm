@@ -416,7 +416,7 @@ export default function ContactsPage() {
           pipeline_id: targetPipelineId,
           stage_id: targetStageId,
           contact_id: contact.id,
-          title: contact.name?.trim() || contact.phone || 'Novo lead',
+          title: contact.name?.trim() || contact.phone || contact.email || 'Novo lead',
           value: 0,
           currency: 'BRL',
           status: 'open',
@@ -735,11 +735,11 @@ export default function ContactsPage() {
                     <Checkbox
                       checked={selected.has(contact.id)}
                       onCheckedChange={() => toggleSelect(contact.id)}
-                      aria-label={`Select ${contact.name || contact.phone || 'contact'}`}
+                      aria-label={`Select ${contact.name || contact.phone || contact.email || 'contact'}`}
                     />
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
-                    {contact.name || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
+                    {contact.name || contact.email || <span className="text-muted-foreground italic">{t('unnamed')}</span>}
                   </TableCell>
                   <TableCell className="text-muted-foreground font-mono text-xs">
                     {contact.phone || '—'}

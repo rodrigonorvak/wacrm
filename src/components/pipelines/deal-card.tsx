@@ -123,6 +123,11 @@ export function DealCard({
           {deal.title}
         </h4>
       </div>
+      {deal.source && (
+        <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
+          <span className="truncate">{deal.source}</span>
+        </span>
+      )}
       {details.map((detail, index) => (
         <p key={`${index}-${detail}`} className="mt-1 truncate text-xs text-muted-foreground">
           {detail}

@@ -186,7 +186,7 @@ export function AddContactsDialog({
                     />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">
-                        {contact.name || contact.phone || "Sem nome"}
+                        {contact.name || contact.phone || contact.email || "Sem nome"}
                       </span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {[contact.phone, contact.email].filter(Boolean).join(" · ") || "Sem telefone"}

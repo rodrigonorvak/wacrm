@@ -57,7 +57,7 @@ interface DealFormProps {
 }
 
 function contactLabel(contact: Contact): string {
-  return contact.name || contact.phone;
+  return contact.name || contact.phone || contact.email || "Contato";
 }
 
 export function DealForm({

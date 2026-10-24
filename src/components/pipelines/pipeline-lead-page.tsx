@@ -772,6 +772,14 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
             </div>
 
             <dl className="mt-4 space-y-4">
+              {deal.source && (
+                <div>
+                  <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Origem
+                  </dt>
+                  <dd className="mt-1 text-sm text-foreground">{deal.source}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
                   {deal.pipeline?.pipeline_type === "standard" ? "Telefone informado manualmente" : "Telefone principal"}

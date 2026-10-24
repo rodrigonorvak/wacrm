@@ -205,10 +205,17 @@ export default function PipelinesPage() {
   const [newPipelineType, setNewPipelineType] = useState<
     'standard' | 'integrated'
   >('standard');
+  const [integrationProvider, setIntegrationProvider] = useState<
+    'elementor' | 'universal'
+  >('elementor');
+  const [integrationSource, setIntegrationSource] = useState('');
   const [creating, setCreating] = useState(false);
   const [createdWebhookUrl, setCreatedWebhookUrl] = useState<string | null>(
     null
   );
+  const [createdWebhookProvider, setCreatedWebhookProvider] = useState<
+    'elementor' | 'universal'
+  >('elementor');
   const [elementorMappings, setElementorMappings] = useState(
     DEFAULT_ELEMENTOR_MAPPINGS
   );
@@ -629,6 +636,7 @@ export default function PipelinesPage() {
     if (!name) return;
     if (
       newPipelineType === 'integrated' &&
+      integrationProvider === 'elementor' &&
       (!elementorMappings.some(
         (mapping) =>
           mappingTarget(mapping.fieldName).targetKey === 'name' &&
@@ -718,8 +726,15 @@ export default function PipelinesPage() {
         .insert({
           account_id: accountId,
           pipeline_id: pipeline.id,
-          provider: 'elementor',
-          name: `${name} - Elementor`,
+          provider: integrationProvider,
+          name:
+            integrationProvider === 'elementor'
+              ? `${name} - Elementor`
+              : `${name} - ${integrationSource.trim() || 'Webhook Universal'}`,
+          source_label:
+            integrationProvider === 'universal'
+              ? integrationSource.trim() || 'Webhook'
+              : null,
           token_hash: tokenHash,
           token_prefix: token.slice(0, 11),
           created_by: user.id,
@@ -737,7 +752,7 @@ export default function PipelinesPage() {
       }
       const integrationId = (integration as unknown as { id: string }).id;
 
-      const mappingRows = elementorMappings
+      const mappingRows = integrationProvider === 'elementor' ? elementorMappings
         .filter(
           (mapping) => mapping.sourceId.trim() && mapping.fieldName.trim()
         )
@@ -751,24 +766,29 @@ export default function PipelinesPage() {
             target_key: target.targetKey,
             is_required: target.required,
           };
-        });
-      const { error: mappingsError } = await supabase
-        .from('lead_integration_mappings')
-        .insert(mappingRows);
-      if (mappingsError) {
-        console.error('Failed to create lead mappings:', mappingsError);
-        await supabase.from('pipelines').delete().eq('id', pipeline.id);
-        toast.error(mappingsError.message || t('toastFailedCreatePipeline'));
-        setCreating(false);
-        return;
+        }) : [];
+      if (mappingRows.length > 0) {
+        const { error: mappingsError } = await supabase
+          .from('lead_integration_mappings')
+          .insert(mappingRows);
+        if (mappingsError) {
+          console.error('Failed to create lead mappings:', mappingsError);
+          await supabase.from('pipelines').delete().eq('id', pipeline.id);
+          toast.error(mappingsError.message || t('toastFailedCreatePipeline'));
+          setCreating(false);
+          return;
+        }
       }
+      setCreatedWebhookProvider(integrationProvider);
       setCreatedWebhookUrl(
-        `${window.location.origin}/api/integrations/elementor/${pipeline.id}/${token}`
+        `${window.location.origin}/api/integrations/${integrationProvider === 'elementor' ? 'elementor' : 'webhook'}/${pipeline.id}/${token}`
       );
     }
 
     setNewPipelineName('');
     setNewPipelineType('standard');
+    setIntegrationProvider('elementor');
+    setIntegrationSource('');
     setNewPipelineOpen(false);
     setSelectedPipelineId(pipeline.id);
     await refreshPipelines();
@@ -1193,16 +1213,34 @@ export default function PipelinesPage() {
             </p>
             {newPipelineType === 'integrated' && (
               <div className="border-border bg-muted/40 mt-4 space-y-3 rounded-lg border p-3">
-                <div>
-                  <p className="text-foreground text-sm font-medium">
-                    IDs dos campos do Elementor
-                  </p>
-                  <p className="text-muted-foreground mt-1 text-xs">
-                    Use o Field ID configurado em cada campo do formulário.
-                    Esses valores podem ser alterados depois.
-                  </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={integrationProvider === 'elementor' ? 'default' : 'outline'}
+                    onClick={() => setIntegrationProvider('elementor')}
+                  >
+                    Elementor
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={integrationProvider === 'universal' ? 'default' : 'outline'}
+                    onClick={() => setIntegrationProvider('universal')}
+                  >
+                    Webhook Universal
+                  </Button>
                 </div>
-                {elementorMappings.map((mapping, index) => (
+                {integrationProvider === 'elementor' ? (
+                  <>
+                    <div>
+                      <p className="text-foreground text-sm font-medium">
+                        IDs dos campos do Elementor
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        Use o Field ID configurado em cada campo do formulário.
+                        As integrações existentes do Elementor permanecem inalteradas.
+                      </p>
+                    </div>
+                    {elementorMappings.map((mapping, index) => (
                   <div
                     key={`${mapping.sourceId}-${index}`}
                     className="border-border bg-background grid grid-cols-[1fr_1fr_auto] items-center gap-2 rounded border p-2"
@@ -1248,20 +1286,36 @@ export default function PipelinesPage() {
                       ×
                     </Button>
                   </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setElementorMappings((current) => [
-                      ...current,
-                      { sourceId: '', fieldName: '' },
-                    ])
-                  }
-                >
-                  <Plus className="mr-1 h-3 w-3" /> Adicionar campo
-                </Button>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setElementorMappings((current) => [
+                          ...current,
+                          { sourceId: '', fieldName: '' },
+                        ])
+                      }
+                    >
+                      <Plus className="mr-1 h-3 w-3" /> Adicionar campo
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Label className="text-muted-foreground">Nome da origem</Label>
+                    <Input
+                      value={integrationSource}
+                      onChange={(event) => setIntegrationSource(event.target.value)}
+                      placeholder="Ex.: Eduzz, Hotmart ou Sympla"
+                      className="border-border bg-background text-foreground"
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      O CRM receberá qualquer estrutura de payload. Depois de enviar
+                      um teste para a URL gerada, você poderá descobrir e mapear os campos.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -1293,11 +1347,15 @@ export default function PipelinesPage() {
         <DialogContent className="bg-popover border-border sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-popover-foreground">
-              Pipeline integrada criada
+              {createdWebhookProvider === 'elementor'
+                ? 'Pipeline integrada criada'
+                : 'Webhook Universal criado'}
             </DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground text-sm">
-            Copie esta URL e use-a na ação Webhook do formulário do Elementor.
+            {createdWebhookProvider === 'elementor'
+              ? 'Copie esta URL e use-a na ação Webhook do formulário do Elementor.'
+              : 'Copie esta URL e configure-a como destino do webhook na plataforma de origem.'}
             Ela não será exibida novamente.
           </p>
           <div className="border-border bg-muted flex items-center gap-2 rounded-lg border p-3">
