@@ -3,6 +3,7 @@ import { after, NextResponse } from 'next/server';
 import { requireRole, toErrorResponse } from '@/lib/auth/account';
 import { sendMetaEventForStage } from '@/lib/integrations/meta-events';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
+import { runAutomationsForTrigger } from '@/lib/automations/engine';
 
 export const maxDuration = 30;
 
@@ -113,6 +114,18 @@ export async function PATCH(
     nextStageId !== deal.stage_id &&
     updatedDeal.contact_id
   ) {
+    after(() =>
+      runAutomationsForTrigger({
+        accountId: account.accountId,
+        triggerType: 'deal_stage_entered',
+        contactId: updatedDeal.contact_id,
+        context: {
+          deal_id: updatedDeal.id,
+          pipeline_id: updatedDeal.pipeline_id,
+          stage_id: updatedDeal.stage_id,
+        },
+      }),
+    );
     after(() =>
       sendMetaEventForStage({
         accountId: account.accountId,

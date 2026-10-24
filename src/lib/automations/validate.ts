@@ -74,6 +74,11 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
         issues.push({ path: `${path}.template_name`, message: 'template name is required' })
       }
       break
+    case 'send_email':
+      if (!nonEmpty(c.email_template_id)) {
+        issues.push({ path: `${path}.email_template_id`, message: 'email template is required' })
+      }
+      break
     case 'add_tag':
     case 'remove_tag':
       if (!nonEmpty(c.tag_id)) {
@@ -202,6 +207,13 @@ export function validateTriggerForActivation(
         path: 'trigger.reply_ids',
         message: 'reply ids cannot be empty strings',
       })
+    }
+  } else if (triggerType === 'deal_stage_entered') {
+    if (!nonEmpty(cfg.pipeline_id)) {
+      issues.push({ path: 'trigger.pipeline_id', message: 'pipeline is required' })
+    }
+    if (!nonEmpty(cfg.stage_id)) {
+      issues.push({ path: 'trigger.stage_id', message: 'stage is required' })
     }
   }
 

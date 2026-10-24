@@ -586,6 +586,7 @@ export type AutomationTriggerType =
   | 'first_inbound_message'
   | 'keyword_match'
   | 'new_contact_created'
+  | 'deal_stage_entered'
   | 'conversation_assigned'
   | 'tag_added'
   | 'time_based'
@@ -598,6 +599,7 @@ export type AutomationStepType =
   | 'send_buttons'
   | 'send_list'
   | 'send_template'
+  | 'send_email'
   | 'add_tag'
   | 'remove_tag'
   | 'assign_conversation'
@@ -665,6 +667,10 @@ export interface SendTemplateStepConfig {
   variables?: Record<string, string>;
 }
 
+export interface SendEmailStepConfig {
+  email_template_id: string;
+}
+
 export interface TagStepConfig {
   tag_id: string;
 }
@@ -724,6 +730,7 @@ export type AutomationStepConfig =
   | SendButtonsStepConfig
   | SendListStepConfig
   | SendTemplateStepConfig
+  | SendEmailStepConfig
   | TagStepConfig
   | AssignConversationStepConfig
   | UpdateContactFieldStepConfig

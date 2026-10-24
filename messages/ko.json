@@ -1010,6 +1010,12 @@
     "tabReady": "추천",
     "tabLibrary": "템플릿 라이브러리",
     "tabPrevious": "이전에 발송됨",
+    "tabCreated": "만든 템플릿",
+    "noCreatedTemplates": "아직 저장된 이메일 템플릿이 없습니다.",
+    "saveAsTemplate": "템플릿으로 저장",
+    "savingTemplate": "템플릿 저장 중...",
+    "templateSaved": "이메일 템플릿이 저장되었습니다.",
+    "templateSaveFailed": "템플릿을 저장하지 못했습니다.",
     "useTemplate": "템플릿 사용",
     "previewAction": "미리보기",
     "backToTemplates": "템플릿으로 돌아가기",
@@ -1252,7 +1258,7 @@
   "Automations": {
     "list": {
       "title": "자동화",
-      "subtitle": "WhatsApp® 이벤트에 자동으로 반응하는 워크플로를 만드세요.",
+      "subtitle": "CRM 및 WhatsApp® 이벤트에 반응하는 워크플로를 만드세요.",
       "create": "자동화 만들기",
       "retry": "다시 시도",
       "templatesTitle": "빠른 시작 템플릿",
@@ -1274,6 +1280,7 @@
         "keyword_match": "키워드 일치",
         "interactive_reply": "버튼 / 목록 응답",
         "new_contact_created": "새 연락처",
+        "deal_stage_entered": "딜이 단계에 진입",
         "conversation_assigned": "대화 배정",
         "tag_added": "태그 추가",
         "time_based": "시간 기반"
@@ -1325,6 +1332,7 @@
         "send_buttons": "버튼 보내기",
         "send_list": "목록 보내기",
         "send_template": "템플릿 보내기",
+        "send_email": "이메일 보내기",
         "add_tag": "태그 추가",
         "remove_tag": "태그 제거",
         "assign_conversation": "대화 담당자 지정",
@@ -1355,6 +1363,10 @@
         "new_contact_created": {
           "label": "새 연락처 생성됨",
           "hint": "수신 메시지로 연락처가 자동 생성되었을 때"
+        },
+        "deal_stage_entered": {
+          "label": "딜이 단계에 진입",
+          "hint": "딜이 선택한 퍼널 단계에 진입했을 때"
         },
         "conversation_assigned": {
           "label": "대화 담당자 지정됨",
@@ -1450,6 +1462,11 @@
       "delete": "삭제",
       "config": {
         "messageText": "메시지 텍스트",
+        "emailTemplateLabel": "이메일 템플릿",
+        "emailTemplatePlaceholder": "저장된 템플릿 선택",
+        "emailTemplateUnavailable": "템플릿을 사용할 수 없음",
+        "emailTemplateEmpty": "이 단계를 설정하기 전에 이메일 템플릿을 만드세요.",
+        "emailTemplateHint": "{{contact.name}} 및 {{contact.email}}을(를) 사용해 제목과 내용을 개인화하세요.",
         "placeholderMessageText": "안녕하세요! 문의해주셔서 감사합니다…",
         "tagLabel": "태그",
         "modeLabel": "모드",

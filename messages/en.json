@@ -1010,6 +1010,12 @@
     "tabReady": "Ready for you",
     "tabLibrary": "Template library",
     "tabPrevious": "Previously sent",
+    "tabCreated": "Created templates",
+    "noCreatedTemplates": "You haven't saved any email templates yet.",
+    "saveAsTemplate": "Save as template",
+    "savingTemplate": "Saving template...",
+    "templateSaved": "Email template saved.",
+    "templateSaveFailed": "Could not save the template.",
     "useTemplate": "Use template",
     "previewAction": "Preview",
     "backToTemplates": "Back to templates",
@@ -1252,7 +1258,7 @@
   "Automations": {
     "list": {
       "title": "Automations",
-      "subtitle": "Build workflows that react to WhatsApp® events automatically.",
+      "subtitle": "Create workflows that react to CRM and WhatsApp® events.",
       "create": "Create Automation",
       "retry": "Retry",
       "templatesTitle": "Quick-start templates",
@@ -1274,6 +1280,7 @@
         "keyword_match": "Keyword Match",
         "interactive_reply": "Button / List Reply",
         "new_contact_created": "New Contact",
+        "deal_stage_entered": "Deal entered stage",
         "conversation_assigned": "Conversation Assigned",
         "tag_added": "Tag Added",
         "time_based": "Time-Based"
@@ -1325,6 +1332,7 @@
         "send_buttons": "Send Buttons",
         "send_list": "Send List",
         "send_template": "Send Template",
+        "send_email": "Send Email",
         "add_tag": "Add Tag",
         "remove_tag": "Remove Tag",
         "assign_conversation": "Assign Conversation",
@@ -1355,6 +1363,10 @@
         "new_contact_created": {
           "label": "New Contact Created",
           "hint": "When a contact is auto-created from an incoming message"
+        },
+        "deal_stage_entered": {
+          "label": "Deal Entered Stage",
+          "hint": "When a deal enters the selected pipeline stage"
         },
         "conversation_assigned": {
           "label": "Conversation Assigned",
@@ -1450,6 +1462,11 @@
       "delete": "Delete",
       "config": {
         "messageText": "Message text",
+        "emailTemplateLabel": "Email template",
+        "emailTemplatePlaceholder": "Select a saved template",
+        "emailTemplateUnavailable": "Template unavailable",
+        "emailTemplateEmpty": "Create an email template before configuring this step.",
+        "emailTemplateHint": "Personalize the subject and content with {{contact.name}} and {{contact.email}}.",
         "placeholderMessageText": "Hi! Thanks for reaching out…",
         "tagLabel": "Tag",
         "modeLabel": "Mode",

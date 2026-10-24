@@ -416,6 +416,43 @@ describe("triggerMatches — tag_added", () => {
   });
 });
 
+describe("triggerMatches — deal_stage_entered", () => {
+  const automation: Automation = {
+    id: "a1",
+    account_id: ACCOUNT,
+    user_id: "u1",
+    name: "purchase follow-up",
+    trigger_type: "deal_stage_entered",
+    trigger_config: { pipeline_id: "pipeline-1", stage_id: "stage-1" },
+    is_active: true,
+    execution_count: 0,
+    created_at: "",
+    updated_at: "",
+  };
+
+  it("matches only the configured pipeline and stage", () => {
+    expect(
+      triggerMatches(automation, {
+        pipeline_id: "pipeline-1",
+        stage_id: "stage-1",
+      }),
+    ).toBe(true);
+    expect(
+      triggerMatches(automation, {
+        pipeline_id: "pipeline-1",
+        stage_id: "stage-2",
+      }),
+    ).toBe(false);
+    expect(
+      triggerMatches(automation, {
+        pipeline_id: "pipeline-2",
+        stage_id: "stage-1",
+      }),
+    ).toBe(false);
+    expect(triggerMatches(automation, {})).toBe(false);
+  });
+});
+
 describe("tag_added — conversation policy", () => {
   it("records a clear failed step when the contact has no conversation", async () => {
     h.state.owned = { id: "c1" };

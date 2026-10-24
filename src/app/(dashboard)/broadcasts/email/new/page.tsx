@@ -10,6 +10,7 @@ function NewCampaign() {
     <EmailCampaignEditor
       templateId={params.get('template') ?? undefined}
       cloneFromId={params.get('from') ?? undefined}
+      savedTemplateId={params.get('model') ?? undefined}
     />
   );
 }

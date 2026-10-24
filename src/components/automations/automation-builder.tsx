@@ -33,6 +33,7 @@ import {
   ArrowUp,
   MousePointerClick,
   List,
+  Mail,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -111,6 +112,7 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
   send_buttons: { label: "send_buttons", icon: MousePointerClick, border: "border-l-primary" },
   send_list: { label: "send_list", icon: List, border: "border-l-primary" },
   send_template: { label: "send_template", icon: FileText, border: "border-l-primary" },
+  send_email: { label: "send_email", icon: Mail, border: "border-l-primary" },
   add_tag: { label: "add_tag", icon: Tag, border: "border-l-primary" },
   remove_tag: { label: "remove_tag", icon: TagIcon, border: "border-l-primary" },
   assign_conversation: { label: "assign_conversation", icon: UserCheck, border: "border-l-primary" },
@@ -127,6 +129,7 @@ const ADDABLE_STEPS: AutomationStepType[] = [
   "send_buttons",
   "send_list",
   "send_template",
+  "send_email",
   "add_tag",
   "remove_tag",
   "assign_conversation",
@@ -144,6 +147,7 @@ const TRIGGER_OPTIONS: { value: AutomationTriggerType }[] = [
   { value: "keyword_match" },
   { value: "interactive_reply" },
   { value: "new_contact_created" },
+  { value: "deal_stage_entered" },
   { value: "conversation_assigned" },
   { value: "tag_added" },
   { value: "time_based" },
@@ -180,6 +184,8 @@ function blankConfig(type: AutomationStepType): Record<string, unknown> {
       return toStepConfig(blankListPayload())
     case "send_template":
       return { template_name: "", language: "en_US" }
+    case "send_email":
+      return { email_template_id: "" }
     case "add_tag":
     case "remove_tag":
       return { tag_id: "" }
@@ -219,6 +225,13 @@ interface AutomationResources {
   customFields: CustomField[]
   pipelines: PipelineOption[]
   stages: PipelineStageOption[]
+  emailTemplates: EmailAutomationTemplate[]
+}
+
+interface EmailAutomationTemplate {
+  id: string
+  name: string
+  subject: string
 }
 
 interface PipelineOption {
@@ -240,6 +253,7 @@ const ResourcesContext = createContext<AutomationResources>({
   customFields: [],
   pipelines: [],
   stages: [],
+  emailTemplates: [],
 })
 
 function useResources(): AutomationResources {
@@ -253,6 +267,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
   const [customFields, setCustomFields] = useState<CustomField[]>([])
   const [pipelines, setPipelines] = useState<PipelineOption[]>([])
   const [stages, setStages] = useState<PipelineStageOption[]>([])
+  const [emailTemplates, setEmailTemplates] = useState<EmailAutomationTemplate[]>([])
 
   useEffect(() => {
     let cancelled = false
@@ -286,6 +301,17 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
       setStages((stagesRes.data as PipelineStageOption[] | null) ?? [])
     })()
 
+    void (async () => {
+      try {
+        const response = await fetch("/api/email/templates", { cache: "no-store" })
+        const payload = (await response.json()) as { templates?: EmailAutomationTemplate[]; error?: string }
+        if (!response.ok) throw new Error(payload.error ?? "Failed to load email templates")
+        if (!cancelled) setEmailTemplates(payload.templates ?? [])
+      } catch (error) {
+        console.error("[automations] email templates could not be loaded:", error)
+      }
+    })()
+
     // Members go through the API so we inherit its email-visibility
     // rules (agents/viewers don't see emails). Unreachable on older
     // deployments → pickers fall back to a raw agent-id input.
@@ -307,7 +333,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
 
   return (
     <ResourcesContext.Provider
-      value={{ tags, members, templates, customFields, pipelines, stages }}
+      value={{ tags, members, templates, customFields, pipelines, stages, emailTemplates }}
     >
       {children}
     </ResourcesContext.Provider>
@@ -870,6 +896,14 @@ function TriggerCard({
                 />
               </div>
             )}
+            {type === "deal_stage_entered" && (
+              <DealPipelineFields
+                pipelineId={(config.pipeline_id as string) ?? ""}
+                stageId={(config.stage_id as string) ?? ""}
+                onChange={(patch) => onConfigChange({ ...config, ...patch })}
+                t={t}
+              />
+            )}
             {type === "time_based" && (
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -1302,6 +1336,7 @@ function StepEditor({
   onChange: (s: BuilderStep) => void
 }) {
   const t = useTranslations("Automations.builder")
+  const { emailTemplates } = useResources()
   const cfg = step.step_config
   const set = (patch: Record<string, unknown>) =>
     onChange({ ...step, step_config: { ...cfg, ...patch } })
@@ -1338,6 +1373,38 @@ function StepEditor({
           onChange={(patch) => set(patch)}
           t={t}
         />
+      )
+    case "send_email":
+      return (
+        <FieldBlock label={t("config.emailTemplateLabel")}>
+          <select
+            value={(cfg.email_template_id as string) ?? ""}
+            onChange={(e) => set({ email_template_id: e.target.value })}
+            className={SELECT_CLASS}
+          >
+            <option value="">{t("config.emailTemplatePlaceholder")}</option>
+            {emailTemplates.map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name} · {template.subject}
+              </option>
+            ))}
+            {typeof cfg.email_template_id === "string" &&
+              cfg.email_template_id &&
+              !emailTemplates.some((template) => template.id === cfg.email_template_id) && (
+                <option value={String(cfg.email_template_id)}>
+                  {t("config.emailTemplateUnavailable")}
+                </option>
+              )}
+          </select>
+          {emailTemplates.length === 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t("config.emailTemplateEmpty")}
+            </p>
+          )}
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t.raw("config.emailTemplateHint")}
+          </p>
+        </FieldBlock>
       )
     case "add_tag":
     case "remove_tag":

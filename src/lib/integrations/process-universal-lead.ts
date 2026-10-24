@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { after } from 'next/server';
 
 import { resolveAuditUserId } from '@/lib/api/v1/contacts';
+import { runAutomationsForTrigger } from '@/lib/automations/engine';
 import { isValidE164, sanitizePhoneForMeta } from '@/lib/whatsapp/phone-utils';
 import {
   readWebhookPath,
@@ -283,6 +285,19 @@ export async function processUniversalLeadEvent(
     })
     .eq('id', eventId);
   if (updateError) throw new Error('Failed to mark webhook event processed');
+
+  after(() =>
+    runAutomationsForTrigger({
+      accountId: integration.account_id,
+      triggerType: 'deal_stage_entered',
+      contactId,
+      context: {
+        deal_id: deal.id,
+        pipeline_id: integration.pipeline_id,
+        stage_id: stage.id,
+      },
+    }),
+  );
 
   await db
     .from('lead_integrations')

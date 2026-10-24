@@ -125,6 +125,7 @@ interface EditorProps {
   campaignId?: string;
   templateId?: string;
   cloneFromId?: string;
+  savedTemplateId?: string;
 }
 
 interface EditorSnapshot {
@@ -569,6 +570,7 @@ export function EmailCampaignEditor({
   campaignId,
   templateId,
   cloneFromId,
+  savedTemplateId,
 }: EditorProps) {
   const t = useTranslations('EmailCampaigns');
   const router = useRouter();
@@ -578,6 +580,7 @@ export function EmailCampaignEditor({
   );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [editorError, setEditorError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
@@ -680,7 +683,7 @@ export function EmailCampaignEditor({
       if (stagesResult.error) throw stagesResult.error;
       const loadedSenders = senderPayload.senders ?? [];
       setSenders(loadedSenders);
-      if (!campaignId && loadedSenders.length > 0) {
+      if (!campaignId && !cloneFromId && !savedTemplateId && loadedSenders.length > 0) {
         setSenderId(loadedSenders[0].id);
       }
       setPipelines(pipelineResult.data ?? []);
@@ -690,7 +693,7 @@ export function EmailCampaignEditor({
         error instanceof Error ? error.message : t('loadOptionsFailed')
       );
     }
-  }, [campaignId, supabase, t]);
+  }, [campaignId, cloneFromId, savedTemplateId, supabase, t]);
 
   useEffect(() => {
     void loadSenderAndPipelineOptions();
@@ -698,7 +701,7 @@ export function EmailCampaignEditor({
 
   useEffect(() => {
     const sourceId = campaignId ?? cloneFromId;
-    if (!sourceId) {
+    if (!sourceId && !savedTemplateId) {
       setHasUnsavedChanges(false);
       editRevisionRef.current = 0;
       setBlockHistory({ past: [], future: [] });
@@ -723,6 +726,34 @@ export function EmailCampaignEditor({
     async function loadCampaign() {
       setLoading(true);
       try {
+        if (savedTemplateId && !sourceId) {
+          const response = await fetch(`/api/email/templates/${savedTemplateId}`, {
+            cache: 'no-store',
+          });
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.error || t('loadCampaignFailed'));
+          }
+          if (cancelled) return;
+          const template = payload.template;
+          const parsedContent = parseEmailCampaignContent(template.content_json);
+          const clonedBlocks = parsedContent.blocks.map((block: EmailBlock) => ({
+            ...block,
+            id: crypto.randomUUID(),
+          }));
+          setName(t('cloneName', { name: template.name }));
+          setSubject(template.subject ?? '');
+          setPreheader(template.preheader ?? '');
+          setSenderId(template.sender_connection_id);
+          setBlocks(clonedBlocks.length ? clonedBlocks : INITIAL_BLOCKS);
+          blocksRef.current = clonedBlocks.length ? clonedBlocks : INITIAL_BLOCKS;
+          replaceLoadedDesign(parsedContent.design);
+          setHasUnsavedChanges(false);
+          editRevisionRef.current = 0;
+          setBlockHistory({ past: [], future: [] });
+          setSelectedBlockId(clonedBlocks[0]?.id ?? INITIAL_BLOCKS[0].id);
+          return;
+        }
         const response = await fetch(`/api/email/campaigns/${sourceId}`, {
           cache: 'no-store',
         });
@@ -788,7 +819,7 @@ export function EmailCampaignEditor({
     return () => {
       cancelled = true;
     };
-  }, [campaignId, templateId, cloneFromId, replaceLoadedDesign, router, t]);
+  }, [campaignId, templateId, cloneFromId, savedTemplateId, replaceLoadedDesign, router, t]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -1035,6 +1066,36 @@ export function EmailCampaignEditor({
       toast.error(message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveAsTemplate() {
+    setEditorError(null);
+    setSavingTemplate(true);
+    try {
+      if (!senderId) throw new Error(t('senderRequired'));
+      const response = await fetch('/api/email/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderConnectionId: senderId,
+          name,
+          subject,
+          preheader,
+          content: blocksRef.current,
+          design: designRef.current,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || t('templateSaveFailed'));
+      toast.success(t('templateSaved'));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : t('templateSaveFailed');
+      setEditorError(message);
+      toast.error(message);
+    } finally {
+      setSavingTemplate(false);
     }
   }
 
@@ -1369,8 +1430,17 @@ export function EmailCampaignEditor({
               </div>
             </details>
             <Button
+              type="button"
+              variant="outline"
+              disabled={saving || savingTemplate || sendingTest || senders.length === 0}
+              onClick={() => void saveAsTemplate()}
+            >
+              {savingTemplate ? <Loader2 className="animate-spin" /> : <Copy />}
+              {savingTemplate ? t('savingTemplate') : t('saveAsTemplate')}
+            </Button>
+            <Button
               type="submit"
-              disabled={saving || sendingTest || senders.length === 0}
+              disabled={saving || savingTemplate || sendingTest || senders.length === 0}
             >
               {saving ? <Loader2 className="animate-spin" /> : <Save />}
               {saving ? t('saving') : t('saveDraft')}
@@ -1806,12 +1876,22 @@ export function EmailCampaignEditor({
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Button
+            type="button"
+            variant="outline"
+            disabled={saving || savingTemplate || sendingTest || dispatchingCampaign || senders.length === 0}
+            onClick={() => void saveAsTemplate()}
+            aria-label={t('saveAsTemplate')}
+            title={t('saveAsTemplate')}
+          >
+            {savingTemplate ? <Loader2 className="animate-spin" /> : <Copy />}
+          </Button>
+          <Button
             type="submit"
             size="icon"
             variant="ghost"
             aria-label={saving ? t('saving') : t('saveDraft')}
             title={saving ? t('saving') : t('saveDraft')}
-            disabled={saving || sendingTest || dispatchingCampaign}
+            disabled={saving || savingTemplate || sendingTest || dispatchingCampaign}
           >
             {saving ? <Loader2 className="animate-spin" /> : <Save />}
           </Button>

@@ -33,12 +33,14 @@ describe("validateStepsForActivation", () => {
     const issues = validateStepsForActivation([
       { step_type: "send_message", step_config: { text: "  " } },
       { step_type: "send_template", step_config: {} },
+      { step_type: "send_email", step_config: {} },
       { step_type: "add_tag", step_config: { tag_id: "" } },
     ]);
     expect(issues.map((i) => i.path)).toEqual([
       "steps[0].text",
       "steps[1].template_name",
-      "steps[2].tag_id",
+      "steps[2].email_template_id",
+      "steps[3].tag_id",
     ]);
   });
 
@@ -117,6 +119,26 @@ describe("validateStepsForActivation", () => {
       "steps[0].pipeline_id",
       "steps[0].stage_id",
       "steps[0].title",
+    ]);
+  });
+
+  it("requires an email template for email steps and a stage for stage triggers", () => {
+    expect(
+      validateStepsForActivation([
+        { step_type: "send_email", step_config: { email_template_id: "template-1" } },
+      ]),
+    ).toEqual([]);
+    expect(
+      validateTriggerForActivation("deal_stage_entered", {
+        pipeline_id: "pipeline-1",
+        stage_id: "stage-1",
+      }),
+    ).toEqual([]);
+    expect(
+      validateTriggerForActivation("deal_stage_entered", {}),
+    ).toEqual([
+      { path: "trigger.pipeline_id", message: "pipeline is required" },
+      { path: "trigger.stage_id", message: "stage is required" },
     ]);
   });
 

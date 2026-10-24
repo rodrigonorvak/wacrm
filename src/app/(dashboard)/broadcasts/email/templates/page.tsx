@@ -21,7 +21,16 @@ import {
 } from '@/lib/email-campaigns/types';
 import { parseEmailCampaignContent } from '@/lib/email-campaigns/content';
 
-type Tab = 'ready' | 'library' | 'previous';
+type Tab = 'ready' | 'library' | 'created' | 'previous';
+
+interface CreatedTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  preheader: string;
+  content_json: unknown;
+  updated_at: string;
+}
 
 interface PreviousCampaign {
   id: string;
@@ -73,6 +82,9 @@ export default function EmailTemplatesPage() {
   const [previous, setPrevious] = useState<PreviousCampaign[] | null>(null);
   const [previousLoadError, setPreviousLoadError] = useState(false);
   const [previousReloadKey, setPreviousReloadKey] = useState(0);
+  const [created, setCreated] = useState<CreatedTemplate[] | null>(null);
+  const [createdLoadError, setCreatedLoadError] = useState(false);
+  const [createdReloadKey, setCreatedReloadKey] = useState(0);
   const [preview, setPreview] = useState<PreviewItem | null>(null);
   const [mobile, setMobile] = useState(false);
   const [previewingCampaignId, setPreviewingCampaignId] = useState<
@@ -111,6 +123,29 @@ export default function EmailTemplatesPage() {
     };
   }, [tab, previous, previousReloadKey, t]);
 
+  useEffect(() => {
+    if (tab !== 'created' || created) return;
+    let cancelled = false;
+    async function loadCreatedTemplates() {
+      setCreatedLoadError(false);
+      try {
+        const response = await fetch('/api/email/templates', { cache: 'no-store' });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || t('loadFailed'));
+        if (!Array.isArray(payload.templates)) throw new Error(t('loadFailed'));
+        if (!cancelled) setCreated(payload.templates);
+      } catch (error) {
+        if (cancelled) return;
+        setCreatedLoadError(true);
+        toast.error(error instanceof Error ? error.message : t('loadFailed'));
+      }
+    }
+    void loadCreatedTemplates();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, created, createdReloadKey, t]);
+
   function templateItem(template: EmailTemplate): PreviewItem {
     return {
       key: template.id,
@@ -148,9 +183,23 @@ export default function EmailTemplatesPage() {
     }
   }
 
+  function openCreatedPreview(template: CreatedTemplate) {
+    const parsed = parseEmailCampaignContent(template.content_json);
+    setPreview({
+      key: template.id,
+      name: template.name,
+      subject: template.subject,
+      preheader: template.preheader,
+      blocks: parsed.blocks,
+      design: parsed.design,
+      href: `/broadcasts/email/new?model=${template.id}`,
+    });
+  }
+
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: 'ready', label: t('tabReady') },
     { id: 'library', label: t('tabLibrary') },
+    { id: 'created', label: t('tabCreated') },
     { id: 'previous', label: t('tabPrevious') },
   ];
   // The library lists every template; "ready for you" is the curated subset.
@@ -197,7 +246,49 @@ export default function EmailTemplatesPage() {
         ))}
       </div>
 
-      {tab === 'previous' ? (
+      {tab === 'created' ? (
+        createdLoadError ? (
+          <div className="border-border bg-card rounded-xl border p-8 text-center">
+            <p className="text-muted-foreground text-sm">{t('loadFailed')}</p>
+            <Button type="button" variant="outline" className="mt-3" onClick={() => {
+              setCreatedReloadKey((current) => current + 1);
+            }}>
+              {t('retry')}
+            </Button>
+          </div>
+        ) : created === null ? (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 className="text-primary size-6 animate-spin" />
+          </div>
+        ) : created.length === 0 ? (
+          <p className="text-muted-foreground py-10 text-center text-sm">
+            {t('noCreatedTemplates')}
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {created.map((template) => (
+              <article
+                key={template.id}
+                className="border-border bg-card flex flex-col rounded-xl border p-4"
+              >
+                <h2 className="text-foreground truncate font-semibold">{template.name}</h2>
+                <p className="text-muted-foreground mt-1 truncate text-sm">
+                  {template.subject || t('noSubject')}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {new Date(template.updated_at).toLocaleDateString(locale)}
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <Button type="button" size="sm" variant="outline" onClick={() => openCreatedPreview(template)}>
+                    <Eye />
+                    {t('previewAction')}
+                  </Button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )
+      ) : tab === 'previous' ? (
         previousLoadError ? (
           <div className="border-border bg-card rounded-xl border p-8 text-center">
             <p className="text-muted-foreground text-sm">{t('loadFailed')}</p>

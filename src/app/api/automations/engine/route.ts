@@ -23,6 +23,12 @@ export async function POST(request: Request) {
   if (!body?.trigger_type) {
     return NextResponse.json({ error: 'trigger_type required' }, { status: 400 })
   }
+  if (body.trigger_type === 'deal_stage_entered') {
+    return NextResponse.json(
+      { error: 'Deal-stage triggers can only be dispatched by a verified pipeline event.' },
+      { status: 400 },
+    )
+  }
 
   await runAutomationsForTrigger({
     accountId,

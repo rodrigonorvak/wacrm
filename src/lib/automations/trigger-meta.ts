@@ -23,6 +23,10 @@ export const TRIGGER_META: Record<AutomationTriggerType, TriggerMeta> = {
     label: 'New Contact',
     pillClass: 'border-primary/30 bg-primary/10 text-primary',
   },
+  deal_stage_entered: {
+    label: 'Deal Entered Stage',
+    pillClass: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300',
+  },
   conversation_assigned: {
     label: 'Conversation Assigned',
     pillClass: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300',

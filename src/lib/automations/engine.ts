@@ -11,6 +11,7 @@ import type {
   SendButtonsStepConfig,
   SendListStepConfig,
   SendTemplateStepConfig,
+  SendEmailStepConfig,
   SendWebhookStepConfig,
   TagStepConfig,
   UpdateContactFieldStepConfig,
@@ -24,6 +25,17 @@ import { MAX_TAG_CHAIN_DEPTH, getTagChainDepth } from '@/lib/contacts/tag-chain'
 import { engineSendText, engineSendTemplate, engineSendInteractive } from './meta-send'
 import { validateInteractivePayload } from '@/lib/whatsapp/interactive'
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf'
+import { decryptSenderPassword } from '@/lib/email-senders/encryption'
+import {
+  sendEmailThroughSender,
+  type EmailSenderSmtpConfig,
+} from '@/lib/email-senders/smtp'
+import { parseEmailCampaignContent } from '@/lib/email-campaigns/content'
+import { renderEmailCampaign } from '@/lib/email-campaigns/render'
+import {
+  createEmailUnsubscribeLink,
+  isEmailAddressUnsubscribed,
+} from '@/lib/email-campaigns/unsubscribe'
 
 // ------------------------------------------------------------
 // Public API
@@ -42,6 +54,10 @@ export interface AutomationContext {
   agent_id?: string
   /** Button / list-row id the customer tapped, for interactive_reply. */
   interactive_reply_id?: string
+  /** Pipeline event metadata used by deal_stage_entered automations. */
+  pipeline_id?: string
+  stage_id?: string
+  deal_id?: string
 }
 
 export interface DispatchInput {
@@ -430,6 +446,86 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
       return `template sent via Meta (${whatsapp_message_id})`
     }
 
+    case 'send_email': {
+      const cfg = step.step_config as SendEmailStepConfig
+      if (!args.contactId) throw new Error('send_email needs a contact')
+      if (!cfg.email_template_id) throw new Error('send_email needs an email template')
+
+      const { data: contact, error: contactError } = await db
+        .from('contacts')
+        .select('id, name, email')
+        .eq('id', args.contactId)
+        .eq('account_id', args.automation.account_id)
+        .maybeSingle()
+      if (contactError) throw new Error(`contact lookup failed: ${contactError.message}`)
+      if (!contact) throw new Error('send_email contact not found')
+      if (typeof contact.email !== 'string' || !contact.email.trim()) {
+        throw new Error('send_email contact has no email address')
+      }
+
+      const { data: template, error: templateError } = await db
+        .from('email_automation_templates')
+        .select('id, sender_connection_id, subject, preheader, content_json')
+        .eq('id', cfg.email_template_id)
+        .eq('account_id', args.automation.account_id)
+        .maybeSingle()
+      if (templateError) throw new Error(`email template lookup failed: ${templateError.message}`)
+      if (!template) throw new Error('email template not found in this account')
+
+      if (await isEmailAddressUnsubscribed(db, args.automation.account_id, contact.email)) {
+        return 'email skipped: recipient unsubscribed'
+      }
+
+      const { data: sender, error: senderError } = await db
+        .from('email_sender_connections')
+        .select('id, account_id, from_email, from_name, smtp_host, smtp_port, smtp_username, smtp_secure, encrypted_password')
+        .eq('id', template.sender_connection_id)
+        .eq('account_id', args.automation.account_id)
+        .maybeSingle()
+      if (senderError) throw new Error(`email sender lookup failed: ${senderError.message}`)
+      if (!sender || sender.account_id !== args.automation.account_id) {
+        throw new Error('email sender is unavailable in this account')
+      }
+
+      const content = parseEmailCampaignContent(template.content_json)
+      if (content.blocks.length === 0) throw new Error('email template has no content')
+      const interpolatedBlocks = content.blocks.map((block) => ({
+        ...block,
+        text: interpolateEmail(block.text, contact),
+        alt: interpolateEmail(block.alt, contact),
+      }))
+      const subject = interpolateEmail(template.subject, contact)
+      const preheader = interpolateEmail(template.preheader ?? '', contact)
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+      if (!baseUrl) throw new Error('NEXT_PUBLIC_SITE_URL is required for automated email unsubscribe links')
+
+      const unsubscribe = createEmailUnsubscribeLink(
+        new Request(new URL('/', baseUrl)),
+        args.automation.account_id,
+        contact.email,
+      )
+      const rendered = renderEmailCampaign(
+        subject,
+        preheader,
+        interpolatedBlocks,
+        unsubscribe.url,
+        content.design,
+      )
+      const password = decryptSenderPassword(sender.encrypted_password)
+      await sendEmailThroughSender(
+        sender as EmailSenderSmtpConfig,
+        password,
+        {
+          to: contact.email,
+          subject,
+          text: rendered.text,
+          html: rendered.html,
+          headers: unsubscribe.headers,
+        },
+      )
+      return `email sent to ${contact.email}`
+    }
+
     case 'add_tag': {
       const cfg = step.step_config as TagStepConfig
       if (!args.contactId || !cfg.tag_id) throw new Error('add_tag needs contact + tag_id')
@@ -695,6 +791,15 @@ export function matchesWholeWord(
 }
 
 export function triggerMatches(automation: Automation, ctx: AutomationContext | undefined): boolean {
+  if (automation.trigger_type === 'deal_stage_entered') {
+    const cfg = automation.trigger_config as { pipeline_id?: string; stage_id?: string }
+    return Boolean(
+      ctx?.pipeline_id &&
+      ctx.stage_id &&
+      cfg?.pipeline_id === ctx.pipeline_id &&
+      cfg?.stage_id === ctx.stage_id,
+    )
+  }
   if (automation.trigger_type === 'keyword_match') {
     const cfg = automation.trigger_config as KeywordMatchTriggerConfig
     if (!cfg?.keywords || cfg.keywords.length === 0) return false
@@ -705,6 +810,7 @@ export function triggerMatches(automation: Automation, ctx: AutomationContext | 
         matchesWholeWord(text, raw, cfg.case_sensitive),
       )
     }
+
     const haystack = cfg.case_sensitive ? text : text.toLowerCase()
     return cfg.keywords.some((raw) => {
       const k = cfg.case_sensitive ? raw : raw.toLowerCase()
@@ -731,6 +837,15 @@ export function triggerMatches(automation: Automation, ctx: AutomationContext | 
   }
 
   return true
+}
+
+function interpolateEmail(
+  value: string,
+  contact: { name?: string | null; email?: string | null },
+): string {
+  return value.replace(/\{\{\s*contact\.(name|email)\s*\}\}/g, (_, field: 'name' | 'email') =>
+    (contact[field] ?? '').replace(/[\r\n]/g, ' '),
+  )
 }
 
 async function evaluateCondition(cfg: ConditionStepConfig, args: ExecuteArgs): Promise<boolean> {

@@ -1138,6 +1138,12 @@
     "tabReady": "Preparado para você",
     "tabLibrary": "Biblioteca de modelos",
     "tabPrevious": "Enviado anteriormente",
+    "tabCreated": "Modelos criados",
+    "noCreatedTemplates": "Você ainda não salvou modelos de e-mail.",
+    "saveAsTemplate": "Salvar como modelo",
+    "savingTemplate": "Salvando modelo...",
+    "templateSaved": "Modelo de e-mail salvo.",
+    "templateSaveFailed": "Não foi possível salvar o modelo.",
     "useTemplate": "Usar modelo",
     "previewAction": "Prévia",
     "backToTemplates": "Voltar aos modelos",
@@ -1380,7 +1386,7 @@
   "Automations": {
     "list": {
       "title": "Automações",
-      "subtitle": "Crie fluxos de trabalho que reagem automaticamente a eventos do WhatsApp®.",
+      "subtitle": "Crie fluxos que reagem a eventos do CRM e do WhatsApp®.",
       "create": "Criar automação",
       "retry": "Tentar novamente",
       "templatesTitle": "Modelos para começar",
@@ -1402,6 +1408,7 @@
         "keyword_match": "Palavra-chave identificada",
         "interactive_reply": "Resposta a botão/lista",
         "new_contact_created": "Novo contato",
+        "deal_stage_entered": "Negócio entrou na etapa",
         "conversation_assigned": "Conversa atribuída",
         "tag_added": "Etiqueta adicionada",
         "time_based": "Agendamento"
@@ -1434,6 +1441,7 @@
         "send_buttons": "Enviar botões",
         "send_list": "Enviar lista",
         "send_template": "Enviar modelo",
+        "send_email": "Enviar e-mail",
         "add_tag": "Adicionar etiqueta",
         "remove_tag": "Remover etiqueta",
         "assign_conversation": "Atribuir conversa",
@@ -1464,6 +1472,10 @@
         "new_contact_created": {
           "label": "Novo contato criado",
           "hint": "Quando um contato é criado automaticamente a partir de uma mensagem recebida"
+        },
+        "deal_stage_entered": {
+          "label": "Negócio entrou na etapa",
+          "hint": "Quando um negócio entrar na etapa selecionada da pipeline"
         },
         "conversation_assigned": {
           "label": "Conversa atribuída",
@@ -1556,6 +1568,11 @@
       "delete": "Excluir",
       "config": {
         "messageText": "Texto da mensagem",
+        "emailTemplateLabel": "Modelo de e-mail",
+        "emailTemplatePlaceholder": "Selecione um modelo salvo",
+        "emailTemplateUnavailable": "Modelo indisponível",
+        "emailTemplateEmpty": "Crie um modelo de e-mail antes de configurar esta etapa.",
+        "emailTemplateHint": "Personalize o assunto e o conteúdo com {{contact.name}} e {{contact.email}}.",
         "placeholderMessageText": "Olá! Agradecemos por entrar em contato…",
         "tagLabel": "Etiqueta",
         "modeLabel": "Modo de atribuição",
