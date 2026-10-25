@@ -6,6 +6,7 @@ import { hashLeadIntegrationToken } from '@/lib/integrations/lead-token';
 import { asObject, getElementorEventId, readElementorField } from '@/lib/integrations/elementor';
 import { getElementorIdempotencyKey } from '@/lib/integrations/elementor-idempotency';
 import { sendMetaEvent } from '@/lib/integrations/meta-events';
+import { runAutomationsForTrigger } from '@/lib/automations/engine';
 
 type Mapping = {
   source_field_id: string;
@@ -215,6 +216,18 @@ export async function POST(
         eventName: 'Lead',
         value: 0,
       }).catch((error) => console.error('[elementor-webhook] meta event failed:', error)),
+    );
+    after(() =>
+      runAutomationsForTrigger({
+        accountId: integrationRow.account_id,
+        triggerType: 'deal_stage_entered',
+        contactId,
+        context: {
+          deal_id: deal.id,
+          pipeline_id: integrationRow.pipeline_id,
+          stage_id: deal.stage_id,
+        },
+      }),
     );
 
     return NextResponse.json({ success: true, contact_id: contactId, deal_id: deal.id, stage_id: deal.stage_id }, { status: 200 });

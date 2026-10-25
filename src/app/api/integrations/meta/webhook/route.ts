@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { findOrCreateContact, resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { runAutomationsForTrigger } from '@/lib/automations/engine';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature';
 import { sendMetaEvent } from '@/lib/integrations/meta-events';
@@ -173,6 +174,18 @@ export async function POST(request: Request) {
         deal_id: deal.id,
       }).eq('id', event.id);
       await db.from('meta_integrations').update({ webhook_last_received_at: new Date().toISOString() }).eq('id', integration.id);
+      after(() =>
+        runAutomationsForTrigger({
+          accountId: integration.account_id,
+          triggerType: 'deal_stage_entered',
+          contactId,
+          context: {
+            deal_id: deal.id,
+            pipeline_id: integration.pipeline_id,
+            stage_id: deal.stage_id,
+          },
+        }),
+      );
       await sendMetaEvent({
         accountId: integration.account_id,
         pipelineId: integration.pipeline_id,
