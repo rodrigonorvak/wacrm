@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { cn } from '@/lib/utils';
 import {
+  PLATFORM_ADMIN_SECTIONS,
   RAIL_GROUPS,
   SECTION_META,
   SETTINGS_SECTIONS,
@@ -25,7 +26,9 @@ export function SettingsRail({
   active,
   onSelect,
   hints,
+  isSuperAdmin = false,
 }: {
+  isSuperAdmin?: boolean;
   active: SettingsSection;
   onSelect: (section: SettingsSection) => void;
   hints?: Partial<Record<SettingsSection, ReactNode>>;
@@ -55,8 +58,11 @@ export function SettingsRail({
     >
       {RAIL_GROUPS.map(({ label, group }) => {
         const items = SETTINGS_SECTIONS.filter(
-          (s) => SECTION_META[s].group === group,
+          (s) =>
+            SECTION_META[s].group === group &&
+            (isSuperAdmin || !PLATFORM_ADMIN_SECTIONS.includes(s)),
         );
+        if (items.length === 0) return null;
         return (
           <div
             key={group}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useMemo, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
@@ -20,7 +20,9 @@ import { FieldsAndTagsPanel } from '@/components/settings/fields-and-tags-panel'
 import { DealsSettings } from '@/components/settings/deals-settings';
 import { MembersTab } from '@/components/settings/members-tab';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
+import { PlatformAppsSettings } from '@/components/settings/platform-apps-settings';
 import {
+  PLATFORM_ADMIN_SECTIONS,
   resolveSection,
   type SettingsSection,
 } from '@/components/settings/settings-sections';
@@ -47,12 +49,30 @@ function SettingsPageInner() {
   const { accountId, defaultCurrency } = useAuth();
   const { state: glass } = useGlassTheme(accountId);
   const t = useTranslations('Settings');
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/platform-admin/me', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!cancelled) setIsSuperAdmin(json?.isSuperAdmin === true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // The URL (`?tab=`) is the single source of truth for the active
   // section — deep-linkable, and it keeps the existing links in the
   // app sidebar/header working. Legacy tab values (tags, custom-fields)
   // resolve onto their new home; unknown/empty → the Overview landing.
-  const section = resolveSection(searchParams.get('tab'));
+  const section = ((): SettingsSection => {
+    const resolved = resolveSection(searchParams.get('tab'));
+    return PLATFORM_ADMIN_SECTIONS.includes(resolved) && !isSuperAdmin
+      ? 'overview'
+      : resolved;
+  })();
   const integration = searchParams.get('integration');
 
   const go = (next: SettingsSection) => {
@@ -97,6 +117,7 @@ function SettingsPageInner() {
     deals: <DealsSettings />,
     members: <MembersTab />,
     api: <ApiKeysSettings />,
+    apps: <PlatformAppsSettings />,
   };
 
   return (
@@ -104,7 +125,7 @@ function SettingsPageInner() {
           <div className="grid min-h-[calc(100dvh-3.5rem)] lg:grid-cols-[216px_minmax(0,1fr)]">
         <aside className="min-w-0 border-b border-border/70 bg-[#f3f4f6] shadow-[0_1px_3px_rgb(15_23_42_/_4%)] lg:border-r lg:border-b-0 lg:shadow-[1px_0_3px_rgb(15_23_42_/_5%)]">
           <div className="p-2.5 sm:p-3 lg:sticky lg:top-0 lg:p-3">
-            <SettingsRail active={section} onSelect={go} hints={hints} />
+            <SettingsRail active={section} onSelect={go} hints={hints} isSuperAdmin={isSuperAdmin} />
           </div>
         </aside>
 

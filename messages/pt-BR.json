@@ -92,7 +92,8 @@
       "quick-replies": "Respostas rápidas",
       "fields": "Campos e etiquetas",
       "deals": "Moeda do CRM",
-      "members": "Membros da equipe"
+      "members": "Membros da equipe",
+      "apps": "Apps"
     },
     "security": {
       "title": "Login",
@@ -632,7 +633,8 @@
     },
     "groups": {
       "account": "Conta",
-      "workspace": "Espaço de trabalho"
+      "workspace": "Espaço de trabalho",
+      "platform": "Plataforma"
     },
     "deals": {
       "title": "Moeda do CRM",

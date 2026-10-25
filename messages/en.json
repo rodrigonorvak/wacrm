@@ -2087,11 +2087,13 @@
       "fields": "Fields & tags",
       "deals": "CRM currency",
       "members": "Team members",
-      "api": "API keys"
+      "api": "API keys",
+      "apps": "Apps"
     },
     "groups": {
       "account": "Account",
-      "workspace": "Workspace"
+      "workspace": "Workspace",
+      "platform": "Platform"
     },
     "profile": {
       "title": "Your profile",

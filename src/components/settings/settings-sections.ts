@@ -1,4 +1,5 @@
 import {
+  Boxes,
   Coins,
   FileText,
   KeyRound,
@@ -35,6 +36,7 @@ export const SETTINGS_SECTIONS = [
   'deals',
   'members',
   'api',
+  'apps',
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -46,7 +48,7 @@ export interface SectionMeta {
   id: SettingsSection;
   label: string;
   icon: LucideIcon;
-  group: 'top' | 'account' | 'workspace';
+  group: 'top' | 'account' | 'workspace' | 'platform';
 }
 
 export const SECTION_META: Record<SettingsSection, SectionMeta> = {
@@ -62,12 +64,17 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   deals: { id: 'deals', label: 'Deals & currency', icon: Coins, group: 'workspace' },
   members: { id: 'members', label: 'Team members', icon: UsersRound, group: 'workspace' },
   api: { id: 'api', label: 'API keys', icon: KeyRound, group: 'workspace' },
+  apps: { id: 'apps', label: 'Apps', icon: Boxes, group: 'platform' },
 };
+
+/** Sections only a platform super admin can see. */
+export const PLATFORM_ADMIN_SECTIONS: readonly SettingsSection[] = ['apps'];
 
 export const RAIL_GROUPS: { label: string | null; group: SectionMeta['group'] }[] = [
   { label: null, group: 'top' },
   { label: 'Account', group: 'account' },
   { label: 'Workspace', group: 'workspace' },
+  { label: 'Platform', group: 'platform' },
 ];
 
 function isSection(value: string | null): value is SettingsSection {
