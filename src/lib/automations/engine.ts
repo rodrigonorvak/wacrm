@@ -742,6 +742,30 @@ async function resolveConversationId(args: ExecuteArgs): Promise<string> {
     .eq('contact_id', args.contactId)
     .maybeSingle()
   if (error) throw new Error(`conversation lookup failed: ${error.message}`)
+  if (!data?.id && (args.triggerEvent === 'deal_stage_entered' || args.context.deal_id)) {
+    // A new lead has no inbox thread yet; the automation is the first
+    // outbound contact, so open the conversation here.
+    const db = supabaseAdmin()
+    const { data: created, error: createErr } = await db
+      .from('conversations')
+      .insert({
+        account_id: args.automation.account_id,
+        user_id: args.automation.user_id,
+        contact_id: args.contactId,
+      })
+      .select('id')
+      .single()
+    if (created?.id) return created.id as string
+    // Lost a race with another creator (unique index): use the winner.
+    const { data: raced } = await db
+      .from('conversations')
+      .select('id')
+      .eq('account_id', args.automation.account_id)
+      .eq('contact_id', args.contactId)
+      .maybeSingle()
+    if (raced?.id) return raced.id as string
+    throw new Error(`cannot open conversation: ${createErr?.message ?? 'unknown error'}`)
+  }
   if (!data?.id) {
     const prefix = args.triggerEvent === 'tag_added'
       ? 'tag_added automation cannot send'
