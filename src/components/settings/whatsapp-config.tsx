@@ -378,7 +378,7 @@ export function WhatsAppConfig() {
   }
 
   async function handleReset() {
-    if (!confirm('This will delete the current WhatsApp config so you can re-enter it. Continue?')) {
+    if (!confirm('Desconectar o WhatsApp desta conta? Você poderá conectar de novo depois.')) {
       return;
     }
 
@@ -392,7 +392,7 @@ export function WhatsAppConfig() {
         return;
       }
 
-      toast.success('Configuration cleared. You can now re-enter your credentials.');
+      toast.success('WhatsApp desconectado.');
       setConfig(null);
       setPhoneNumberId('');
       setWabaId('');
@@ -493,6 +493,22 @@ export function WhatsAppConfig() {
               : statusMessage ||
                 t('notConnectedDesc')}
           </AlertDescription>
+          {config && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              disabled={resetting}
+              className="mt-3 border-red-900 text-red-400 hover:text-red-300 hover:bg-red-950/40"
+            >
+              {resetting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RotateCcw className="size-4" />
+              )}
+              {resetting ? t('resetting') : t('resetConfig')}
+            </Button>
+          )}
         </Alert>
 
         {/* Registration Status — the "is it actually live?" check.
