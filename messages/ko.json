@@ -2088,7 +2088,8 @@
       "deals": "CRM 통화",
       "members": "팀원",
       "api": "API 키",
-      "apps": "앱"
+      "apps": "앱",
+      "plugins": "플러그인"
     },
     "groups": {
       "account": "계정",

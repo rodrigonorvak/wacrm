@@ -93,7 +93,8 @@
       "fields": "Campos e etiquetas",
       "deals": "Moeda do CRM",
       "members": "Membros da equipe",
-      "apps": "Apps"
+      "apps": "Apps",
+      "plugins": "Plugins"
     },
     "security": {
       "title": "Login",

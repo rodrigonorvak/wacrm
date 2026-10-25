@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   Palette,
   PlugZap,
+  Puzzle,
   Radio,
   Shield,
   Tags,
@@ -37,6 +38,7 @@ export const SETTINGS_SECTIONS = [
   'members',
   'api',
   'apps',
+  'plugins',
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
@@ -65,6 +67,7 @@ export const SECTION_META: Record<SettingsSection, SectionMeta> = {
   members: { id: 'members', label: 'Team members', icon: UsersRound, group: 'workspace' },
   api: { id: 'api', label: 'API keys', icon: KeyRound, group: 'workspace' },
   apps: { id: 'apps', label: 'Apps', icon: Boxes, group: 'platform' },
+  plugins: { id: 'plugins', label: 'Plugins', icon: Puzzle, group: 'workspace' },
 };
 
 /** Sections only a platform super admin can see. */

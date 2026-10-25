@@ -21,6 +21,7 @@ import { DealsSettings } from '@/components/settings/deals-settings';
 import { MembersTab } from '@/components/settings/members-tab';
 import { ApiKeysSettings } from '@/components/settings/api-keys-settings';
 import { PlatformAppsSettings } from '@/components/settings/platform-apps-settings';
+import { PluginsPanel } from '@/components/settings/plugins-panel';
 import {
   PLATFORM_ADMIN_SECTIONS,
   resolveSection,
@@ -118,6 +119,7 @@ function SettingsPageInner() {
     members: <MembersTab />,
     api: <ApiKeysSettings />,
     apps: <PlatformAppsSettings />,
+    plugins: <PluginsPanel />,
   };
 
   return (

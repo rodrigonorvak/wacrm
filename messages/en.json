@@ -2088,7 +2088,8 @@
       "deals": "CRM currency",
       "members": "Team members",
       "api": "API keys",
-      "apps": "Apps"
+      "apps": "Apps",
+      "plugins": "Plugins"
     },
     "groups": {
       "account": "Account",

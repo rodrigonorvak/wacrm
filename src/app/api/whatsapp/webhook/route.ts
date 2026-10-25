@@ -7,6 +7,10 @@ import { normalizePhone } from '@/lib/whatsapp/phone-utils'
 import { findExistingContact, isUniqueViolation } from '@/lib/contacts/dedupe'
 import { reopenClosedConversation } from '@/lib/conversations/reopen'
 import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature'
+import {
+  loadPlatformAppSecrets,
+  matchesPlatformVerifyToken,
+} from '@/lib/whatsapp/platform-app'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
@@ -112,6 +116,18 @@ export async function GET(request: Request) {
       )
     }
 
+    // Platform-level Meta app (Embedded Signup) verify token.
+    try {
+      if (await matchesPlatformVerifyToken(verifyToken)) {
+        return new Response(challenge, {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        })
+      }
+    } catch (err) {
+      console.warn('[webhook] platform verify token lookup failed:', err)
+    }
+
     // Fetch all whatsapp configs to check verify tokens
     const { data: configs, error: configError } = await supabaseAdmin()
       .from('whatsapp_config')
@@ -186,7 +202,21 @@ export async function POST(request: Request) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-hub-signature-256')
 
-  if (!verifyMetaWebhookSignature(rawBody, signature)) {
+  let signatureOk = verifyMetaWebhookSignature(rawBody, signature)
+  if (!signatureOk && signature) {
+    try {
+      for (const secret of await loadPlatformAppSecrets()) {
+        if (verifyMetaWebhookSignature(rawBody, signature, secret)) {
+          signatureOk = true
+          break
+        }
+      }
+    } catch (err) {
+      console.warn('[webhook] platform secret lookup failed:', err)
+    }
+  }
+
+  if (!signatureOk) {
     // 401 (not 200) — we want Meta's delivery dashboard to show failures
     // loudly if a misconfiguration causes signatures to stop matching,
     // rather than silently eating events.
