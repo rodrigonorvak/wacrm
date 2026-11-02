@@ -30,6 +30,15 @@ export const DEAL_LABEL_COLORS = [
 
 const INITIAL_VISIBLE = 5;
 
+const WEBHOOK_EVENT_SUGGESTIONS = [
+  "myeduzz.contract_pix_attempted",
+  "myeduzz.contract_card_attempted",
+  "myeduzz.contract_bankslip_attempted",
+  "myeduzz.invoice_paid",
+  "sun.cart_abandonment",
+  "nutror.enrollment_created",
+];
+
 interface DealLabelsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,7 +49,12 @@ interface DealLabelsDialogProps {
   onChange: (dealId: string, labels: DealLabel[]) => void;
 }
 
-type EditorState = { id: string | null; name: string; color: string } | null;
+type EditorState = {
+  id: string | null;
+  name: string;
+  color: string;
+  webhookEvent: string;
+} | null;
 
 export function DealLabelsDialog({
   open,
@@ -107,10 +121,24 @@ export function DealLabelsDialog({
     if (!editor || !accountId || busy) return;
     setBusy(true);
     const name = editor.name.trim();
+    const webhookEvent = editor.webhookEvent.trim() || null;
+    if (!name) {
+      setBusy(false);
+      toast.error("Informe o título da etiqueta");
+      return;
+    }
+    const duplicateEvent = webhookEvent
+      ? labels.find((item) => item.webhook_event === webhookEvent && item.id !== editor.id)
+      : null;
+    if (duplicateEvent) {
+      setBusy(false);
+      toast.error(`O evento já está vinculado à etiqueta "${duplicateEvent.name}"`);
+      return;
+    }
     if (editor.id) {
       const { data, error } = await supabase
         .from("deal_labels")
-        .update({ name, color: editor.color })
+        .update({ name, color: editor.color, webhook_event: webhookEvent })
         .eq("id", editor.id)
         .select()
         .single();
@@ -127,7 +155,7 @@ export function DealLabelsDialog({
     } else {
       const { data, error } = await supabase
         .from("deal_labels")
-        .insert({ account_id: accountId, name, color: editor.color })
+        .insert({ account_id: accountId, name, color: editor.color, webhook_event: webhookEvent })
         .select()
         .single();
       setBusy(false);
@@ -194,6 +222,27 @@ export function DealLabelsDialog({
                 maxLength={40}
                 onChange={(event) => setEditor({ ...editor, name: event.target.value })}
               />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="deal-label-webhook-event" className="text-xs font-semibold text-muted-foreground">
+                Evento do webhook (opcional)
+              </label>
+              <Input
+                id="deal-label-webhook-event"
+                list="deal-label-webhook-events"
+                value={editor.webhookEvent}
+                maxLength={120}
+                placeholder="myeduzz.invoice_paid"
+                onChange={(event) => setEditor({ ...editor, webhookEvent: event.target.value })}
+              />
+              <datalist id="deal-label-webhook-events">
+                {WEBHOOK_EVENT_SUGGESTIONS.map((event) => (
+                  <option key={event} value={event} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">
+                Quando esse evento chegar pela integração, o card recebe esta etiqueta e perde as outras etiquetas de evento.
+              </p>
             </div>
             <div className="space-y-1.5">
               <p className="text-xs font-semibold text-muted-foreground">Selecione uma cor</p>
@@ -276,7 +325,7 @@ export function DealLabelsDialog({
                         <button
                           type="button"
                           aria-label={`Editar etiqueta ${label.name}`}
-                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color })}
+                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color, webhookEvent: label.webhook_event ?? "" })}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-3.5" />
@@ -292,7 +341,7 @@ export function DealLabelsDialog({
                 type="button"
                 variant="secondary"
                 className="w-full"
-                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0] })}
+                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0], webhookEvent: "" })}
               >
                 Criar uma nova etiqueta
               </Button>

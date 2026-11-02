@@ -514,6 +514,7 @@ export interface DealLabel {
   account_id: string;
   name: string;
   color: string;
+  webhook_event?: string | null;
   created_at?: string;
 }
 

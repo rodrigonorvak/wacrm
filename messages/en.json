@@ -667,6 +667,7 @@
       "cardFieldOptions": {
         "company": "Company",
         "phone": "Phone",
+        "email": "Email",
         "assignee": "Assigned to",
         "expectedCloseDate": "Expected close date"
       },

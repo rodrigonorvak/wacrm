@@ -1010,6 +1010,7 @@
       "cardFieldOptions": {
         "company": "Empresa",
         "phone": "Telefone",
+        "email": "E-mail",
         "assignee": "Responsável",
         "expectedCloseDate": "Previsão de fechamento"
       },

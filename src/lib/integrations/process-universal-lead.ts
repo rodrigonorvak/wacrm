@@ -3,6 +3,7 @@ import { after } from 'next/server';
 
 import { resolveAuditUserId } from '@/lib/api/v1/contacts';
 import { runAutomationsForTrigger } from '@/lib/automations/engine';
+import { addContactTagAndDispatch } from '@/lib/contacts/tag-events';
 import { isValidE164, sanitizePhoneForMeta } from '@/lib/whatsapp/phone-utils';
 import {
   readWebhookPath,
@@ -66,6 +67,131 @@ async function findContact(
   }
 
   return null;
+}
+
+type EventLabel = { id: string; name: string; color: string };
+
+function readEventName(payload: unknown): string | null {
+  for (const path of ['event', 'event_name', 'type']) {
+    const value = readMappedValue(payload, path);
+    if (value) return value.trim();
+  }
+  return null;
+}
+
+async function findEventLabel(
+  db: SupabaseClient,
+  accountId: string,
+  eventName: string
+): Promise<EventLabel | null> {
+  const { data, error } = await db
+    .from('deal_labels')
+    .select('id, name, color')
+    .eq('account_id', accountId)
+    .eq('webhook_event', eventName)
+    .maybeSingle();
+  if (error) throw new Error('Failed to find event label');
+  return (data as EventLabel | null) ?? null;
+}
+
+// Replace semantics: the deal keeps only the latest event label.
+async function applyEventLabelToDeal(
+  db: SupabaseClient,
+  input: { accountId: string; dealId: string; label: EventLabel }
+): Promise<void> {
+  const { data: eventLabels, error } = await db
+    .from('deal_labels')
+    .select('id')
+    .eq('account_id', input.accountId)
+    .not('webhook_event', 'is', null);
+  if (error) throw new Error('Failed to list event labels');
+
+  const otherIds = ((eventLabels ?? []) as { id: string }[])
+    .map((l) => l.id)
+    .filter((id) => id !== input.label.id);
+  if (otherIds.length > 0) {
+    const { error: delError } = await db
+      .from('deal_label_links')
+      .delete()
+      .eq('deal_id', input.dealId)
+      .in('label_id', otherIds);
+    if (delError) throw new Error('Failed to remove old event labels');
+  }
+
+  const { error: linkError } = await db.from('deal_label_links').upsert(
+    {
+      deal_id: input.dealId,
+      label_id: input.label.id,
+      account_id: input.accountId,
+    },
+    { onConflict: 'deal_id,label_id', ignoreDuplicates: true }
+  );
+  if (linkError) throw new Error('Failed to link event label');
+}
+
+// Mirrors the event label as a contact tag so tag_added automations can use it.
+async function syncEventContactTag(
+  db: SupabaseClient,
+  input: {
+    accountId: string;
+    contactId: string;
+    auditUserId: string;
+    label: EventLabel;
+  }
+): Promise<void> {
+  const { data: eventLabels } = await db
+    .from('deal_labels')
+    .select('name')
+    .eq('account_id', input.accountId)
+    .not('webhook_event', 'is', null);
+  const otherNames = ((eventLabels ?? []) as { name: string }[])
+    .map((l) => l.name)
+    .filter((n) => n !== input.label.name);
+
+  if (otherNames.length > 0) {
+    const { data: oldTags } = await db
+      .from('tags')
+      .select('id')
+      .eq('account_id', input.accountId)
+      .in('name', otherNames);
+    const oldIds = ((oldTags ?? []) as { id: string }[]).map((t) => t.id);
+    if (oldIds.length > 0) {
+      await db
+        .from('contact_tags')
+        .delete()
+        .eq('contact_id', input.contactId)
+        .in('tag_id', oldIds);
+    }
+  }
+
+  let { data: tag } = await db
+    .from('tags')
+    .select('id')
+    .eq('account_id', input.accountId)
+    .eq('name', input.label.name)
+    .limit(1)
+    .maybeSingle();
+  if (!tag) {
+    const { data: created, error } = await db
+      .from('tags')
+      .insert({
+        account_id: input.accountId,
+        user_id: input.auditUserId,
+        name: input.label.name,
+        color: input.label.color,
+      })
+      .select('id')
+      .single();
+    if (error || !created) throw new Error('Failed to create event tag');
+    tag = created;
+  }
+
+  await addContactTagAndDispatch({
+    db,
+    accountId: input.accountId,
+    contactId: input.contactId,
+    tagId: (tag as { id: string }).id,
+  });
 }
 
 export async function processUniversalLeadEvent(
@@ -251,28 +377,62 @@ export async function processUniversalLeadEvent(
   if (stageError || !stage)
     throw new Error('Integrated pipeline has no stages');
 
-  const { data: deal, error: dealError } = await db
-    .from('deals')
-    .insert({
-      user_id: auditUserId,
-      account_id: integration.account_id,
-      pipeline_id: integration.pipeline_id,
-      stage_id: stage.id,
-      contact_id: contactId,
-      title:
-        valueFor('contact', 'name') ??
-        valueFor('deal', 'title') ??
-        email ??
-        phone ??
-        'Novo lead',
-      notes: valueFor('deal', 'notes'),
-      source: integration.source_label,
-      value: 0,
-      status: 'open',
-    })
-    .select('id')
-    .single();
-  if (dealError || !deal) throw new Error('Failed to create webhook deal');
+  const eventName = readEventName(payload);
+  const eventLabel = eventName
+    ? await findEventLabel(db, integration.account_id, eventName)
+    : null;
+
+  let dealId: string | null = null;
+  let createdDeal = false;
+  if (eventLabel) {
+    const { data: openDeal, error: openDealError } = await db
+      .from('deals')
+      .select('id')
+      .eq('account_id', integration.account_id)
+      .eq('pipeline_id', integration.pipeline_id)
+      .eq('contact_id', contactId)
+      .eq('status', 'open')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (openDealError) throw new Error('Failed to find existing deal');
+    dealId = (openDeal?.id as string | undefined) ?? null;
+  }
+
+  if (!dealId) {
+    const { data: deal, error: dealError } = await db
+      .from('deals')
+      .insert({
+        user_id: auditUserId,
+        account_id: integration.account_id,
+        pipeline_id: integration.pipeline_id,
+        stage_id: stage.id,
+        contact_id: contactId,
+        title:
+          valueFor('contact', 'name') ??
+          valueFor('deal', 'title') ??
+          email ??
+          phone ??
+          'Novo lead',
+        notes: valueFor('deal', 'notes'),
+        source: integration.source_label,
+        value: 0,
+        status: 'open',
+      })
+      .select('id')
+      .single();
+    if (dealError || !deal) throw new Error('Failed to create webhook deal');
+    dealId = deal.id as string;
+    createdDeal = true;
+  }
+
+  if (eventLabel) {
+    await applyEventLabelToDeal(db, {
+      accountId: integration.account_id,
+      dealId,
+      label: eventLabel,
+    });
+  }
 
   const { error: updateError } = await db
     .from('lead_integration_events')
@@ -281,23 +441,37 @@ export async function processUniversalLeadEvent(
       error_message: null,
       processed_at: new Date().toISOString(),
       contact_id: contactId,
-      deal_id: deal.id,
+      deal_id: dealId,
     })
     .eq('id', eventId);
   if (updateError) throw new Error('Failed to mark webhook event processed');
 
-  after(() =>
-    runAutomationsForTrigger({
-      accountId: integration.account_id,
-      triggerType: 'deal_stage_entered',
-      contactId,
-      context: {
-        deal_id: deal.id,
-        pipeline_id: integration.pipeline_id,
-        stage_id: stage.id,
-      },
-    }),
-  );
+  after(async () => {
+    if (eventLabel) {
+      try {
+        await syncEventContactTag(db, {
+          accountId: integration.account_id,
+          contactId,
+          auditUserId,
+          label: eventLabel,
+        });
+      } catch (error) {
+        console.error('Failed to sync webhook event contact tag:', error);
+      }
+    }
+    if (createdDeal) {
+      await runAutomationsForTrigger({
+        accountId: integration.account_id,
+        triggerType: 'deal_stage_entered',
+        contactId,
+        context: {
+          deal_id: dealId,
+          pipeline_id: integration.pipeline_id,
+          stage_id: stage.id,
+        },
+      });
+    }
+  });
 
   await db
     .from('lead_integrations')

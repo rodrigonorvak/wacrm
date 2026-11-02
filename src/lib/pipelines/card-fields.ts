@@ -1,6 +1,7 @@
 export const PIPELINE_CARD_FIELDS = [
   'company',
   'phone',
+  'email',
   'assignee',
 ] as const;
 

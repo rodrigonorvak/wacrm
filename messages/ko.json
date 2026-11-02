@@ -667,6 +667,7 @@
       "cardFieldOptions": {
         "company": "회사",
         "phone": "전화번호",
+        "email": "이메일",
         "assignee": "담당자",
         "expectedCloseDate": "예상 마감일"
       },

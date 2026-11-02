@@ -27,6 +27,7 @@ export function PipelineList({
     const standardDetails = visibleCardFields.flatMap((field) => {
       if (field === "company" && deal.contact?.company) return [deal.contact.company];
       if (field === "phone" && deal.contact?.phone) return [deal.contact.phone];
+      if (field === "email" && deal.contact?.email) return [deal.contact.email];
       if (field === "assignee" && deal.assignee?.full_name) return [deal.assignee.full_name];
       return [];
     });
