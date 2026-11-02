@@ -54,6 +54,8 @@ type EditorState = {
   name: string;
   color: string;
   webhookEvent: string;
+  conditionPath: string;
+  conditionValue: string;
 } | null;
 
 export function DealLabelsDialog({
@@ -122,23 +124,39 @@ export function DealLabelsDialog({
     setBusy(true);
     const name = editor.name.trim();
     const webhookEvent = editor.webhookEvent.trim() || null;
+    const conditionPath = webhookEvent ? editor.conditionPath.trim() || null : null;
+    const conditionValue = conditionPath ? editor.conditionValue.trim() || null : null;
     if (!name) {
       setBusy(false);
       toast.error("Informe o título da etiqueta");
       return;
     }
+    if (conditionPath && !conditionValue) {
+      setBusy(false);
+      toast.error("Informe o valor da condição");
+      return;
+    }
+    const sameRule = (item: DealLabel) =>
+      item.webhook_event === webhookEvent &&
+      (item.webhook_condition_path ?? null) === conditionPath &&
+      (item.webhook_condition_value ?? null) === conditionValue;
     const duplicateEvent = webhookEvent
-      ? labels.find((item) => item.webhook_event === webhookEvent && item.id !== editor.id)
+      ? labels.find((item) => sameRule(item) && item.id !== editor.id)
       : null;
     if (duplicateEvent) {
       setBusy(false);
-      toast.error(`O evento já está vinculado à etiqueta "${duplicateEvent.name}"`);
+      toast.error(`Essa regra já está vinculada à etiqueta "${duplicateEvent.name}"`);
       return;
     }
+    const rule = {
+      webhook_event: webhookEvent,
+      webhook_condition_path: conditionPath,
+      webhook_condition_value: conditionValue,
+    };
     if (editor.id) {
       const { data, error } = await supabase
         .from("deal_labels")
-        .update({ name, color: editor.color, webhook_event: webhookEvent })
+        .update({ name, color: editor.color, ...rule })
         .eq("id", editor.id)
         .select()
         .single();
@@ -155,7 +173,7 @@ export function DealLabelsDialog({
     } else {
       const { data, error } = await supabase
         .from("deal_labels")
-        .insert({ account_id: accountId, name, color: editor.color, webhook_event: webhookEvent })
+        .insert({ account_id: accountId, name, color: editor.color, ...rule })
         .select()
         .single();
       setBusy(false);
@@ -240,6 +258,23 @@ export function DealLabelsDialog({
                   <option key={event} value={event} />
                 ))}
               </datalist>
+              {editor.webhookEvent.trim() && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Input
+                    value={editor.conditionPath}
+                    maxLength={120}
+                    placeholder="Campo (ex.: data.payment.method)"
+                    onChange={(event) => setEditor({ ...editor, conditionPath: event.target.value })}
+                  />
+                  <Input
+                    value={editor.conditionValue}
+                    maxLength={120}
+                    placeholder="Valor (ex.: pix)"
+                    disabled={!editor.conditionPath.trim()}
+                    onChange={(event) => setEditor({ ...editor, conditionValue: event.target.value })}
+                  />
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Quando esse evento chegar pela integração, o card recebe esta etiqueta e perde as outras etiquetas de evento.
               </p>
@@ -325,7 +360,7 @@ export function DealLabelsDialog({
                         <button
                           type="button"
                           aria-label={`Editar etiqueta ${label.name}`}
-                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color, webhookEvent: label.webhook_event ?? "" })}
+                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color, webhookEvent: label.webhook_event ?? "", conditionPath: label.webhook_condition_path ?? "", conditionValue: label.webhook_condition_value ?? "" })}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-3.5" />
@@ -341,7 +376,7 @@ export function DealLabelsDialog({
                 type="button"
                 variant="secondary"
                 className="w-full"
-                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0], webhookEvent: "" })}
+                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0], webhookEvent: "", conditionPath: "", conditionValue: "" })}
               >
                 Criar uma nova etiqueta
               </Button>

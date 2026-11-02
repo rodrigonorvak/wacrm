@@ -79,19 +79,40 @@ function readEventName(payload: unknown): string | null {
   return null;
 }
 
+type EventLabelRule = EventLabel & {
+  webhook_condition_path: string | null;
+  webhook_condition_value: string | null;
+};
+
+// A label with a matching condition wins over a label without one.
 async function findEventLabel(
   db: SupabaseClient,
   accountId: string,
-  eventName: string
+  eventName: string,
+  payload: unknown
 ): Promise<EventLabel | null> {
   const { data, error } = await db
     .from('deal_labels')
-    .select('id, name, color')
+    .select('id, name, color, webhook_condition_path, webhook_condition_value')
     .eq('account_id', accountId)
-    .eq('webhook_event', eventName)
-    .maybeSingle();
+    .eq('webhook_event', eventName);
   if (error) throw new Error('Failed to find event label');
-  return (data as EventLabel | null) ?? null;
+  const rules = (data ?? []) as EventLabelRule[];
+
+  const matched = rules.find((rule) => {
+    if (!rule.webhook_condition_path) return false;
+    const actual = readMappedValue(payload, rule.webhook_condition_path);
+    return (
+      actual !== null &&
+      actual.trim().toLowerCase() ===
+        (rule.webhook_condition_value ?? '').trim().toLowerCase()
+    );
+  });
+  const fallback = rules.find((rule) => !rule.webhook_condition_path);
+  const chosen = matched ?? fallback;
+  return chosen
+    ? { id: chosen.id, name: chosen.name, color: chosen.color }
+    : null;
 }
 
 // Replace semantics: the deal keeps only the latest event label.
@@ -210,7 +231,7 @@ export async function processUniversalLeadEvent(
     // Already has a card: just apply an event label created after the fact.
     const eventName = readEventName(payload);
     const label = eventName
-      ? await findEventLabel(db, integration.account_id, eventName)
+      ? await findEventLabel(db, integration.account_id, eventName, payload)
       : null;
     if (label) {
       await applyEventLabelToDeal(db, {
@@ -402,7 +423,7 @@ export async function processUniversalLeadEvent(
 
   const eventName = readEventName(payload);
   const eventLabel = eventName
-    ? await findEventLabel(db, integration.account_id, eventName)
+    ? await findEventLabel(db, integration.account_id, eventName, payload)
     : null;
 
   let dealId: string | null = null;

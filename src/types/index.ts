@@ -515,6 +515,8 @@ export interface DealLabel {
   name: string;
   color: string;
   webhook_event?: string | null;
+  webhook_condition_path?: string | null;
+  webhook_condition_value?: string | null;
   created_at?: string;
 }
 
