@@ -202,11 +202,34 @@ export async function processUniversalLeadEvent(
 ): Promise<'processed' | 'awaiting_mapping' | 'failed'> {
   const { data: existingEvent, error: eventLookupError } = await db
     .from('lead_integration_events')
-    .select('deal_id')
+    .select('deal_id, contact_id')
     .eq('id', eventId)
     .maybeSingle();
   if (eventLookupError) throw new Error('Failed to load webhook event');
-  if (existingEvent?.deal_id) return 'processed';
+  if (existingEvent?.deal_id) {
+    // Already has a card: just apply an event label created after the fact.
+    const eventName = readEventName(payload);
+    const label = eventName
+      ? await findEventLabel(db, integration.account_id, eventName)
+      : null;
+    if (label) {
+      await applyEventLabelToDeal(db, {
+        accountId: integration.account_id,
+        dealId: existingEvent.deal_id as string,
+        label,
+      });
+      if (existingEvent.contact_id) {
+        const auditUserId = await resolveAuditUserId(db, integration.account_id);
+        await syncEventContactTag(db, {
+          accountId: integration.account_id,
+          contactId: existingEvent.contact_id as string,
+          auditUserId,
+          label,
+        });
+      }
+    }
+    return 'processed';
+  }
 
   const { data: mappings, error: mappingsError } = await db
     .from('lead_integration_mappings')
