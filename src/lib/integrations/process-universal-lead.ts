@@ -115,14 +115,119 @@ async function findEventLabel(
   });
   const fallback = rules.find((rule) => !rule.webhook_condition_path);
   const chosen = matched ?? fallback;
-  return chosen
-    ? {
-        id: chosen.id,
-        name: chosen.name,
-        color: chosen.color,
-        webhook_move_stage_id: chosen.webhook_move_stage_id,
-      }
-    : null;
+  if (!chosen) return seedDefaultEventLabel(db, accountId, eventName, payload);
+  return {
+    id: chosen.id,
+    name: chosen.name,
+    color: chosen.color,
+    webhook_move_stage_id: chosen.webhook_move_stage_id,
+  };
+}
+
+const DEFAULT_METHOD_PATH = 'data.paymentMethod';
+
+function readPaymentMethod(payload: unknown): string | null {
+  const raw =
+    readMappedValue(payload, DEFAULT_METHOD_PATH) ??
+    readMappedValue(payload, 'data.payment.method');
+  return raw ? raw.trim().toLowerCase() : null;
+}
+
+type DefaultLabelSpec = {
+  name: string;
+  color: string;
+  conditionValue: string | null;
+};
+
+// Built-in labels used when the account has no label configured for an event.
+function defaultLabelSpec(
+  eventName: string,
+  payload: unknown
+): DefaultLabelSpec | null {
+  if (eventName === 'myeduzz.invoice_paid') {
+    return { name: 'Pago', color: '#61bd4f', conditionValue: null };
+  }
+  if (eventName === 'myeduzz.invoice_opened') {
+    const method = readPaymentMethod(payload);
+    if (!method) return null;
+    if (method === 'pix') {
+      return { name: 'Pix gerado', color: '#f2d600', conditionValue: method };
+    }
+    if (method.includes('bankslip')) {
+      return { name: 'Boleto gerado', color: '#ff9f1a', conditionValue: method };
+    }
+    if (method === 'creditcard') {
+      return { name: 'Cartão cadastrado', color: '#0079bf', conditionValue: method };
+    }
+    return { name: 'Fatura gerada', color: '#344563', conditionValue: method };
+  }
+  return null;
+}
+
+async function seedDefaultEventLabel(
+  db: SupabaseClient,
+  accountId: string,
+  eventName: string,
+  payload: unknown
+): Promise<EventLabel | null> {
+  const spec = defaultLabelSpec(eventName, payload);
+  if (!spec) return null;
+
+  const rule = {
+    webhook_event: eventName,
+    webhook_condition_path: spec.conditionValue ? DEFAULT_METHOD_PATH : null,
+    webhook_condition_value: spec.conditionValue,
+  };
+  const columns = 'id, name, color, webhook_move_stage_id';
+
+  const lookupByRule = async () => {
+    let query = db
+      .from('deal_labels')
+      .select(columns)
+      .eq('account_id', accountId)
+      .eq('webhook_event', eventName);
+    query = rule.webhook_condition_path
+      ? query
+          .eq('webhook_condition_path', rule.webhook_condition_path)
+          .eq('webhook_condition_value', spec.conditionValue as string)
+      : query.is('webhook_condition_path', null);
+    const { data } = await query.limit(1).maybeSingle();
+    return (data as EventLabel | null) ?? null;
+  };
+
+  // Adopt a manually created label with the same name instead of duplicating it.
+  const { data: sameName } = await db
+    .from('deal_labels')
+    .select('id')
+    .eq('account_id', accountId)
+    .is('webhook_event', null)
+    .ilike('name', spec.name.replace(/[\\%_]/g, '\\$&'))
+    .limit(1)
+    .maybeSingle();
+  if (sameName) {
+    const { data: adopted, error } = await db
+      .from('deal_labels')
+      .update(rule)
+      .eq('id', sameName.id)
+      .select(columns)
+      .single();
+    if (!error && adopted) return adopted as EventLabel;
+    return lookupByRule();
+  }
+
+  const { data: created, error } = await db
+    .from('deal_labels')
+    .insert({
+      account_id: accountId,
+      name: spec.name,
+      color: spec.color,
+      ...rule,
+    })
+    .select(columns)
+    .single();
+  if (error?.code === '23505') return lookupByRule();
+  if (error || !created) throw new Error('Failed to create default event label');
+  return created as EventLabel;
 }
 
 // Moves the deal to the label's stage, only within the deal's own pipeline.
