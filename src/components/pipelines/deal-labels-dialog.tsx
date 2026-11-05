@@ -31,10 +31,11 @@ export const DEAL_LABEL_COLORS = [
 const INITIAL_VISIBLE = 5;
 
 const WEBHOOK_EVENT_SUGGESTIONS = [
+  "myeduzz.invoice_opened",
+  "myeduzz.invoice_paid",
   "myeduzz.contract_pix_attempted",
   "myeduzz.contract_card_attempted",
   "myeduzz.contract_bankslip_attempted",
-  "myeduzz.invoice_paid",
   "sun.cart_abandonment",
   "nutror.enrollment_created",
 ];
@@ -56,7 +57,10 @@ type EditorState = {
   webhookEvent: string;
   conditionPath: string;
   conditionValue: string;
+  moveStageId: string;
 } | null;
+
+type StageOption = { id: string; name: string; pipelineName: string };
 
 export function DealLabelsDialog({
   open,
@@ -69,6 +73,7 @@ export function DealLabelsDialog({
 }: DealLabelsDialogProps) {
   const supabase = useMemo(() => createClient(), []);
   const [labels, setLabels] = useState<DealLabel[]>([]);
+  const [stages, setStages] = useState<StageOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -85,6 +90,21 @@ export function DealLabelsDialog({
       .order("created_at");
     if (error) toast.error("Não foi possível carregar as etiquetas");
     setLabels((data ?? []) as DealLabel[]);
+    const { data: stageRows } = await supabase
+      .from("pipeline_stages")
+      .select("id, name, position, pipelines(name)")
+      .order("position");
+    setStages(
+      ((stageRows ?? []) as unknown as {
+        id: string;
+        name: string;
+        pipelines: { name: string } | { name: string }[] | null;
+      }[]).map((row) => ({
+        id: row.id,
+        name: row.name,
+        pipelineName: (Array.isArray(row.pipelines) ? row.pipelines[0]?.name : row.pipelines?.name) ?? "",
+      }))
+    );
     setLoading(false);
   }, [supabase, accountId]);
 
@@ -152,6 +172,7 @@ export function DealLabelsDialog({
       webhook_event: webhookEvent,
       webhook_condition_path: conditionPath,
       webhook_condition_value: conditionValue,
+      webhook_move_stage_id: webhookEvent ? editor.moveStageId || null : null,
     };
     if (editor.id) {
       const { data, error } = await supabase
@@ -275,6 +296,27 @@ export function DealLabelsDialog({
                   />
                 </div>
               )}
+              {editor.webhookEvent.trim() && (
+                <div className="space-y-1 pt-1">
+                  <label htmlFor="deal-label-move-stage" className="text-xs font-semibold text-muted-foreground">
+                    Mover o card para a coluna (opcional)
+                  </label>
+                  <select
+                    id="deal-label-move-stage"
+                    value={editor.moveStageId}
+                    onChange={(event) => setEditor({ ...editor, moveStageId: event.target.value })}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="">Não mover (fica em Novo Lead)</option>
+                    {stages.map((stage) => (
+                      <option key={stage.id} value={stage.id}>
+                        {stage.pipelineName ? `${stage.pipelineName} › ` : ""}
+                        {stage.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 Quando esse evento chegar pela integração, o card recebe esta etiqueta e perde as outras etiquetas de evento.
               </p>
@@ -360,7 +402,7 @@ export function DealLabelsDialog({
                         <button
                           type="button"
                           aria-label={`Editar etiqueta ${label.name}`}
-                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color, webhookEvent: label.webhook_event ?? "", conditionPath: label.webhook_condition_path ?? "", conditionValue: label.webhook_condition_value ?? "" })}
+                          onClick={() => setEditor({ id: label.id, name: label.name, color: label.color, webhookEvent: label.webhook_event ?? "", conditionPath: label.webhook_condition_path ?? "", conditionValue: label.webhook_condition_value ?? "", moveStageId: label.webhook_move_stage_id ?? "" })}
                           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           <Pencil className="size-3.5" />
@@ -376,7 +418,7 @@ export function DealLabelsDialog({
                 type="button"
                 variant="secondary"
                 className="w-full"
-                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0], webhookEvent: "", conditionPath: "", conditionValue: "" })}
+                onClick={() => setEditor({ id: null, name: "", color: DEAL_LABEL_COLORS[0], webhookEvent: "", conditionPath: "", conditionValue: "", moveStageId: "" })}
               >
                 Criar uma nova etiqueta
               </Button>

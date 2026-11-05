@@ -69,7 +69,12 @@ async function findContact(
   return null;
 }
 
-type EventLabel = { id: string; name: string; color: string };
+type EventLabel = {
+  id: string;
+  name: string;
+  color: string;
+  webhook_move_stage_id: string | null;
+};
 
 function readEventName(payload: unknown): string | null {
   for (const path of ['event', 'event_name', 'type']) {
@@ -93,7 +98,7 @@ async function findEventLabel(
 ): Promise<EventLabel | null> {
   const { data, error } = await db
     .from('deal_labels')
-    .select('id, name, color, webhook_condition_path, webhook_condition_value')
+    .select('id, name, color, webhook_move_stage_id, webhook_condition_path, webhook_condition_value')
     .eq('account_id', accountId)
     .eq('webhook_event', eventName);
   if (error) throw new Error('Failed to find event label');
@@ -111,8 +116,47 @@ async function findEventLabel(
   const fallback = rules.find((rule) => !rule.webhook_condition_path);
   const chosen = matched ?? fallback;
   return chosen
-    ? { id: chosen.id, name: chosen.name, color: chosen.color }
+    ? {
+        id: chosen.id,
+        name: chosen.name,
+        color: chosen.color,
+        webhook_move_stage_id: chosen.webhook_move_stage_id,
+      }
     : null;
+}
+
+// Moves the deal to the label's stage, only within the deal's own pipeline.
+// Returns the stage id when the deal actually moved.
+async function moveDealToLabelStage(
+  db: SupabaseClient,
+  input: { accountId: string; dealId: string; label: EventLabel }
+): Promise<{ pipelineId: string; stageId: string } | null> {
+  const stageId = input.label.webhook_move_stage_id;
+  if (!stageId) return null;
+
+  const { data: deal } = await db
+    .from('deals')
+    .select('pipeline_id, stage_id')
+    .eq('id', input.dealId)
+    .eq('account_id', input.accountId)
+    .maybeSingle();
+  if (!deal || deal.stage_id === stageId) return null;
+
+  const { data: stage } = await db
+    .from('pipeline_stages')
+    .select('id')
+    .eq('id', stageId)
+    .eq('pipeline_id', deal.pipeline_id)
+    .maybeSingle();
+  if (!stage) return null;
+
+  const { error } = await db
+    .from('deals')
+    .update({ stage_id: stageId })
+    .eq('id', input.dealId)
+    .eq('account_id', input.accountId);
+  if (error) throw new Error('Failed to move deal to label stage');
+  return { pipelineId: deal.pipeline_id as string, stageId };
 }
 
 // Replace semantics: the deal keeps only the latest event label.
@@ -239,6 +283,23 @@ export async function processUniversalLeadEvent(
         dealId: existingEvent.deal_id as string,
         label,
       });
+      const moved = await moveDealToLabelStage(db, {
+        accountId: integration.account_id,
+        dealId: existingEvent.deal_id as string,
+        label,
+      });
+      if (moved && existingEvent.contact_id) {
+        await runAutomationsForTrigger({
+          accountId: integration.account_id,
+          triggerType: 'deal_stage_entered',
+          contactId: existingEvent.contact_id as string,
+          context: {
+            deal_id: existingEvent.deal_id as string,
+            pipeline_id: moved.pipelineId,
+            stage_id: moved.stageId,
+          },
+        });
+      }
       if (existingEvent.contact_id) {
         const auditUserId = await resolveAuditUserId(db, integration.account_id);
         await syncEventContactTag(db, {
@@ -470,13 +531,21 @@ export async function processUniversalLeadEvent(
     createdDeal = true;
   }
 
+  let movedStageId: string | null = null;
   if (eventLabel) {
     await applyEventLabelToDeal(db, {
       accountId: integration.account_id,
       dealId,
       label: eventLabel,
     });
+    const moved = await moveDealToLabelStage(db, {
+      accountId: integration.account_id,
+      dealId,
+      label: eventLabel,
+    });
+    movedStageId = moved?.stageId ?? null;
   }
+  const enteredStageId = movedStageId ?? (createdDeal ? stage.id : null);
 
   const { error: updateError } = await db
     .from('lead_integration_events')
@@ -503,7 +572,7 @@ export async function processUniversalLeadEvent(
         console.error('Failed to sync webhook event contact tag:', error);
       }
     }
-    if (createdDeal) {
+    if (enteredStageId) {
       await runAutomationsForTrigger({
         accountId: integration.account_id,
         triggerType: 'deal_stage_entered',
@@ -511,7 +580,7 @@ export async function processUniversalLeadEvent(
         context: {
           deal_id: dealId,
           pipeline_id: integration.pipeline_id,
-          stage_id: stage.id,
+          stage_id: enteredStageId,
         },
       });
     }
