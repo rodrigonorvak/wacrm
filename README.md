@@ -93,6 +93,16 @@ Open <http://localhost:3000>. You'll be redirected to `/login` (or
 Prefer containers? See [docs/docker.md](./docs/docker.md) for the
 Dockerfile + Docker Compose setup.
 
+### Route inbound WhatsApp messages to a pipeline
+
+Create an automation with the **Received Message (including flows)**
+trigger and the **Send to Pipeline** action. Select a pipeline and stage,
+then activate it. Every new inbound WhatsApp message is considered,
+including messages consumed by a flow. If the contact already has a deal
+in that pipeline (including a won or lost deal), the existing deal stays
+where it is. This does not process messages received before activation.
+Apply the Supabase migrations before using this action.
+
 ## 🚀 Deploy on Hostinger (recommended)
 
 <p align="center">

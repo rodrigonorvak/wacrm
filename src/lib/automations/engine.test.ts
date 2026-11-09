@@ -13,6 +13,9 @@ const h = vi.hoisted(() => ({
     upsertCalls: [] as { table: string; payload: unknown }[],
     logInserts: [] as Record<string, unknown>[],
     logUpdates: [] as Record<string, unknown>[],
+    rpcCalls: [] as { name: string; args: unknown }[],
+    pipelineResult: true as boolean | null,
+    pipelineError: null as { message: string } | null,
   },
 }));
 
@@ -93,7 +96,13 @@ vi.mock("./admin-client", () => {
         state.fromCalls.push(t);
         return builder(t);
       },
-      rpc: () => Promise.resolve({ error: null }),
+      rpc: (name: string, args: unknown) => {
+        state.rpcCalls.push({ name, args });
+        if (name === "automation_send_to_pipeline") {
+          return Promise.resolve({ data: state.pipelineResult, error: state.pipelineError });
+        }
+        return Promise.resolve({ error: null });
+      },
     }),
   };
 });
@@ -119,6 +128,44 @@ beforeEach(() => {
   h.state.upsertCalls = [];
   h.state.logInserts = [];
   h.state.logUpdates = [];
+  h.state.rpcCalls = [];
+  h.state.pipelineResult = true;
+  h.state.pipelineError = null;
+});
+
+describe("send to pipeline", () => {
+  function prepare() {
+    h.state.owned = { id: "c1" };
+    h.state.automations = [automationWithUpdateStep()];
+    h.state.steps = [{
+      id: "s1", automation_id: "a1", step_type: "send_to_pipeline", position: 0,
+      parent_step_id: null, step_config: { pipeline_id: "p1", stage_id: "stage1" },
+    }];
+  }
+
+  it.each([true, false])("calls the account-scoped RPC (created: %s)", async (created) => {
+    prepare();
+    h.state.pipelineResult = created;
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT, triggerType: "any_inbound_message", contactId: "c1",
+      context: { conversation_id: "conv1" },
+    });
+    expect(h.state.rpcCalls).toContainEqual({
+      name: "automation_send_to_pipeline",
+      args: {
+        p_automation_id: "a1", p_account_id: ACCOUNT, p_contact_id: "c1",
+        p_pipeline_id: "p1", p_stage_id: "stage1", p_conversation_id: "conv1",
+      },
+    });
+    expect(JSON.stringify(h.state.logUpdates)).toContain(created ? "deal created" : "existing deal preserved");
+  });
+
+  it("records RPC errors as failures", async () => {
+    prepare();
+    h.state.pipelineError = { message: "invalid stage" };
+    await runAutomationsForTrigger({ accountId: ACCOUNT, triggerType: "any_inbound_message", contactId: "c1" });
+    expect(JSON.stringify(h.state.logUpdates)).toContain("send_to_pipeline failed: invalid stage");
+  });
 });
 
 describe("runAutomationsForTrigger — tenant isolation", () => {

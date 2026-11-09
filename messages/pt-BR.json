@@ -1408,6 +1408,7 @@
       "openMenu": "Abrir menu",
       "triggers": {
         "new_message_received": "Nova mensagem",
+        "any_inbound_message": "Mensagem recebida (incluindo fluxos)",
         "first_inbound_message": "Primeira mensagem do contato",
         "keyword_match": "Palavra-chave identificada",
         "interactive_reply": "Resposta a botão/lista",
@@ -1451,6 +1452,7 @@
         "assign_conversation": "Atribuir conversa",
         "update_contact_field": "Atualizar campo do contato",
         "create_deal": "Criar negócio",
+        "send_to_pipeline": "Enviar para um funil",
         "wait": "Aguardar",
         "condition": "Condição (se/senão)",
         "send_webhook": "Enviar webhook",
@@ -1459,7 +1461,11 @@
       "triggers": {
         "new_message_received": {
           "label": "Nova mensagem recebida",
-          "hint": "Qualquer mensagem recebida"
+          "hint": "Mensagem recebida que não foi consumida por um fluxo"
+        },
+        "any_inbound_message": {
+          "label": "Mensagem recebida (incluindo fluxos)",
+          "hint": "Executa para cada mensagem recebida, mesmo durante um fluxo"
         },
         "first_inbound_message": {
           "label": "Primeira mensagem do contato",
@@ -1571,6 +1577,7 @@
       "addStep": "Adicionar etapa",
       "delete": "Excluir",
       "config": {
+        "sendToPipelineHint": "Se o contato já tiver um lead neste funil, ele permanece na coluna atual.",
         "messageText": "Texto da mensagem",
         "emailTemplateLabel": "Modelo de e-mail",
         "emailTemplatePlaceholder": "Selecione um modelo salvo",

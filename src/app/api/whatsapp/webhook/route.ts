@@ -854,9 +854,10 @@ async function processMessage(
     | 'new_contact_created'
     | 'first_inbound_message'
     | 'new_message_received'
+    | 'any_inbound_message'
     | 'keyword_match'
     | 'interactive_reply'
-  )[] = []
+  )[] = ['any_inbound_message']
   // Content-level triggers are suppressed when a flow consumed the
   // message — see the comment block above.
   if (!flowConsumed) {

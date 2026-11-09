@@ -1277,6 +1277,7 @@
       "openMenu": "메뉴 열기",
       "triggers": {
         "new_message_received": "새 메시지",
+        "any_inbound_message": "수신 메시지 (플로우 포함)",
         "first_inbound_message": "연락처의 첫 메시지",
         "keyword_match": "키워드 일치",
         "interactive_reply": "버튼 / 목록 응답",
@@ -1339,6 +1340,7 @@
         "assign_conversation": "대화 담당자 지정",
         "update_contact_field": "연락처 필드 업데이트",
         "create_deal": "딜 생성",
+        "send_to_pipeline": "파이프라인으로 보내기",
         "wait": "대기",
         "condition": "조건 (If/Else)",
         "send_webhook": "웹훅 보내기",
@@ -1347,7 +1349,11 @@
       "triggers": {
         "new_message_received": {
           "label": "새 메시지 수신",
-          "hint": "모든 수신 메시지"
+          "hint": "플로우가 처리하지 않은 수신 메시지"
+        },
+        "any_inbound_message": {
+          "label": "수신 메시지 (플로우 포함)",
+          "hint": "플로우 진행 중을 포함한 모든 수신 메시지에서 실행"
         },
         "first_inbound_message": {
           "label": "연락처의 첫 메시지",
@@ -1462,6 +1468,7 @@
       "addStep": "단계 추가",
       "delete": "삭제",
       "config": {
+        "sendToPipelineHint": "연락처에 이미 이 파이프라인의 딜이 있으면 현재 단계에 유지됩니다.",
         "messageText": "메시지 텍스트",
         "emailTemplateLabel": "이메일 템플릿",
         "emailTemplatePlaceholder": "저장된 템플릿 선택",

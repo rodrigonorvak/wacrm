@@ -122,6 +122,15 @@ describe("validateStepsForActivation", () => {
     ]);
   });
 
+  it("requires a pipeline and stage for send_to_pipeline, but no title", () => {
+    expect(validateStepsForActivation([
+      { step_type: "send_to_pipeline", step_config: {} },
+    ]).map((i) => i.path)).toEqual(["steps[0].pipeline_id", "steps[0].stage_id"]);
+    expect(validateStepsForActivation([
+      { step_type: "send_to_pipeline", step_config: { pipeline_id: "p1", stage_id: "s1" } },
+    ])).toEqual([]);
+  });
+
   it("requires an email template for email steps and a stage for stage triggers", () => {
     expect(
       validateStepsForActivation([

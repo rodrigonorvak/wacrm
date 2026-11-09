@@ -118,6 +118,7 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
   assign_conversation: { label: "assign_conversation", icon: UserCheck, border: "border-l-primary" },
   update_contact_field: { label: "update_contact_field", icon: PencilLine, border: "border-l-primary" },
   create_deal: { label: "create_deal", icon: Briefcase, border: "border-l-primary" },
+  send_to_pipeline: { label: "send_to_pipeline", icon: Briefcase, border: "border-l-primary" },
   wait: { label: "wait", icon: Hourglass, border: "border-l-border" },
   condition: { label: "condition", icon: GitBranch, border: "border-l-amber-500" },
   send_webhook: { label: "send_webhook", icon: Webhook, border: "border-l-primary" },
@@ -135,6 +136,7 @@ const ADDABLE_STEPS: AutomationStepType[] = [
   "assign_conversation",
   "update_contact_field",
   "create_deal",
+  "send_to_pipeline",
   "wait",
   "condition",
   "send_webhook",
@@ -143,6 +145,7 @@ const ADDABLE_STEPS: AutomationStepType[] = [
 
 const TRIGGER_OPTIONS: { value: AutomationTriggerType }[] = [
   { value: "new_message_received" },
+  { value: "any_inbound_message" },
   { value: "first_inbound_message" },
   { value: "keyword_match" },
   { value: "interactive_reply" },
@@ -195,6 +198,8 @@ function blankConfig(type: AutomationStepType): Record<string, unknown> {
       return { field: "name", value: "" }
     case "create_deal":
       return { pipeline_id: "", stage_id: "", title: "", value: 0 }
+    case "send_to_pipeline":
+      return { pipeline_id: "", stage_id: "" }
     case "wait":
       return { amount: 1, unit: "hours" }
     case "condition":
@@ -1459,6 +1464,18 @@ function StepEditor({
               className="bg-muted text-foreground"
             />
           </FieldBlock>
+        </>
+      )
+    case "send_to_pipeline":
+      return (
+        <>
+          <DealPipelineFields
+            pipelineId={(cfg.pipeline_id as string) ?? ""}
+            stageId={(cfg.stage_id as string) ?? ""}
+            onChange={(patch) => set(patch)}
+            t={t}
+          />
+          <p className="text-xs text-muted-foreground">{t("config.sendToPipelineHint")}</p>
         </>
       )
     case "create_deal":

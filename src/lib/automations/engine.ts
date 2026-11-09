@@ -17,6 +17,7 @@ import type {
   UpdateContactFieldStepConfig,
   WaitStepConfig,
   CreateDealStepConfig,
+  SendToPipelineStepConfig,
   AssignConversationStepConfig,
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
@@ -650,6 +651,25 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
         .eq('id', args.contactId)
         .eq('account_id', args.automation.account_id)
       return `${cfg.field} updated`
+    }
+
+    case 'send_to_pipeline': {
+      const cfg = step.step_config as SendToPipelineStepConfig
+      if (!args.contactId || !cfg.pipeline_id || !cfg.stage_id) {
+        throw new Error('send_to_pipeline needs contact, pipeline and stage')
+      }
+      const { data, error } = await db.rpc('automation_send_to_pipeline', {
+        p_automation_id: args.automation.id,
+        p_account_id: args.automation.account_id,
+        p_contact_id: args.contactId,
+        p_pipeline_id: cfg.pipeline_id,
+        p_stage_id: cfg.stage_id,
+        p_conversation_id: args.context.conversation_id ?? null,
+      })
+      if (error) throw new Error(`send_to_pipeline failed: ${error.message}`)
+      if (data === true) return 'deal created'
+      if (data === false) return 'existing deal preserved'
+      throw new Error('send_to_pipeline returned an invalid result')
     }
 
     case 'create_deal': {

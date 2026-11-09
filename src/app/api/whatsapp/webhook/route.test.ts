@@ -528,13 +528,24 @@ describe('inbound webhook: inbound media is mirrored (#466)', () => {
 })
 
 describe('inbound webhook: after() awaits automations (#368)', () => {
+  it('dispatches the all-message trigger even when a flow consumes the message', async () => {
+    h.dispatchInboundToFlows.mockResolvedValue({ consumed: true })
+    await runWebhook()
+    const triggers = h.runAutomationsForTrigger.mock.calls.map(
+      (call) => (call[0] as { triggerType: string }).triggerType,
+    )
+    expect(triggers).toContain('any_inbound_message')
+    expect(triggers).not.toContain('new_message_received')
+    expect(triggers).not.toContain('keyword_match')
+  })
+
   it('every triggered automation settles before the after() callback resolves', async () => {
     await runWebhook()
 
-    // first_inbound_message + new_message_received + keyword_match.
-    expect(h.state.automationStarted).toBe(3)
+    // first_inbound_message + any_inbound_message + new_message_received + keyword_match.
+    expect(h.state.automationStarted).toBe(4)
     // If the dispatches were fire-and-forget, completed would still be 0
     // here — the callback would have resolved before the timers fired.
-    expect(h.state.automationCompleted).toBe(3)
+    expect(h.state.automationCompleted).toBe(4)
   })
 })

@@ -101,6 +101,7 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
         issues.push({ path: `${path}.value`, message: 'field value is required' })
       }
       break
+    case 'send_to_pipeline':
     case 'create_deal':
       if (!nonEmpty(c.pipeline_id)) {
         issues.push({ path: `${path}.pipeline_id`, message: 'pipeline is required' })
@@ -108,7 +109,7 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
       if (!nonEmpty(c.stage_id)) {
         issues.push({ path: `${path}.stage_id`, message: 'stage is required' })
       }
-      if (!nonEmpty(c.title)) {
+      if (step.step_type === 'create_deal' && !nonEmpty(c.title)) {
         issues.push({ path: `${path}.title`, message: 'title is required' })
       }
       break

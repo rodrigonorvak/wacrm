@@ -587,6 +587,7 @@ export interface BroadcastRecipient {
 
 export type AutomationTriggerType =
   | 'new_message_received'
+  | 'any_inbound_message'
   | 'first_inbound_message'
   | 'keyword_match'
   | 'new_contact_created'
@@ -609,6 +610,7 @@ export type AutomationStepType =
   | 'assign_conversation'
   | 'update_contact_field'
   | 'create_deal'
+  | 'send_to_pipeline'
   | 'wait'
   | 'condition'
   | 'send_webhook'
@@ -704,6 +706,11 @@ export interface CreateDealStepConfig {
   value?: number;
 }
 
+export interface SendToPipelineStepConfig {
+  pipeline_id: string;
+  stage_id: string;
+}
+
 export interface WaitStepConfig {
   amount: number;
   unit: 'minutes' | 'hours' | 'days';
@@ -739,6 +746,7 @@ export type AutomationStepConfig =
   | AssignConversationStepConfig
   | UpdateContactFieldStepConfig
   | CreateDealStepConfig
+  | SendToPipelineStepConfig
   | WaitStepConfig
   | ConditionStepConfig
   | SendWebhookStepConfig
