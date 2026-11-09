@@ -80,7 +80,7 @@ interface TemplateFormData {
 const emptyForm: TemplateFormData = {
   name: '',
   category: 'Marketing',
-  language: 'en_US',
+  language: 'pt_BR',
   header_format: 'none',
   header_content: '',
   header_media_url: '',
@@ -217,7 +217,7 @@ export function TemplateManager() {
     return {
       name: form.name.trim(),
       category: form.category,
-      language: form.language.trim() || 'en_US',
+      language: form.language.trim() || 'pt_BR',
       header_type: form.header_format === 'none' ? undefined : form.header_format,
       header_content:
         form.header_format === 'text' ? form.header_content.trim() : undefined,
@@ -531,7 +531,7 @@ export function TemplateManager() {
                         {template.category}
                       </Badge>
                       <Badge className={`text-xs border ${status.classes}`}>
-                        {status.label}
+                        {t(`statuses.${statusKey}`)}
                       </Badge>
                       {template.language && (
                         <span className="text-xs text-muted-foreground uppercase">

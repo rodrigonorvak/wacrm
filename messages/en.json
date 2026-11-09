@@ -2011,6 +2011,16 @@
         "Utility": "Utility",
         "Authentication": "Authentication"
       },
+      "statuses": {
+        "DRAFT": "Draft",
+        "PENDING": "Pending",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "PAUSED": "Paused",
+        "DISABLED": "Disabled",
+        "IN_APPEAL": "In Appeal",
+        "PENDING_DELETION": "Pending Deletion"
+      },
       "language": "Language",
       "langFixed": "Language is fixed once a template exists on Meta.",
       "langHint": "Must match the exact code on Meta — <code>en_US</code> and <code>en</code> are distinct.",

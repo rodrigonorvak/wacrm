@@ -486,6 +486,16 @@
         "Utility": "Utilidade",
         "Authentication": "Autenticação"
       },
+      "statuses": {
+        "DRAFT": "Rascunho",
+        "PENDING": "Pendente",
+        "APPROVED": "Aprovado",
+        "REJECTED": "Rejeitado",
+        "PAUSED": "Pausado",
+        "DISABLED": "Desativado",
+        "IN_APPEAL": "Em análise de recurso",
+        "PENDING_DELETION": "Exclusão pendente"
+      },
       "language": "Language",
       "langFixed": "Language is fixed once a template exists on Meta.",
       "langHint": "Must match the exact code on Meta — <code>en_US</code> and <code>en</code> are distinct.",

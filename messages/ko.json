@@ -2011,6 +2011,16 @@
         "Utility": "유틸리티",
         "Authentication": "인증"
       },
+      "statuses": {
+        "DRAFT": "초안",
+        "PENDING": "대기 중",
+        "APPROVED": "승인됨",
+        "REJECTED": "거부됨",
+        "PAUSED": "일시 중지됨",
+        "DISABLED": "비활성화됨",
+        "IN_APPEAL": "이의 신청 중",
+        "PENDING_DELETION": "삭제 대기 중"
+      },
       "language": "언어",
       "langFixed": "템플릿이 Meta에 존재하면 언어가 고정됩니다.",
       "langHint": "Meta의 정확한 코드와 일치해야 합니다 — <code>en_US</code>와 <code>en</code>은 다른 코드입니다.",
