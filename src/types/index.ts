@@ -799,6 +799,7 @@ export interface AutomationLogStepResult {
   step_type: AutomationStepType;
   status: 'success' | 'skipped' | 'failed';
   detail?: string;
+  email_delivery?: { recipient: string; subject: string; sent_at: string };
 }
 
 export interface AutomationLog {

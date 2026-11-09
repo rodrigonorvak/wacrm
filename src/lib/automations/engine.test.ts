@@ -4,7 +4,9 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 // so the vi.mock factory below can close over it.
 const h = vi.hoisted(() => ({
   state: {
-    owned: null as { id: string } | null,
+    owned: null as { id: string; name?: string; email?: string } | null,
+    emailTemplate: null as Record<string, unknown> | null,
+    emailSender: null as Record<string, unknown> | null,
     ownedCustomField: null as { id: string } | null,
     automations: [] as Record<string, unknown>[],
     steps: [] as Record<string, unknown>[],
@@ -50,6 +52,8 @@ vi.mock("./admin-client", () => {
       return { data: null, error: null };
     }
     if (table === "automations") return { data: state.automations, error: null };
+    if (table === "email_automation_templates") return { data: state.emailTemplate, error: null };
+    if (table === "email_sender_connections") return { data: state.emailSender, error: null };
     if (table === "automation_logs") {
       if (type === "insert") {
         state.logInserts.push(ops.payload as Record<string, unknown>);
@@ -117,13 +121,34 @@ vi.mock("./meta-send", () => ({
   engineSendInteractive: vi.fn(async () => ({ whatsapp_message_id: "m1" })),
 }));
 
+vi.mock("@/lib/email-senders/encryption", () => ({
+  decryptSenderPassword: vi.fn(() => "password"),
+}));
+vi.mock("@/lib/email-senders/smtp", () => ({
+  sendEmailThroughSender: vi.fn(async () => {}),
+}));
+vi.mock("@/lib/email-campaigns/content", () => ({
+  parseEmailCampaignContent: vi.fn(() => ({ blocks: [{ text: "Hello", alt: "" }] })),
+}));
+vi.mock("@/lib/email-campaigns/render", () => ({
+  renderEmailCampaign: vi.fn(() => ({ text: "Hello", html: "<p>Hello</p>" })),
+}));
+vi.mock("@/lib/email-campaigns/unsubscribe", () => ({
+  isEmailAddressUnsubscribed: vi.fn(async () => false),
+  createEmailUnsubscribeLink: vi.fn(() => ({ url: "https://example.com/unsubscribe", headers: {} })),
+}));
+
 import { runAutomationsForTrigger, triggerMatches } from "./engine";
+import { sendEmailThroughSender } from "@/lib/email-senders/smtp";
+import { isEmailAddressUnsubscribed } from "@/lib/email-campaigns/unsubscribe";
 import type { Automation, KeywordMatchTriggerConfig } from "@/types";
 
 const ACCOUNT = "acct-1";
 
 beforeEach(() => {
   h.state.owned = null;
+  h.state.emailTemplate = null;
+  h.state.emailSender = null;
   h.state.ownedCustomField = null;
   h.state.automations = [];
   h.state.steps = [];
@@ -173,7 +198,7 @@ describe("send to pipeline", () => {
   });
 
   it("registers the reply move only for a newly created lead", async () => {
-    h.state.owned = { id: "c1" };
+    h.state.owned = { id: "c1", name: "Ana" };
     h.state.automations = [{
       ...automationWithUpdateStep(),
       trigger_type: "any_inbound_message",
@@ -214,7 +239,57 @@ describe("send to pipeline", () => {
     });
     expect(h.state.rpcCalls.map(({ name }) => name)).not.toContain("automation_register_deal_reply_move");
   });
+});
 
+describe("automated email send history", () => {
+  it("records the actual subject, recipient and send time after SMTP succeeds", async () => {
+    h.state.owned = { id: "c1", name: "Ana", email: "ana@example.com" };
+    h.state.automations = [automationWithUpdateStep()];
+    h.state.steps = [{
+      id: "s1", automation_id: "a1", step_type: "send_email", position: 0,
+      parent_step_id: null, step_config: { email_template_id: "t1" },
+    }];
+    h.state.emailTemplate = { id: "t1", sender_connection_id: "sender1", subject: "Oi {{contact.name}}", preheader: "", content_json: {} };
+    h.state.emailSender = { id: "sender1", account_id: ACCOUNT, encrypted_password: "encrypted" };
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://example.com");
+    try {
+      await runAutomationsForTrigger({ accountId: ACCOUNT, triggerType: "new_message_received", contactId: "c1" });
+      expect(sendEmailThroughSender).toHaveBeenCalled();
+      expect(h.state.logUpdates).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          steps_executed: [expect.objectContaining({
+            step_type: "send_email",
+            email_delivery: {
+              recipient: "ana@example.com",
+              subject: "Oi Ana",
+              sent_at: expect.any(String),
+            },
+          })],
+        }),
+      ]));
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("does not record a send when the recipient unsubscribed", async () => {
+    h.state.owned = { id: "c1", email: "ana@example.com" };
+    h.state.automations = [automationWithUpdateStep()];
+    h.state.steps = [{
+      id: "s1", automation_id: "a1", step_type: "send_email", position: 0,
+      parent_step_id: null, step_config: { email_template_id: "t1" },
+    }];
+    h.state.emailTemplate = { id: "t1", sender_connection_id: "sender1" };
+    vi.mocked(isEmailAddressUnsubscribed).mockResolvedValueOnce(true);
+    vi.mocked(sendEmailThroughSender).mockClear();
+    await runAutomationsForTrigger({ accountId: ACCOUNT, triggerType: "new_message_received", contactId: "c1" });
+    expect(sendEmailThroughSender).not.toHaveBeenCalled();
+    expect(h.state.logUpdates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        steps_executed: [expect.objectContaining({ detail: "email skipped: recipient unsubscribed" })],
+      }),
+    ]));
+  });
 });
 
 describe("runAutomationsForTrigger — tenant isolation", () => {

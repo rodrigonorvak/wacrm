@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner';
 import { useLocale, useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
+import { AutomationEmailHistory } from '@/components/email-campaigns/automation-email-history';
 
 interface CampaignRow {
   id: string;
@@ -265,6 +266,8 @@ export default function EmailCampaignsPage() {
           </div>
         </div>
       )}
+
+      <AutomationEmailHistory />
 
       {loading ? (
         <div className="flex h-48 items-center justify-center">

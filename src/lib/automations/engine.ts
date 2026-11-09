@@ -350,12 +350,12 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
         continue
       }
 
-      const detail = await runStep(step, args)
+      const stepResult = await runStep(step, args)
       results.push({
         step_id: step.id,
         step_type: step.step_type,
         status: 'success',
-        detail,
+        ...(typeof stepResult === 'string' ? { detail: stepResult } : stepResult),
       })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -379,7 +379,10 @@ async function executeStepsFrom(args: ExecuteArgs): Promise<void> {
   }
 }
 
-async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string> {
+async function runStep(
+  step: AutomationStep,
+  args: ExecuteArgs,
+): Promise<string | { detail: string; email_delivery: NonNullable<AutomationLogStepResult['email_delivery']> }> {
   const db = supabaseAdmin()
 
   switch (step.step_type) {
@@ -531,7 +534,14 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
           headers: unsubscribe.headers,
         },
       )
-      return `email sent to ${contact.email}`
+      return {
+        detail: `email sent to ${contact.email}`,
+        email_delivery: {
+          recipient: contact.email,
+          subject,
+          sent_at: new Date().toISOString(),
+        },
+      }
     }
 
     case 'add_tag': {

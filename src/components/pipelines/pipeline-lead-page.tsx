@@ -76,6 +76,12 @@ type DealStageHistoryRow = {
   changed_at: string;
 };
 type DealStageHistoryEntry = DealStageHistoryRow & { actor_name: string | null };
+type EmailHistoryEntry = {
+  id: string;
+  campaign_name: string;
+  subject: string;
+  sent_at: string;
+};
 type DealReminder = {
   id: string;
   remind_at: string;
@@ -144,6 +150,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [stagesLoadedFor, setStagesLoadedFor] = useState("");
   const [stageHistory, setStageHistory] = useState<DealStageHistoryEntry[]>([]);
+  const [emailHistory, setEmailHistory] = useState<EmailHistoryEntry[]>([]);
   const [historyLoadedKey, setHistoryLoadedKey] = useState("");
   const [historyError, setHistoryError] = useState(false);
   const [historyRetry, setHistoryRetry] = useState(0);
@@ -180,7 +187,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const loading = !dealRequestKey || loadedDealKey !== dealRequestKey;
   const contentLoading = Boolean(deal?.contact_id && loadedContactId !== deal.contact_id);
   const stagesLoading = Boolean(deal?.pipeline_id && stagesLoadedFor !== deal.pipeline_id);
-  const historyRequestKey = deal ? `${deal.id}:${deal.stage_id}:${historyRetry}` : "";
+  const historyRequestKey = deal ? `${deal.id}:${deal.contact_id ?? ""}:${deal.stage_id}:${historyRetry}` : "";
   const historyLoading = tab === "history" && !!historyRequestKey && historyLoadedKey !== historyRequestKey;
 
   useEffect(() => {
@@ -363,22 +370,30 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   useEffect(() => {
     if (tab !== "history" || !deal?.id || !historyRequestKey) return;
     let cancelled = false;
-    void supabase
-      .from("deal_stage_history")
-      .select("id, from_stage_name, to_stage_name, changed_by, changed_at")
-      .eq("deal_id", deal.id)
-      .order("changed_at", { ascending: true })
-      .then(async ({ data, error }) => {
+    void (async () => {
+      try {
+        const [historyResult, emailResponse] = await Promise.all([
+          supabase
+            .from("deal_stage_history")
+            .select("id, from_stage_name, to_stage_name, changed_by, changed_at")
+            .eq("deal_id", deal.id)
+            .order("changed_at", { ascending: true }),
+          fetch(`/api/deals/${deal.id}/email-history`),
+        ]);
         if (cancelled) return;
-        if (error) {
-          console.error("Failed to load deal stage history:", error.message);
+        if (historyResult.error) {
+          console.error("Failed to load deal stage history:", historyResult.error.message);
           setHistoryError(true);
           setStageHistory([]);
+          setEmailHistory([]);
           setHistoryLoadedKey(historyRequestKey);
           return;
         }
-
-        const rows = (data as unknown as DealStageHistoryRow[] | null) ?? [];
+        if (!emailResponse.ok) {
+          throw new Error(`Email history request failed with status ${emailResponse.status}`);
+        }
+        const emailResult = (await emailResponse.json()) as { emails: EmailHistoryEntry[] };
+        const rows = (historyResult.data as unknown as DealStageHistoryRow[] | null) ?? [];
         const actorIds = [...new Set(rows.flatMap((row) => row.changed_by ? [row.changed_by] : []))];
         let actorNames = new Map<string, string>();
         if (actorIds.length > 0) {
@@ -397,9 +412,18 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           ...row,
           actor_name: row.changed_by ? actorNames.get(row.changed_by) ?? null : null,
         })));
+        setEmailHistory(emailResult.emails);
         setHistoryError(false);
         setHistoryLoadedKey(historyRequestKey);
-      });
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Failed to load lead email history:", error);
+        setHistoryError(true);
+        setStageHistory([]);
+        setEmailHistory([]);
+        setHistoryLoadedKey(historyRequestKey);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -932,30 +956,61 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                   Tentar novamente
                 </Button>
               </div>
-            ) : stageHistory.length === 0 ? (
+            ) : stageHistory.length === 0 && emailHistory.length === 0 ? (
               <div className="flex min-h-[380px] flex-col items-center justify-center gap-3 p-6 text-center">
                 <History className="size-7 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">Nenhum histórico registrado.</p>
               </div>
             ) : (
               <ol className="relative max-h-[min(68vh,720px)] space-y-3 overflow-y-auto p-4 sm:p-5">
-                {stageHistory.map((entry, index) => (
-                  <li key={entry.id} className="relative pl-6">
-                    {index < stageHistory.length - 1 && (
+                {[
+                  ...stageHistory.map((entry) => ({
+                    kind: "stage" as const,
+                    id: entry.id,
+                    date: entry.changed_at,
+                    entry,
+                  })),
+                  ...emailHistory.map((entry) => ({
+                    kind: "email" as const,
+                    id: entry.id,
+                    date: entry.sent_at,
+                    entry,
+                  })),
+                ]
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                  .map((item, index, historyItems) => (
+                  <li key={`${item.kind}-${item.id}`} className="relative pl-6">
+                    {index < historyItems.length - 1 && (
                       <span aria-hidden="true" className="absolute bottom-[-12px] left-[7px] top-3 w-px bg-border" />
                     )}
-                    <span aria-hidden="true" className="absolute left-0 top-3 size-4 rounded-full border-4 border-background bg-muted-foreground/40" />
+                    <span aria-hidden="true" className={`absolute left-0 top-3 size-4 rounded-full border-4 border-background ${item.kind === "email" ? "bg-blue-500" : "bg-muted-foreground/40"}`} />
                     <article className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
-                      <p className="text-foreground">
-                        {entry.from_stage_name
-                          ? `Mudou etapa de "${entry.from_stage_name}" para "${entry.to_stage_name}"`
-                          : `Lead entrou em "${entry.to_stage_name}"`}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {entry.actor_name || (entry.changed_by ? "Equipe" : "Sistema")}
-                        <span aria-hidden="true"> · </span>
-                        <time dateTime={entry.changed_at}>{formatHistoryDateTime(entry.changed_at)}</time>
-                      </p>
+                      {item.kind === "stage" ? (
+                        <>
+                          <p className="text-foreground">
+                            {item.entry.from_stage_name
+                              ? `Mudou etapa de "${item.entry.from_stage_name}" para "${item.entry.to_stage_name}"`
+                              : `Lead entrou em "${item.entry.to_stage_name}"`}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {item.entry.actor_name || (item.entry.changed_by ? "Equipe" : "Sistema")}
+                            <span aria-hidden="true"> · </span>
+                            <time dateTime={item.entry.changed_at}>{formatHistoryDateTime(item.entry.changed_at)}</time>
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="flex items-center gap-2 text-foreground">
+                            <Mail aria-hidden="true" className="size-4 shrink-0 text-blue-600" />
+                            E-mail enviado pelo CRM: &quot;{item.entry.subject}&quot;
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Campanha: {item.entry.campaign_name}
+                            <span aria-hidden="true"> · </span>
+                            <time dateTime={item.entry.sent_at}>{formatHistoryDateTime(item.entry.sent_at)}</time>
+                          </p>
+                        </>
+                      )}
                     </article>
                   </li>
                 ))}
