@@ -42,6 +42,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageBubble } from "./message-bubble";
 import { MessageActions } from "./message-actions";
+import { InboxLeadActions } from "./inbox-lead-actions";
 import { MediaLightbox } from "./media-lightbox";
 import { collectMediaGallery } from "@/lib/media/gallery";
 import {
@@ -106,6 +107,7 @@ interface MessageThreadProps {
    */
   contactPanelOpen?: boolean;
   onToggleContactPanel?: () => void;
+  onDealUpdated?: () => void;
 }
 
 function formatDateSeparator(dateStr: string, t: ReturnType<typeof useTranslations>, locale: string): string {
@@ -166,6 +168,7 @@ export function MessageThread({
   onRefresh,
   contactPanelOpen,
   onToggleContactPanel,
+  onDealUpdated,
 }: MessageThreadProps) {
   const t = useTranslations("Inbox.messageThread");
   const locale = useLocale();
@@ -904,7 +907,12 @@ export function MessageThread({
     // clipped and the hover toolbar overlaps the Tags panel. Letting the
     // root shrink lets the bubbles' break-words / max-w caps apply.
     // Issue #257.
-    <div className={cn("flex min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
+    <div className={cn("relative flex min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
+      <InboxLeadActions
+        key={contact.id}
+        contactId={contact.id}
+        onDealUpdated={onDealUpdated}
+      />
       <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the

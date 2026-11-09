@@ -48,6 +48,7 @@ function InboxPageInner() {
     useState<Conversation | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [leadDataRefreshToken, setLeadDataRefreshToken] = useState(0);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
@@ -400,6 +401,10 @@ function InboxPageInner() {
     setResyncToken((n) => n + 1);
   }, []);
 
+  const handleDealUpdated = useCallback(() => {
+    setLeadDataRefreshToken((value) => value + 1);
+  }, []);
+
   const handleConversationsLoaded = useCallback(
     (loaded: Conversation[]) => {
       setConversations(loaded);
@@ -623,6 +628,7 @@ function InboxPageInner() {
             onRefresh={handleManualRefresh}
             contactPanelOpen={contactPanelOpen}
             onToggleContactPanel={handleToggleContactPanel}
+            onDealUpdated={handleDealUpdated}
           />
         </div>
 
@@ -632,7 +638,7 @@ function InboxPageInner() {
             toggle — which is itself desktop-only — never affects it. */}
         {contactPanelOpen && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} />
+            <ContactSidebar contact={activeContact} refreshToken={leadDataRefreshToken} />
           </div>
         )}
       </div>

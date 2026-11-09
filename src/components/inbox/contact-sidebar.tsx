@@ -25,9 +25,10 @@ import { inboxDateLocale } from "@/lib/inbox/date-locale";
 
 interface ContactSidebarProps {
   contact: Contact | null;
+  refreshToken?: number;
 }
 
-export function ContactSidebar({ contact }: ContactSidebarProps) {
+export function ContactSidebar({ contact, refreshToken = 0 }: ContactSidebarProps) {
   const tSidebar = useTranslations("Inbox.sidebar");
   const tThread = useTranslations("Inbox.messageThread");
   const locale = useLocale();
@@ -81,7 +82,7 @@ export function ContactSidebar({ contact }: ContactSidebarProps) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContactData();
-  }, [fetchContactData]);
+  }, [fetchContactData, refreshToken]);
 
   const handleCopyPhone = useCallback(async () => {
     if (!contact?.phone) return;
