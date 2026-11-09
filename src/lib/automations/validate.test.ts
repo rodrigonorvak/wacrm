@@ -131,6 +131,15 @@ describe("validateStepsForActivation", () => {
     ])).toEqual([]);
   });
 
+  it("requires a pipeline and destination stage for move_deal_on_reply", () => {
+    expect(validateStepsForActivation([
+      { step_type: "move_deal_on_reply", step_config: {} },
+    ]).map((issue) => issue.path)).toEqual([
+      "steps[0].pipeline_id",
+      "steps[0].stage_id",
+    ]);
+  });
+
   it("requires an email template for email steps and a stage for stage triggers", () => {
     expect(
       validateStepsForActivation([

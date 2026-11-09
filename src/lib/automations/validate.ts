@@ -103,6 +103,7 @@ function validateOne(step: StepLike, path: string, issues: ValidationIssue[]): v
       break
     case 'send_to_pipeline':
     case 'create_deal':
+    case 'move_deal_on_reply':
       if (!nonEmpty(c.pipeline_id)) {
         issues.push({ path: `${path}.pipeline_id`, message: 'pipeline is required' })
       }

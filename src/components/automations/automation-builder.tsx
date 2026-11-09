@@ -119,6 +119,7 @@ const STEP_META: Record<AutomationStepType, StepMeta> = {
   update_contact_field: { label: "update_contact_field", icon: PencilLine, border: "border-l-primary" },
   create_deal: { label: "create_deal", icon: Briefcase, border: "border-l-primary" },
   send_to_pipeline: { label: "send_to_pipeline", icon: Briefcase, border: "border-l-primary" },
+  move_deal_on_reply: { label: "move_deal_on_reply", icon: Briefcase, border: "border-l-primary" },
   wait: { label: "wait", icon: Hourglass, border: "border-l-border" },
   condition: { label: "condition", icon: GitBranch, border: "border-l-amber-500" },
   send_webhook: { label: "send_webhook", icon: Webhook, border: "border-l-primary" },
@@ -137,6 +138,7 @@ const ADDABLE_STEPS: AutomationStepType[] = [
   "update_contact_field",
   "create_deal",
   "send_to_pipeline",
+  "move_deal_on_reply",
   "wait",
   "condition",
   "send_webhook",
@@ -199,6 +201,8 @@ function blankConfig(type: AutomationStepType): Record<string, unknown> {
     case "create_deal":
       return { pipeline_id: "", stage_id: "", title: "", value: 0 }
     case "send_to_pipeline":
+      return { pipeline_id: "", stage_id: "" }
+    case "move_deal_on_reply":
       return { pipeline_id: "", stage_id: "" }
     case "wait":
       return { amount: 1, unit: "hours" }
@@ -575,6 +579,51 @@ function DealPipelineFields({
           {stageId && pipelineId && !selectedStage && (
             <option value={stageId}>{t("pipelines.unknownStage", { id: stageId })}</option>
           )}
+        </select>
+      </FieldBlock>
+    </>
+  )
+}
+
+function ReplyStageFields({
+  pipelineId,
+  stageId,
+  onChange,
+  t,
+}: {
+  pipelineId: string
+  stageId: string
+  onChange: (patch: { pipeline_id: string; stage_id: string }) => void
+  t: ReturnType<typeof useTranslations>
+}) {
+  const { pipelines, stages } = useResources()
+  const stageOptions = stages.filter((stage) => stage.pipeline_id === pipelineId)
+
+  return (
+    <>
+      <FieldBlock label={t("pipelines.pipelineLabel")}>
+        <select
+          value={pipelineId}
+          onChange={(event) => onChange({ pipeline_id: event.target.value, stage_id: "" })}
+          className={SELECT_CLASS}
+        >
+          <option value="">{t("pipelines.selectPipeline")}</option>
+          {pipelines.map((pipeline) => (
+            <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>
+          ))}
+        </select>
+      </FieldBlock>
+      <FieldBlock label={t("pipelines.stageLabel")}>
+        <select
+          value={stageId}
+          onChange={(event) => onChange({ pipeline_id: pipelineId, stage_id: event.target.value })}
+          className={SELECT_CLASS}
+          disabled={!pipelineId || stageOptions.length === 0}
+        >
+          <option value="">{pipelineId ? t("pipelines.selectStage") : t("pipelines.selectPipelineFirst")}</option>
+          {stageOptions.map((stage) => (
+            <option key={stage.id} value={stage.id}>{stage.name}</option>
+          ))}
         </select>
       </FieldBlock>
     </>
@@ -1476,6 +1525,18 @@ function StepEditor({
             t={t}
           />
           <p className="text-xs text-muted-foreground">{t("config.sendToPipelineHint")}</p>
+        </>
+      )
+    case "move_deal_on_reply":
+      return (
+        <>
+          <ReplyStageFields
+            pipelineId={(cfg.pipeline_id as string) ?? ""}
+            stageId={(cfg.stage_id as string) ?? ""}
+            onChange={(patch) => set(patch)}
+            t={t}
+          />
+          <p className="text-xs text-muted-foreground">{t("config.moveDealOnReplyHint")}</p>
         </>
       )
     case "create_deal":

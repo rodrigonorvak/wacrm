@@ -75,6 +75,8 @@ export class SendMessageError extends Error {
 
 export interface SendMessageParams {
   conversationId: string;
+  /** Set only by the authenticated dashboard composer, not the public API or automations. */
+  crmAgentUserId?: string;
   messageType: string;
   contentText?: string | null;
   mediaUrl?: string | null;
@@ -95,6 +97,7 @@ export interface SendMessageResult {
   messageId: string;
   /** Meta's `wamid` for the delivered message. */
   whatsappMessageId: string;
+  stageMoveWarning?: string;
 }
 
 /**
@@ -191,6 +194,7 @@ export async function sendMessageToConversation(
 ): Promise<SendMessageResult> {
   const {
     conversationId,
+    crmAgentUserId,
     messageType,
     contentText,
     mediaUrl,
@@ -532,5 +536,23 @@ export async function sendMessageToConversation(
     );
   }
 
-  return { messageId: messageRecord.id, whatsappMessageId: waMessageId };
+  let stageMoveWarning: string | undefined
+  if (crmAgentUserId) {
+    try {
+      const { error } = await supabaseAdmin().rpc('automation_move_deal_on_crm_reply', {
+        p_account_id: accountId,
+        p_conversation_id: conversationId,
+        p_actor_user_id: crmAgentUserId,
+      })
+      if (error) {
+        stageMoveWarning = error.message
+        console.error('[send-message] CRM reply pipeline move failed:', error.message)
+      }
+    } catch (error) {
+      stageMoveWarning = error instanceof Error ? error.message : String(error)
+      console.error('[send-message] CRM reply pipeline move failed:', error)
+    }
+  }
+
+  return { messageId: messageRecord.id, whatsappMessageId: waMessageId, stageMoveWarning };
 }

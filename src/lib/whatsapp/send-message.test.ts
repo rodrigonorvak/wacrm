@@ -7,6 +7,10 @@ import {
   type SendMessageParams,
 } from './send-message';
 
+const h = vi.hoisted(() => ({
+  crmStageMoveCalls: [] as { name: string; args: Record<string, unknown> }[],
+}));
+
 // A db that explodes if touched — these tests cover the param
 // validation that MUST short-circuit before any query runs.
 function noDb(): SupabaseClient {
@@ -183,8 +187,12 @@ vi.mock('@/lib/whatsapp/encryption', () => ({
 }));
 
 vi.mock('@/lib/flows/admin-client', () => ({
-  // Only used for the best-effort "pause active flow run" write.
+  // Used for pausing active flows and advancing a lead after a CRM reply.
   supabaseAdmin: () => ({
+    rpc: (name: string, args: Record<string, unknown>) => {
+      h.crmStageMoveCalls.push({ name, args });
+      return Promise.resolve({ data: 1, error: null });
+    },
     from: () => ({
       update: () => ({
         eq: () => ({ eq: () => ({ eq: async () => ({ error: null }) }) }),
@@ -344,5 +352,32 @@ describe('sendMessageToConversation — template persistence (#483)', () => {
     // name rather than inventing a body.
     expect(captured.message?.content_text).toBeNull();
     expect(captured.conversation?.last_message_text).toBe('[template]');
+  });
+});
+
+describe('sendMessageToConversation — CRM reply stage move', () => {
+  it('only attempts the move when the authenticated CRM agent is supplied', async () => {
+    h.crmStageMoveCalls = [];
+    const params: SendMessageParams = {
+      conversationId: 'cv-1',
+      messageType: 'text',
+      contentText: 'Hello',
+    };
+
+    await sendMessageToConversation(sendPathDb([], {}), 'acct-1', params);
+    expect(h.crmStageMoveCalls).toHaveLength(0);
+
+    await sendMessageToConversation(sendPathDb([], {}), 'acct-1', {
+      ...params,
+      crmAgentUserId: 'agent-1',
+    });
+    expect(h.crmStageMoveCalls).toEqual([{
+      name: 'automation_move_deal_on_crm_reply',
+      args: {
+        p_account_id: 'acct-1',
+        p_conversation_id: 'cv-1',
+        p_actor_user_id: 'agent-1',
+      },
+    }]);
   });
 });

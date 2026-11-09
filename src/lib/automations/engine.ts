@@ -18,6 +18,7 @@ import type {
   WaitStepConfig,
   CreateDealStepConfig,
   SendToPipelineStepConfig,
+  MoveDealOnReplyStepConfig,
   AssignConversationStepConfig,
 } from '@/types'
 import { supabaseAdmin } from './admin-client'
@@ -227,7 +228,13 @@ async function executeAutomation(automation: Automation, input: DispatchInput) {
   await executeStepsFrom({
     automation,
     contactId: input.contactId ?? null,
-    context: input.context ?? {},
+    context: {
+      ...(input.context ?? {}),
+      vars: {
+        ...(input.context?.vars ?? {}),
+        __created_pipeline_deal_id: null,
+      },
+    },
     parentStepId: null,
     branch: null,
     startPosition: 0,
@@ -667,9 +674,38 @@ async function runStep(step: AutomationStep, args: ExecuteArgs): Promise<string>
         p_conversation_id: args.context.conversation_id ?? null,
       })
       if (error) throw new Error(`send_to_pipeline failed: ${error.message}`)
-      if (data === true) return 'deal created'
-      if (data === false) return 'existing deal preserved'
-      throw new Error('send_to_pipeline returned an invalid result')
+      if (typeof data !== 'string' && data !== null) {
+        throw new Error('send_to_pipeline returned an invalid result')
+      }
+      args.context.vars = {
+        ...(args.context.vars ?? {}),
+        __created_pipeline_deal_id: data,
+      }
+      return data ? 'deal created' : 'existing deal preserved'
+    }
+
+    case 'move_deal_on_reply': {
+      const cfg = step.step_config as MoveDealOnReplyStepConfig
+      const dealId = args.context.vars?.__created_pipeline_deal_id
+      if (!args.contactId || typeof dealId !== 'string' || !dealId) {
+        return 'no new lead created by this automation; reply move not armed'
+      }
+      if (!cfg.pipeline_id || !cfg.stage_id) {
+        throw new Error('move_deal_on_reply needs pipeline and destination stage')
+      }
+      const { data, error } = await db.rpc('automation_register_deal_reply_move', {
+        p_automation_id: args.automation.id,
+        p_account_id: args.automation.account_id,
+        p_deal_id: dealId,
+        p_pipeline_id: cfg.pipeline_id,
+        p_destination_stage_id: cfg.stage_id,
+        p_conversation_id: args.context.conversation_id ?? null,
+      })
+      if (error) throw new Error(`move_deal_on_reply failed: ${error.message}`)
+      if (data !== true && data !== false) {
+        throw new Error('move_deal_on_reply returned an invalid result')
+      }
+      return data ? 'waiting for a manual CRM reply' : 'lead reply move already registered'
     }
 
     case 'create_deal': {

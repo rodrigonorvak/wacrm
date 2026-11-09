@@ -288,7 +288,8 @@
       "sendTemplateError": "템플릿 전송 실패: {reason}",
       "waitForSend": "메시지 전송이 완료될 때까지 기다리세요",
       "reactionError": "반응 전송 실패: {reason}",
-      "assignmentError": "담당자를 변경하지 못했습니다"
+      "assignmentError": "담당자를 변경하지 못했습니다",
+      "crmStageMoveWarning": "메시지는 전송되었지만 리드를 파이프라인에서 이동하지 못했습니다."
     },
     "sessionTimer": {
       "expired": "만료됨",
@@ -632,7 +633,8 @@
       "deal": "딜",
       "stage": "단계",
       "createdAt": "생성일",
-      "empty": "필터에 맞는 딜이 없습니다."
+      "empty": "필터에 맞는 딜이 없습니다.",
+      "firstRespondedBy": "{name}님이 상담을 시작했습니다"
     },
     "page": {
       "selectPipeline": "파이프라인 선택",
@@ -1383,6 +1385,7 @@
         "update_contact_field": "연락처 필드 업데이트",
         "create_deal": "딜 생성",
         "send_to_pipeline": "파이프라인으로 보내기",
+        "move_deal_on_reply": "CRM 답변 후 리드 이동",
         "wait": "대기",
         "condition": "조건 (If/Else)",
         "send_webhook": "웹훅 보내기",
@@ -1511,6 +1514,7 @@
       "delete": "삭제",
       "config": {
         "sendToPipelineHint": "연락처에 이미 이 파이프라인의 딜이 있으면 현재 단계에 유지됩니다.",
+        "moveDealOnReplyHint": "이 자동화에서 생성된 리드는 CRM에서 상담원이 답변하면 이동합니다. 휴대폰 앱에서 보낸 답변은 이동을 실행하지 않습니다.",
         "messageText": "메시지 텍스트",
         "emailTemplateLabel": "이메일 템플릿",
         "emailTemplatePlaceholder": "저장된 템플릿 선택",

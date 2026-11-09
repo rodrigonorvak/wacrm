@@ -14,8 +14,9 @@ const h = vi.hoisted(() => ({
     logInserts: [] as Record<string, unknown>[],
     logUpdates: [] as Record<string, unknown>[],
     rpcCalls: [] as { name: string; args: unknown }[],
-    pipelineResult: true as boolean | null,
+    pipelineResult: "deal-1" as string | null,
     pipelineError: null as { message: string } | null,
+    replyMoveRegistered: true,
   },
 }));
 
@@ -101,6 +102,9 @@ vi.mock("./admin-client", () => {
         if (name === "automation_send_to_pipeline") {
           return Promise.resolve({ data: state.pipelineResult, error: state.pipelineError });
         }
+        if (name === "automation_register_deal_reply_move") {
+          return Promise.resolve({ data: state.replyMoveRegistered, error: null });
+        }
         return Promise.resolve({ error: null });
       },
     }),
@@ -129,8 +133,9 @@ beforeEach(() => {
   h.state.logInserts = [];
   h.state.logUpdates = [];
   h.state.rpcCalls = [];
-  h.state.pipelineResult = true;
+  h.state.pipelineResult = "deal-1";
   h.state.pipelineError = null;
+  h.state.replyMoveRegistered = true;
 });
 
 describe("send to pipeline", () => {
@@ -143,7 +148,7 @@ describe("send to pipeline", () => {
     }];
   }
 
-  it.each([true, false])("calls the account-scoped RPC (created: %s)", async (created) => {
+  it.each(["deal-1", null])("calls the account-scoped RPC (created deal: %s)", async (created) => {
     prepare();
     h.state.pipelineResult = created;
     await runAutomationsForTrigger({
@@ -166,6 +171,50 @@ describe("send to pipeline", () => {
     await runAutomationsForTrigger({ accountId: ACCOUNT, triggerType: "any_inbound_message", contactId: "c1" });
     expect(JSON.stringify(h.state.logUpdates)).toContain("send_to_pipeline failed: invalid stage");
   });
+
+  it("registers the reply move only for a newly created lead", async () => {
+    h.state.owned = { id: "c1" };
+    h.state.automations = [{
+      ...automationWithUpdateStep(),
+      trigger_type: "any_inbound_message",
+    }];
+    h.state.steps = [
+      {
+        id: "s1", automation_id: "a1", step_type: "send_to_pipeline", position: 0,
+        parent_step_id: null, step_config: { pipeline_id: "p1", stage_id: "new" },
+      },
+      {
+        id: "s2", automation_id: "a1", step_type: "move_deal_on_reply", position: 1,
+        parent_step_id: null, step_config: { pipeline_id: "p1", stage_id: "in_progress" },
+      },
+    ];
+
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT, triggerType: "any_inbound_message", contactId: "c1",
+      context: { conversation_id: "conv1" },
+    });
+
+    expect(h.state.rpcCalls).toContainEqual({
+      name: "automation_register_deal_reply_move",
+      args: {
+        p_automation_id: "a1",
+        p_account_id: ACCOUNT,
+        p_deal_id: "deal-1",
+        p_pipeline_id: "p1",
+        p_destination_stage_id: "in_progress",
+        p_conversation_id: "conv1",
+      },
+    });
+
+    h.state.rpcCalls = [];
+    h.state.pipelineResult = null;
+    await runAutomationsForTrigger({
+      accountId: ACCOUNT, triggerType: "any_inbound_message", contactId: "c1",
+      context: { conversation_id: "conv1" },
+    });
+    expect(h.state.rpcCalls.map(({ name }) => name)).not.toContain("automation_register_deal_reply_move");
+  });
+
 });
 
 describe("runAutomationsForTrigger — tenant isolation", () => {

@@ -858,7 +858,8 @@
       "sendTemplateError": "Não foi possível enviar o modelo: {reason}",
       "waitForSend": "Aguarde o envio da mensagem terminar",
       "reactionError": "Não foi possível reagir: {reason}",
-      "assignmentError": "Não foi possível atualizar o responsável"
+      "assignmentError": "Não foi possível atualizar o responsável",
+      "crmStageMoveWarning": "Mensagem enviada, mas não foi possível mover o lead no funil."
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -1001,7 +1002,8 @@
       "deal": "Lead",
       "stage": "Etapa",
       "createdAt": "Criado em",
-      "empty": "Nenhum lead corresponde aos filtros."
+      "empty": "Nenhum lead corresponde aos filtros.",
+      "firstRespondedBy": "Atendimento iniciado por {name}"
     },
     "page": {
       "addDeal": "Adicionar lead",
@@ -1500,6 +1502,7 @@
         "update_contact_field": "Atualizar campo do contato",
         "create_deal": "Criar negócio",
         "send_to_pipeline": "Enviar para um funil",
+        "move_deal_on_reply": "Mover lead após resposta pelo CRM",
         "wait": "Aguardar",
         "condition": "Condição (se/senão)",
         "send_webhook": "Enviar webhook",
@@ -1625,6 +1628,7 @@
       "delete": "Excluir",
       "config": {
         "sendToPipelineHint": "Se o contato já tiver um lead neste funil, ele permanece na coluna atual.",
+        "moveDealOnReplyHint": "Move um lead criado antes nesta mesma automação após uma resposta enviada pelo CRM. Respostas pelo celular não movem o lead.",
         "messageText": "Texto da mensagem",
         "emailTemplateLabel": "Modelo de e-mail",
         "emailTemplatePlaceholder": "Selecione um modelo salvo",

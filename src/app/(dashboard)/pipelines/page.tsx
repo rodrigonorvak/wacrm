@@ -302,7 +302,7 @@ export default function PipelinesPage() {
       const { data, error } = await supabase
         .from('deals')
         .select(
-          '*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*)'
+          '*, contact:contacts(*), assignee:profiles!deals_assigned_to_fkey(*), first_responder:profiles!deals_first_response_by_fkey(full_name)'
         )
         .eq('pipeline_id', pipelineId)
         .order('created_at', { ascending: false });
@@ -371,6 +371,9 @@ export default function PipelinesPage() {
       }
       return rows.map((row) => ({
         ...row,
+        first_responder: Array.isArray(row.first_responder)
+          ? row.first_responder[0] ?? null
+          : row.first_responder,
         last_note: lastNoteByContact.get(row.contact_id) ?? null,
         labels: labelsByDeal.get(row.id) ?? [],
         custom_values: customValuesByDeal.get(row.id) ?? [],

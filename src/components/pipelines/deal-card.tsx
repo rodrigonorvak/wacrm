@@ -2,7 +2,7 @@
 
 import type { Deal } from "@/types";
 import { CalendarClock, CalendarDays, ExternalLink, Pencil, StickyNote, Tag } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ export function DealCard({
   isOverlay,
 }: DealCardProps) {
   const locale = useLocale();
+  const t = useTranslations("Pipelines.list");
   const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale, deal.scheduled_time);
   const createdAt = new Date(deal.created_at);
   const createdAtLabel = Number.isNaN(createdAt.getTime())
@@ -134,6 +135,11 @@ export function DealCard({
           {detail}
         </p>
       ))}
+      {deal.first_responder?.full_name && (
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {t("firstRespondedBy", { name: deal.first_responder.full_name })}
+        </p>
+      )}
       {customDetails.map((detail) => (
         <p key={detail} className="mt-1 truncate text-xs text-muted-foreground">
           {detail}

@@ -468,6 +468,8 @@ export interface Deal {
   contact_id: string | null;
   conversation_id?: string;
   assigned_to?: string;
+  first_response_by?: string | null;
+  first_response_at?: string | null;
   title: string;
   value: number;
   currency?: string;
@@ -485,6 +487,7 @@ export interface Deal {
   contact?: Contact;
   stage?: PipelineStage;
   assignee?: Profile;
+  first_responder?: Pick<Profile, 'full_name'> | null;
   pipeline?: Pick<Pipeline, "pipeline_type">;
   labels?: DealLabel[];
   custom_values?: DealCustomFieldValue[];
@@ -611,6 +614,7 @@ export type AutomationStepType =
   | 'update_contact_field'
   | 'create_deal'
   | 'send_to_pipeline'
+  | 'move_deal_on_reply'
   | 'wait'
   | 'condition'
   | 'send_webhook'
@@ -711,6 +715,11 @@ export interface SendToPipelineStepConfig {
   stage_id: string;
 }
 
+export interface MoveDealOnReplyStepConfig {
+  pipeline_id: string;
+  stage_id: string;
+}
+
 export interface WaitStepConfig {
   amount: number;
   unit: 'minutes' | 'hours' | 'days';
@@ -747,6 +756,7 @@ export type AutomationStepConfig =
   | UpdateContactFieldStepConfig
   | CreateDealStepConfig
   | SendToPipelineStepConfig
+  | MoveDealOnReplyStepConfig
   | WaitStepConfig
   | ConditionStepConfig
   | SendWebhookStepConfig

@@ -140,6 +140,18 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
 
 const CHAT_BG_CLASSES = "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
 
+function showStageMoveWarning(
+  payload: { stage_move_warning?: unknown },
+  t: ReturnType<typeof useTranslations>,
+) {
+  if (typeof payload.stage_move_warning !== "string") return;
+  console.error(
+    "CRM reply was sent, but its lead stage could not be updated:",
+    payload.stage_move_warning,
+  );
+  toast.warning(t("crmStageMoveWarning"));
+}
+
 export function MessageThread({
   conversation,
   contact,
@@ -501,6 +513,7 @@ export function MessageThread({
         // Success — the realtime INSERT event will replace the temp bubble
         // with the real DB row. If realtime hasn't arrived yet, at least
         // flip status to 'sent' so the UI stops showing "sending".
+        showStageMoveWarning(payload, t);
         onUpdateMessage(tempId, { status: "sent" });
       } catch (err) {
         console.error("Failed to send message:", err);
@@ -566,6 +579,7 @@ export function MessageThread({
           return;
         }
 
+        showStageMoveWarning(data, t);
         onUpdateMessage(tempId, { status: "sent" });
       } catch (err) {
         console.error("Failed to send media:", err);
@@ -620,6 +634,7 @@ export function MessageThread({
           return;
         }
 
+        showStageMoveWarning(data, t);
         onUpdateMessage(tempId, { status: "sent" });
       } catch (err) {
         console.error("Failed to send interactive message:", err);
@@ -709,6 +724,7 @@ export function MessageThread({
           return;
         }
 
+        showStageMoveWarning(payload, t);
         onUpdateMessage(tempId, { status: "sent" });
       } catch (err) {
         console.error("Failed to send template:", err);

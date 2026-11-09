@@ -155,6 +155,7 @@ export async function POST(request: Request) {
     try {
       const result = await sendMessageToConversation(supabase, accountId, {
         conversationId,
+        crmAgentUserId: userId,
         messageType: message_type,
         contentText: content_text,
         mediaUrl: media_url,
@@ -172,6 +173,9 @@ export async function POST(request: Request) {
         conversation_id: conversationId,
         message_id: result.messageId,
         whatsapp_message_id: result.whatsappMessageId,
+        ...(result.stageMoveWarning
+          ? { stage_move_warning: result.stageMoveWarning }
+          : {}),
       })
     } catch (err) {
       if (err instanceof SendMessageError) {
