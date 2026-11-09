@@ -481,6 +481,11 @@
       "nameFixed": "Name is fixed once a template exists on Meta — create a new template to change it.",
       "nameHint": "Lowercase letters, digits, and underscores only.",
       "category": "Category",
+      "categories": {
+        "Marketing": "Marketing",
+        "Utility": "Utilidade",
+        "Authentication": "Autenticação"
+      },
       "language": "Language",
       "langFixed": "Language is fixed once a template exists on Meta.",
       "langHint": "Must match the exact code on Meta — <code>en_US</code> and <code>en</code> are distinct.",
@@ -783,6 +788,28 @@
     }
   },
   "Inbox": {
+    "interactiveEditor": {
+      "replyButtons": "Botões de resposta",
+      "list": "Lista",
+      "body": "Texto da mensagem",
+      "bodyPlaceholder": "Texto que o cliente verá acima das opções",
+      "header": "Cabeçalho (opcional)",
+      "footer": "Rodapé (opcional)",
+      "showIds": "Mostrar IDs das respostas (avançado)",
+      "preview": "Prévia",
+      "buttons": "Botões",
+      "buttonLabel": "Texto do botão",
+      "addButton": "Adicionar botão",
+      "listButtonLabel": "Texto do botão da lista",
+      "rows": "Itens",
+      "sectionTitle": "Título da seção (opcional)",
+      "rowTitle": "Título do item",
+      "description": "Descrição (opcional)",
+      "addRow": "Adicionar item",
+      "addSection": "Adicionar seção",
+      "previewBody": "Texto da mensagem…",
+      "previewButton": "Botão"
+    },
     "page": {
       "whatsappNotConnected": "O WhatsApp® não está conectado. Acesse Configurações para conectar sua conta."
     },
@@ -823,7 +850,15 @@
       "selectConversation": "Selecione uma conversa",
       "selectConversationHint": "Escolha uma conversa à esquerda para começar a enviar mensagens",
       "today": "Hoje",
-      "yesterday": "Ontem"
+      "yesterday": "Ontem",
+      "customer": "Cliente",
+      "you": "Você",
+      "networkError": "Erro de conexão",
+      "sendError": "Não foi possível enviar: {reason}",
+      "sendTemplateError": "Não foi possível enviar o modelo: {reason}",
+      "waitForSend": "Aguarde o envio da mensagem terminar",
+      "reactionError": "Não foi possível reagir: {reason}",
+      "assignmentError": "Não foi possível atualizar o responsável"
     },
     "sessionTimer": {
       "expired": "Expirada",
@@ -859,7 +894,16 @@
       "send": "Enviar",
       "quickReplyNamePrompt": "Dê um nome para esta resposta rápida:",
       "quickReplySaved": "Salva como resposta rápida.",
-      "quickReplySaveError": "Não foi possível salvar a resposta rápida."
+      "quickReplySaveError": "Não foi possível salvar a resposta rápida.",
+      "aiNotConfigured": "A IA ainda não está configurada. Ative-a em Configurações → Assistente de IA.",
+      "aiDraftError": "Não foi possível criar um rascunho de resposta.",
+      "aiEmptyDraft": "O assistente não retornou uma resposta.",
+      "aiNetworkError": "Não foi possível conectar ao assistente de IA.",
+      "fileTooLarge": "O arquivo tem {size} MB; o limite é {limit} MB.",
+      "uploadFailed": "Não foi possível enviar o arquivo.",
+      "recordingTooLong": "A gravação é muito longa (mais de 16 MB).",
+      "recordingUnsupported": "Este navegador não permite gravar mensagens de voz.",
+      "microphoneUnavailable": "O acesso ao microfone foi negado ou está indisponível."
     },
     "bubble": {
       "photo": "Foto",
@@ -923,6 +967,9 @@
       "preview": "Prévia",
       "headerValuePlaceholder": "Valor da variável do cabeçalho",
       "bodyValuePlaceholder": "Valor de {val}",
+      "headerVariable": "Cabeçalho {variable}",
+      "bodyVariable": "Mensagem {variable}",
+      "urlButtonVariable": "Botão de URL \"{name}\" — valor de {variable}",
       "urlSuffixValuePlaceholder": "Valor do sufixo da URL",
       "finalUrl": "URL final: {url}",
       "back": "Voltar",

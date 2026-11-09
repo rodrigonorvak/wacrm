@@ -80,6 +80,7 @@ export function TemplatePicker({
   onSelect,
 }: TemplatePickerProps) {
   const t = useTranslations("Inbox.templatePicker");
+  const tCategories = useTranslations("Settings.templates.categories");
 
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -230,7 +231,7 @@ export function TemplatePicker({
                           {t.name}
                         </p>
                         <Badge className="border border-primary/30 bg-primary/20 text-[10px] text-primary">
-                          {t.category}
+                          {tCategories(t.category)}
                         </Badge>
                         {t.language && (
                           <span className="text-[10px] uppercase text-muted-foreground">
@@ -264,7 +265,7 @@ export function TemplatePicker({
             {slots && slots.headerVarCount > 0 && (
               <div className="space-y-1">
                 <Label className="text-xs text-popover-foreground">
-                  {`Header {{1}}`}
+                  {t("headerVariable", { variable: "{{1}}" })}
                 </Label>
                 <Input
                   value={headerText}
@@ -276,7 +277,7 @@ export function TemplatePicker({
             )}
             {slots?.bodyVars.map((v, i) => (
               <div key={v} className="space-y-1">
-                <Label className="text-xs text-popover-foreground">{`Body {{${v}}}`}</Label>
+                <Label className="text-xs text-popover-foreground">{t("bodyVariable", { variable: `{{${v}}}` })}</Label>
                 <Input
                   value={params[i] ?? ""}
                   onChange={(e) => {
@@ -292,7 +293,7 @@ export function TemplatePicker({
             {slots?.urlButtonSlots.map((slot) => (
               <div key={slot.index} className="space-y-1">
                 <Label className="text-xs text-popover-foreground">
-                  {`URL button "${slot.text}" — value for `}{`{{1}}`}
+                  {t("urlButtonVariable", { name: slot.text, variable: "{{1}}" })}
                 </Label>
                 <Input
                   value={buttonParams[slot.index] ?? ""}

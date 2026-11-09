@@ -218,6 +218,28 @@
     }
   },
   "Inbox": {
+    "interactiveEditor": {
+      "replyButtons": "Reply buttons",
+      "list": "List",
+      "body": "Body",
+      "bodyPlaceholder": "What the customer reads above the options",
+      "header": "Header (optional)",
+      "footer": "Footer (optional)",
+      "showIds": "Show reply IDs (advanced)",
+      "preview": "Preview",
+      "buttons": "Buttons",
+      "buttonLabel": "Button label",
+      "addButton": "Add button",
+      "listButtonLabel": "List button label",
+      "rows": "Rows",
+      "sectionTitle": "Section title (optional)",
+      "rowTitle": "Row title",
+      "description": "Description (optional)",
+      "addRow": "Add row",
+      "addSection": "Add section",
+      "previewBody": "Message body…",
+      "previewButton": "Button"
+    },
     "page": {
       "whatsappNotConnected": "WhatsApp® is not connected. Go to Settings to connect your account."
     },
@@ -258,7 +280,15 @@
       "selectConversation": "Select a conversation",
       "selectConversationHint": "Choose a conversation from the left to start messaging",
       "today": "Today",
-      "yesterday": "Yesterday"
+      "yesterday": "Yesterday",
+      "customer": "Customer",
+      "you": "You",
+      "networkError": "Network error",
+      "sendError": "Failed to send: {reason}",
+      "sendTemplateError": "Failed to send template: {reason}",
+      "waitForSend": "Wait for the message to finish sending",
+      "reactionError": "Reaction failed: {reason}",
+      "assignmentError": "Failed to update assignment"
     },
     "sessionTimer": {
       "expired": "Expired",
@@ -294,7 +324,16 @@
       "send": "Send",
       "quickReplyNamePrompt": "Name this quick reply:",
       "quickReplySaved": "Saved as a quick reply.",
-      "quickReplySaveError": "Couldn't save the quick reply."
+      "quickReplySaveError": "Couldn't save the quick reply.",
+      "aiNotConfigured": "AI isn't set up yet — enable it in Settings → AI Assistant.",
+      "aiDraftError": "Couldn't draft a reply.",
+      "aiEmptyDraft": "The assistant didn't return a reply.",
+      "aiNetworkError": "Couldn't reach the AI assistant.",
+      "fileTooLarge": "File is {size} MB — the limit is {limit} MB.",
+      "uploadFailed": "Upload failed.",
+      "recordingTooLong": "Recording is too long (over 16 MB).",
+      "recordingUnsupported": "Voice recording isn't supported in this browser.",
+      "microphoneUnavailable": "Microphone access denied or unavailable."
     },
     "bubble": {
       "photo": "Photo",
@@ -358,6 +397,9 @@
       "preview": "Preview",
       "headerValuePlaceholder": "Value for the header variable",
       "bodyValuePlaceholder": "Value for {val}",
+      "headerVariable": "Header {variable}",
+      "bodyVariable": "Body {variable}",
+      "urlButtonVariable": "URL button \"{name}\" — value for {variable}",
       "urlSuffixValuePlaceholder": "URL suffix value",
       "finalUrl": "Final URL: {url}",
       "back": "Back",
@@ -1924,6 +1966,11 @@
       "nameFixed": "Name is fixed once a template exists on Meta — create a new template to change it.",
       "nameHint": "Lowercase letters, digits, and underscores only.",
       "category": "Category",
+      "categories": {
+        "Marketing": "Marketing",
+        "Utility": "Utility",
+        "Authentication": "Authentication"
+      },
       "language": "Language",
       "langFixed": "Language is fixed once a template exists on Meta.",
       "langHint": "Must match the exact code on Meta — <code>en_US</code> and <code>en</code> are distinct.",

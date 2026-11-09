@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { inboxDateLocale } from "@/lib/inbox/date-locale";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -436,6 +437,7 @@ function ConversationItem({
   onSelect,
   t,
 }: ConversationItemProps) {
+  const locale = useLocale();
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
   const initials = displayName.charAt(0).toUpperCase();
@@ -447,6 +449,7 @@ function ConversationItem({
   const timeAgo = conversation.last_message_at
     ? formatDistanceToNow(new Date(conversation.last_message_at), {
         addSuffix: false,
+        locale: inboxDateLocale(locale),
       })
     : "";
 
@@ -494,7 +497,13 @@ function ConversationItem({
                 "h-2 w-2 rounded-full",
                 STATUS_COLORS[conversation.status]
               )}
-              title={conversation.status}
+              title={t(
+                conversation.status === "open"
+                  ? "filterOpen"
+                  : conversation.status === "pending"
+                    ? "filterPending"
+                    : "filterClosed",
+              )}
             />
           </div>
         </div>
