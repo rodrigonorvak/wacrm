@@ -60,13 +60,10 @@ function StatusIcon({ status }: { status: Message["status"] }) {
 function MessageContent({
   message,
   t,
-  isAgent,
   onOpenMedia,
 }: {
   message: Message;
   t: ReturnType<typeof useTranslations>;
-  /** Outbound bubbles sit on the primary fill — badges must invert. */
-  isAgent: boolean;
   onOpenMedia?: (messageId: string) => void;
 }) {
   // Passed to the media bubbles as a no-arg callback; `undefined` when the
@@ -131,22 +128,10 @@ function MessageContent({
       return <MediaDocumentBubble message={message} t={t} />;
 
     case "template":
-      // Templates are almost always outbound, where the bubble fill IS
-      // `primary` — so the old `bg-primary/20 text-primary` chip was
-      // primary-on-primary and invisible. Paired with a null
-      // content_text (issue #483) that rendered a bubble with nothing
-      // in it at all. Invert on the primary fill, and fall back to the
-      // template's name when we have no stored body (legacy rows sent
-      // before the fix).
       return (
         <div>
           <span
-            className={cn(
-              "mb-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
-              isAgent
-                ? "bg-primary-foreground/20 text-primary-foreground"
-                : "bg-primary/20 text-primary",
-            )}
+            className="mb-1 inline-flex items-center gap-1 rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] font-medium text-foreground"
           >
             <LayoutTemplate className="h-3 w-3" />
             {t("template")}
@@ -239,54 +224,36 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative rounded-2xl px-3 py-2",
+          "inbox-message relative rounded-lg px-3 py-2",
           isAgent
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md bg-muted text-foreground",
+            ? "inbox-message-outgoing rounded-tr-sm"
+            : "inbox-message-incoming rounded-tl-sm",
         )}
       >
         {reply && (
           <ReplyQuote
             authorLabel={reply.authorLabel}
             preview={reply.preview}
-            onPrimary={isAgent}
           />
         )}
         <MessageContent
           message={message}
           t={t}
-          isAgent={isAgent}
           onOpenMedia={onOpenMedia}
         />
         <div
-          className={cn(
-            "mt-1 flex items-center gap-1",
-            isAgent ? "justify-end" : "justify-start",
-          )}
+          className="mt-1 flex items-center justify-end gap-1"
         >
-          {/* AI badge — only on replies the auto-reply bot generated
-              (always outbound, so it sits on the primary fill). Lets
-              agents tell an AI reply from their own / a Flow's at a
-              glance. */}
           {message.ai_generated && (
             <span
-              className="inline-flex items-center gap-0.5 rounded-full bg-primary-foreground/20 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-primary-foreground"
+              className="inline-flex items-center gap-0.5 rounded-full bg-foreground/10 px-1.5 py-px text-[9px] font-semibold uppercase leading-none tracking-wide text-foreground"
               title={t("aiBadgeTitle")}
             >
               <Sparkles className="h-2.5 w-2.5" />
               {t("aiBadge")}
             </span>
           )}
-          <span
-            className={cn(
-              "text-[10px]",
-              // Outbound bubbles sit on the primary fill, so the
-              // timestamp must read against that (not the neutral
-              // foreground) — otherwise it goes low-contrast in light
-              // mode. Inbound bubbles use the muted surface.
-              isAgent ? "text-primary-foreground/70" : "text-muted-foreground",
-            )}
-          >
+          <span className="text-[10px] text-muted-foreground">
             {time}
           </span>
           {isAgent && <StatusIcon status={message.status} />}

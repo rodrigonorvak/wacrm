@@ -4,6 +4,62 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.inbox-chat-surface {
+  background-color: #efeae2;
+  background-image: url("/inbox-doodle.svg");
+  background-repeat: repeat;
+}
+
+.inbox-message {
+  --foreground: #17211b;
+  --muted-foreground: #53635a;
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgb(15 35 20 / 12%);
+}
+
+.inbox-message-incoming {
+  background-color: #e8f5e9;
+}
+
+.inbox-message-outgoing {
+  background-color: #d9fdd3;
+}
+
+.dark .inbox-chat-surface {
+  background-color: #0b141a;
+}
+
+.dark .inbox-message {
+  --foreground: #e9edef;
+  --muted-foreground: #aebac1;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.dark .inbox-message-incoming {
+  background-color: #202c33;
+}
+
+.dark .inbox-message-outgoing {
+  background-color: #005c4b;
+}
+
+html[data-visual="glass"] .inbox-chat-surface {
+  background-color: #0b141a;
+}
+
+html[data-visual="glass"] .inbox-message {
+  --foreground: #e9edef;
+  --muted-foreground: #aebac1;
+}
+
+html[data-visual="glass"] .inbox-message-incoming {
+  background-color: #202c33;
+}
+
+html[data-visual="glass"] .inbox-message-outgoing {
+  background-color: #005c4b;
+}
+
 .settings-workspace {
   --foreground: #343b43;
   --muted-foreground: #747d86;

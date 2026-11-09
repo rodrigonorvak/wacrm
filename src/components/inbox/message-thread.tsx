@@ -138,7 +138,7 @@ const STATUS_OPTIONS: { label: string; value: ConversationStatus; color: string 
   { label: "Closed", value: "closed", color: "text-muted-foreground" },
 ];
 
-const CHAT_BG_CLASSES = "bg-background bg-[url('/inbox-doodle.svg')] bg-repeat";
+const CHAT_BG_CLASSES = "inbox-chat-surface";
 
 function showStageMoveWarning(
   payload: { stage_move_warning?: unknown },
