@@ -197,7 +197,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     if (!dealRequestKey) return;
     let cancelled = false;
     void (async () => {
-      const base = "*, contact:contacts(*), stage:pipeline_stages(*), pipeline:pipelines(pipeline_type), assignee:profiles!deals_assigned_to_fkey(*)";
+      const base = "*, contact:contacts(*), stage:pipeline_stages(*), pipeline:pipelines(pipeline_type), assignee:profiles!deals_assigned_to_fkey(*), first_responder:profiles!deals_first_response_by_fkey(full_name)";
       // Custom values do not depend on the deal row, so fetch them concurrently.
       const customValuesPromise = supabase
         .from("deal_custom_field_values")
@@ -235,6 +235,9 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         }
         setDeal({
           ...rest,
+          first_responder: Array.isArray(rest.first_responder)
+            ? rest.first_responder[0] ?? null
+            : rest.first_responder,
           labels: (links ?? []).flatMap((link) => (link.label ? [link.label] : [])),
           custom_values: (customValueRows ?? []).map((row) => {
             const field = Array.isArray(row.field) ? row.field[0] : row.field;
