@@ -2037,6 +2037,7 @@
 
       "uploadImage": "Upload image",
       "uploadHint": "JPEG or PNG, ≤5 MB",
+      "qualityScore": "Meta quality score",
       "mediaUrlPlaceholder": "https://… (or paste a public {format} link)",
       "imageHint": "Upload a JPEG/PNG (≤5 MB, ≥800×418 px recommended) or paste a public HTTPS link — we upload it to Meta for review automatically.",
       "mediaHint": "Must be a publicly accessible HTTPS link. Meta fetches it once during review, so it needs to stay live for ~24 hrs.",
