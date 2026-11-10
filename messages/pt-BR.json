@@ -1033,6 +1033,27 @@
     }
   },
   "Pipelines": {
+    "stageTypes": {
+      "label": "Tipo da coluna",
+      "other": "Personalizada — sem evento Meta",
+      "lead": "Novo lead — Lead",
+      "schedule": "Agendamento/reunião — Schedule",
+      "purchase": "Venda — Purchase"
+    },
+    "scheduleDialog": {
+      "title": "Inserir data",
+      "moveTitle": "Agendar lead",
+      "previousMonth": "Mês anterior",
+      "nextMonth": "Próximo mês",
+      "time": "Horário",
+      "required": "(obrigatório)",
+      "optional": "(opcional)",
+      "clear": "Limpar",
+      "remove": "Remover",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "saveAndMove": "Salvar e mover"
+    },
     "list": {
       "deal": "Lead",
       "stage": "Etapa",
@@ -1047,6 +1068,7 @@
       "toastFailedCreatePipeline": "Não foi possível criar o funil.",
       "pipelineOwnerOnly": "Apenas a conta proprietária pode criar e excluir pipelines/funis.",
       "toastFailedStageColor": "Não foi possível alterar a cor da coluna.",
+      "toastFailedStageType": "Não foi possível alterar o tipo da coluna.",
       "paidStageAmountTitle": "Informe o valor recebido",
       "paidStageAmountDescription": "Informe quanto foi pago pelo lead {dealTitle}. Esse valor será considerado nos totais do funil e do painel.",
       "paidStageAmountLabel": "Valor pago (BRL)",
@@ -1067,7 +1089,9 @@
       "showMore": "Mostrar mais (+{count}) · {count} {count, plural, =1 {oculto} other {ocultos}}",
       "showLess": "Mostrar menos",
       "changeStageColor": "Alterar cor de {stage}",
+      "columnSettings": "Configurações de {stage}",
       "columnColor": "Cor da coluna",
+      "columnType": "Tipo da coluna",
       "noColumnColor": "Sem cor",
       "selectColumnColor": "Selecionar cor {color}",
       "viewKanban": "Visualização Kanban",
@@ -1109,6 +1133,9 @@
       "paidAmountPlaceholder": "0,00",
       "currency": "Moeda",
       "expectedCloseDate": "Previsão de fechamento",
+      "scheduledDate": "Data do agendamento",
+      "scheduledTime": "Horário do agendamento",
+      "scheduledDateTimeRequired": "Informe a data e o horário do agendamento para esta etapa.",
       "stage": "Etapa",
       "assignedTo": "Responsável",
       "unassigned": "Sem responsável",

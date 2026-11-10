@@ -1,5 +1,6 @@
 import type { AccountRole } from "@/lib/auth/roles";
 import type { InteractiveMessagePayload } from "@/lib/whatsapp/interactive";
+import type { PipelineStageType } from "@/lib/pipelines/stage-type";
 
 export type {
   InteractiveMessagePayload,
@@ -406,6 +407,7 @@ export interface LeadIntegrationEvent {
 
 export type MetaIntegrationSource = 'elementor' | 'meta_instant_form';
 export type MetaConversionEventStatus = 'pending' | 'sent' | 'failed';
+export type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
 export interface MetaIntegration {
   id: string;
@@ -449,6 +451,7 @@ export interface PipelineStage {
   id: string;
   pipeline_id: string;
   name: string;
+  stage_type?: PipelineStageType;
   position: number;
   color: string;
   created_at: string;

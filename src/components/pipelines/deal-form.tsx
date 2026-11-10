@@ -89,6 +89,8 @@ export function DealForm({
   const [stageId, setStageId] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
   const [notes, setNotes] = useState('');
   const [customFields, setCustomFields] = useState<
     Array<{ field: PipelineCustomField; value: string }>
@@ -133,6 +135,8 @@ export function DealForm({
       setStageId(deal.stage_id);
       setAssignedTo(deal.assigned_to ?? '');
       setExpectedCloseDate(deal.expected_close_date ?? '');
+      setScheduledDate(deal.scheduled_date ?? '');
+      setScheduledTime(deal.scheduled_time?.slice(0, 5) ?? '');
       setNotes(deal.notes ?? '');
       setContactSearch(deal.contact ? contactLabel(deal.contact) : '');
       setContactOptions(deal.contact ? [deal.contact] : []);
@@ -147,6 +151,8 @@ export function DealForm({
       setStageId(defaultStageId || stages[0]?.id || '');
       setAssignedTo('');
       setExpectedCloseDate('');
+      setScheduledDate('');
+      setScheduledTime('');
       setNotes('');
       setContactSearch('');
       setContactOptions([]);
@@ -297,8 +303,17 @@ export function DealForm({
       return;
     }
     const selectedStage = stages.find((stage) => stage.id === stageId);
-    if (isPaidStageName(selectedStage?.name) && !(Number(value) > 0)) {
+    const requiresPayment =
+      isPaidStageName(selectedStage?.name) || selectedStage?.stage_type === 'purchase';
+    const requiresSchedule =
+      selectedStage?.stage_type === 'schedule' &&
+      (!deal || deal.stage_id !== stageId);
+    if (requiresPayment && !(Number(value) > 0)) {
       toast.error(t('paidAmountRequired'));
+      return;
+    }
+    if (requiresSchedule && (!scheduledDate || !scheduledTime)) {
+      toast.error(t('scheduledDateTimeRequired'));
       return;
     }
     setSaving(true);
@@ -315,6 +330,9 @@ export function DealForm({
       assigned_to: assignedTo || null,
       notes: notes.trim() || null,
       expected_close_date: expectedCloseDate || null,
+      ...(selectedStage?.stage_type === 'schedule' && scheduledDate && scheduledTime
+        ? { scheduled_date: scheduledDate, scheduled_time: scheduledTime }
+        : {}),
     };
 
     if (deal) {
@@ -559,10 +577,11 @@ export function DealForm({
     onSaved();
   }
 
+  const selectedStage = stages.find((stage) => stage.id === stageId);
+  const isPurchaseStage =
+    isPaidStageName(selectedStage?.name) || selectedStage?.stage_type === 'purchase';
   const showAdvanced =
-    advancedOpen ||
-    !!deal ||
-    isPaidStageName(stages.find((stage) => stage.id === stageId)?.name);
+    advancedOpen || !!deal || isPurchaseStage || selectedStage?.stage_type === 'schedule';
   const effectiveTitle =
     title.trim() ||
     (contactMode === 'new' && !deal
@@ -759,9 +778,7 @@ export function DealForm({
                 <div className="grid gap-2">
                   <Label className="text-muted-foreground">
                     {t(
-                      isPaidStageName(
-                        stages.find((stage) => stage.id === stageId)?.name
-                      )
+                      isPurchaseStage
                         ? 'paidAmount'
                         : 'value'
                     )}
@@ -777,9 +794,7 @@ export function DealForm({
                       value={value}
                       onChange={(e) => setValue(e.target.value)}
                       placeholder={
-                        isPaidStageName(
-                          stages.find((stage) => stage.id === stageId)?.name
-                        )
+                        isPurchaseStage
                           ? t('paidAmountPlaceholder')
                           : '0,00'
                       }
@@ -810,10 +825,12 @@ export function DealForm({
                         (stage) => stage.id === nextStageId
                       );
                       if (
-                        isPaidStageName(nextStage?.name) &&
-                        !isPaidStageName(
+                        (isPaidStageName(nextStage?.name) ||
+                          nextStage?.stage_type === 'purchase') &&
+                        !(isPaidStageName(
                           stages.find((stage) => stage.id === stageId)?.name
-                        )
+                        ) ||
+                          stages.find((stage) => stage.id === stageId)?.stage_type === 'purchase')
                       ) {
                         setValue('');
                       }
@@ -828,6 +845,36 @@ export function DealForm({
                     ))}
                   </select>
                 </div>
+                {selectedStage?.stage_type === 'schedule' && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="deal-scheduled-date" className="text-muted-foreground">
+                        {t('scheduledDate')}
+                      </Label>
+                      <Input
+                        id="deal-scheduled-date"
+                        type="date"
+                        required
+                        value={scheduledDate}
+                        onChange={(event) => setScheduledDate(event.target.value)}
+                        className="border-border bg-muted text-foreground"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="deal-scheduled-time" className="text-muted-foreground">
+                        {t('scheduledTime')}
+                      </Label>
+                      <Input
+                        id="deal-scheduled-time"
+                        type="time"
+                        required
+                        value={scheduledTime}
+                        onChange={(event) => setScheduledTime(event.target.value)}
+                        className="border-border bg-muted text-foreground"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid gap-2">
                   <Label className="text-muted-foreground">

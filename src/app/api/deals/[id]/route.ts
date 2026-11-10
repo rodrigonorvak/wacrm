@@ -15,7 +15,19 @@ const EDITABLE_FIELDS = [
   'assigned_to',
   'notes',
   'expected_close_date',
+  'scheduled_date',
+  'scheduled_time',
 ] as const;
+
+function isValidDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function isValidTime(value: unknown): value is string {
+  return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(value);
+}
 
 export async function PATCH(
   request: Request,
@@ -34,7 +46,7 @@ export async function PATCH(
 
   const { data: deal, error: dealError } = await account.supabase
     .from('deals')
-    .select('id, account_id, pipeline_id, contact_id, stage_id, value, currency')
+    .select('id, account_id, pipeline_id, contact_id, stage_id, value, currency, scheduled_date, scheduled_time')
     .eq('id', id)
     .eq('account_id', account.accountId)
     .maybeSingle();
@@ -62,6 +74,18 @@ export async function PATCH(
   if (typeof update.title === 'string' && !update.title) {
     return NextResponse.json({ error: 'Deal title is required' }, { status: 400 });
   }
+  if ('scheduled_date' in update && update.scheduled_date !== null && !isValidDate(update.scheduled_date)) {
+    return NextResponse.json({ error: 'Scheduled date must be a valid YYYY-MM-DD date' }, { status: 400 });
+  }
+  if ('scheduled_time' in update && update.scheduled_time !== null && !isValidTime(update.scheduled_time)) {
+    return NextResponse.json({ error: 'Scheduled time must be a valid 24-hour time' }, { status: 400 });
+  }
+  const resultingScheduledDate =
+    'scheduled_date' in update ? update.scheduled_date : deal.scheduled_date;
+  if (update.scheduled_time != null && !resultingScheduledDate) {
+    return NextResponse.json({ error: 'Scheduled time requires a scheduled date' }, { status: 400 });
+  }
+  if (update.scheduled_date === null) update.scheduled_time = null;
 
   if ('contact_id' in update && update.contact_id !== null) {
     if (typeof update.contact_id !== 'string') {
@@ -85,7 +109,7 @@ export async function PATCH(
     }
     const { data: stage, error: stageError } = await account.supabase
       .from('pipeline_stages')
-      .select('id, name')
+      .select('id, name, stage_type')
       .eq('id', nextStageId)
       .eq('pipeline_id', deal.pipeline_id)
       .maybeSingle();
@@ -93,8 +117,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Pipeline stage not found' }, { status: 400 });
     }
     const resultingValue = 'value' in update ? Number(update.value) : Number(deal.value ?? 0);
-    if (isPaidStageName(stage.name) && !(resultingValue > 0)) {
+    if ((isPaidStageName(stage.name) || stage.stage_type === 'purchase') && !(resultingValue > 0)) {
       return NextResponse.json({ error: 'Paid amount is required for this stage' }, { status: 400 });
+    }
+    if (stage.stage_type === 'schedule' && nextStageId !== deal.stage_id) {
+      if (!isValidDate(update.scheduled_date) || !isValidTime(update.scheduled_time)) {
+        return NextResponse.json(
+          { error: 'A scheduled date and time are required to move a deal into this stage' },
+          { status: 400 },
+        );
+      }
     }
   }
 

@@ -40,7 +40,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from('meta_integrations')
       .select(
-        'id, pipeline_id, source_type, dataset_id, meta_page_id, api_version, schedule_stage_id, purchase_stage_id, is_active, last_tested_at, last_event_at, last_error, created_at, updated_at',
+        'id, pipeline_id, source_type, dataset_id, meta_page_id, api_version, is_active, last_tested_at, last_event_at, last_error, created_at, updated_at',
       )
       .eq('account_id', accountId)
       .order('source_type');
@@ -64,8 +64,6 @@ export async function POST(request: Request) {
     }
 
     const pipelineId = typeof body.pipeline_id === 'string' ? body.pipeline_id : '';
-    const scheduleStageId = typeof body.schedule_stage_id === 'string' ? body.schedule_stage_id : '';
-    const purchaseStageId = typeof body.purchase_stage_id === 'string' ? body.purchase_stage_id : '';
     const datasetId = typeof body.dataset_id === 'string' ? body.dataset_id.trim() : '';
     const accessToken = typeof body.access_token === 'string' ? body.access_token.trim() : '';
     const pageId = typeof body.meta_page_id === 'string' ? body.meta_page_id.trim() : '';
@@ -74,8 +72,8 @@ export async function POST(request: Request) {
       ? body.api_version.trim()
       : 'v25.0';
 
-    if (!pipelineId || !scheduleStageId || !purchaseStageId || !datasetId) {
-      return bad('pipeline_id, stage IDs, and dataset_id are required');
+    if (!pipelineId || !datasetId) {
+      return bad('pipeline_id and dataset_id are required');
     }
     if (sourceType === 'meta_instant_form' && !pageId) {
       return bad('meta_page_id is required for Meta Instant Forms');
@@ -94,14 +92,6 @@ export async function POST(request: Request) {
       .eq('account_id', accountId)
       .maybeSingle();
     if (!pipeline) return bad('Pipeline not found for this account');
-
-    const { data: stages } = await supabase
-      .from('pipeline_stages')
-      .select('id')
-      .eq('pipeline_id', pipelineId)
-      .in('id', [scheduleStageId, purchaseStageId]);
-    if (!stages || stages.length !== 2) return bad('Selected stages must belong to the selected pipeline');
-    if (scheduleStageId === purchaseStageId) return bad('Schedule and Purchase stages must be different');
 
     const { data: existing, error: existingError } = await supabase
       .from('meta_integrations')
@@ -138,8 +128,8 @@ export async function POST(request: Request) {
           meta_page_id: sourceType === 'meta_instant_form' ? pageId : null,
           page_access_token_encrypted: sourceType === 'meta_instant_form' ? encryptedPageToken : null,
           api_version: apiVersion,
-          schedule_stage_id: scheduleStageId,
-          purchase_stage_id: purchaseStageId,
+          schedule_stage_id: null,
+          purchase_stage_id: null,
           is_active: true,
           last_error: null,
           created_by: existing ? undefined : userId,
@@ -148,7 +138,7 @@ export async function POST(request: Request) {
         { onConflict: 'account_id,source_type' },
       )
       .select(
-        'id, pipeline_id, source_type, dataset_id, meta_page_id, api_version, schedule_stage_id, purchase_stage_id, is_active, last_tested_at, last_event_at, last_error, created_at, updated_at',
+        'id, pipeline_id, source_type, dataset_id, meta_page_id, api_version, is_active, last_tested_at, last_event_at, last_error, created_at, updated_at',
       )
       .single();
 

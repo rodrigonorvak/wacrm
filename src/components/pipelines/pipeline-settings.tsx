@@ -18,6 +18,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { createClient } from "@/lib/supabase/client";
 import type { Pipeline, PipelineStage } from "@/types";
+import { PIPELINE_STAGE_TYPES, type PipelineStageType } from "@/lib/pipelines/stage-type";
 import {
   Dialog,
   DialogContent,
@@ -72,12 +73,14 @@ export function PipelineSettings({
   onCreateNewPipeline,
 }: PipelineSettingsProps) {
   const t = useTranslations("Pipelines.settings");
+  const tStageType = useTranslations("Pipelines.stageTypes");
   const supabase = createClient();
 
   const [name, setName] = useState(pipeline.name);
   const [localStages, setLocalStages] = useState<PipelineStage[]>(stages);
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState<string>(STAGE_COLORS[0]);
+  const [newStageType, setNewStageType] = useState<PipelineStageType>("other");
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -202,6 +205,7 @@ export function PipelineSettings({
       pipeline_id: s.pipeline_id,
       name: s.name,
       color: s.color,
+      stage_type: s.stage_type ?? "other",
       position: i,
     }));
 
@@ -235,6 +239,7 @@ export function PipelineSettings({
         pipeline_id: pipeline.id,
         name: trimmed,
         color: newStageColor,
+        stage_type: newStageType,
         position: localStages.length,
       })
       .select()
@@ -245,6 +250,7 @@ export function PipelineSettings({
     }
     setLocalStages([...localStages, data as PipelineStage]);
     setNewStageName("");
+    setNewStageType("other");
     setNewStageColor(STAGE_COLORS[(localStages.length + 1) % STAGE_COLORS.length]);
   }
 
@@ -798,6 +804,11 @@ export function PipelineSettings({
                             updated[index] = { ...updated[index], color: v };
                             setLocalStages(updated);
                           }}
+                          onTypeChange={(value) => {
+                            const updated = [...localStages];
+                            updated[index] = { ...updated[index], stage_type: value };
+                            setLocalStages(updated);
+                          }}
                           onRemove={() => handleRemoveStage(stage.id)}
                           locked={pipeline.pipeline_type === "integrated" && stage.name === "Novo Lead"}
                           colors={STAGE_COLORS}
@@ -837,6 +848,16 @@ export function PipelineSettings({
                       if (e.key === "Enter") handleAddStage();
                     }}
                   />
+                  <select
+                    value={newStageType}
+                    onChange={(event) => setNewStageType(event.target.value as PipelineStageType)}
+                    aria-label={tStageType("label")}
+                    className="h-9 max-w-44 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
+                  >
+                    {PIPELINE_STAGE_TYPES.map((type) => (
+                      <option key={type} value={type}>{tStageType(type)}</option>
+                    ))}
+                  </select>
                   <Button
                     variant="outline"
                     size="sm"
@@ -922,6 +943,7 @@ function SortableStageRow({
   stage,
   onNameChange,
   onColorChange,
+  onTypeChange,
   onRemove,
   locked,
   colors,
@@ -930,12 +952,14 @@ function SortableStageRow({
   stage: PipelineStage;
   onNameChange: (v: string) => void;
   onColorChange: (v: string) => void;
+  onTypeChange: (v: PipelineStageType) => void;
   onRemove: () => void;
   locked: boolean;
   colors: readonly string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   t: any;
 }) {
+  const tStageType = useTranslations("Pipelines.stageTypes");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: stage.id, disabled: locked });
 
@@ -968,6 +992,17 @@ function SortableStageRow({
         disabled={locked}
         className="h-7 flex-1 border-transparent bg-transparent text-sm text-foreground focus:border-border"
       />
+      <select
+        value={stage.stage_type ?? "other"}
+        onChange={(event) => onTypeChange(event.target.value as PipelineStageType)}
+        disabled={locked}
+        aria-label={tStageType("label")}
+        className="h-7 max-w-32 rounded-md border border-border bg-background px-1 text-[11px] text-foreground"
+      >
+        {PIPELINE_STAGE_TYPES.map((type) => (
+          <option key={type} value={type}>{tStageType(type)}</option>
+        ))}
+      </select>
       <Button
         variant="ghost"
         size="icon-xs"

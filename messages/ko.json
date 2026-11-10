@@ -653,6 +653,27 @@
     }
   },
   "Pipelines": {
+    "stageTypes": {
+      "label": "열 유형",
+      "other": "사용자 지정 — Meta 이벤트 없음",
+      "lead": "신규 리드 — Lead",
+      "schedule": "예약/미팅 — Schedule",
+      "purchase": "판매 — Purchase"
+    },
+    "scheduleDialog": {
+      "title": "날짜 추가",
+      "moveTitle": "딜 예약",
+      "previousMonth": "이전 달",
+      "nextMonth": "다음 달",
+      "time": "시간",
+      "required": "(필수)",
+      "optional": "(선택)",
+      "clear": "지우기",
+      "remove": "제거",
+      "cancel": "취소",
+      "save": "저장",
+      "saveAndMove": "저장 후 이동"
+    },
     "list": {
       "deal": "딜",
       "stage": "단계",
@@ -692,6 +713,7 @@
       "toastFailedLoadPipelines": "파이프라인을 불러오지 못했습니다",
       "toastFailedMoveDeal": "딜을 이동하지 못했습니다",
       "toastFailedStageColor": "열 색상을 변경하지 못했습니다.",
+      "toastFailedStageType": "열 유형을 변경하지 못했습니다.",
       "toastFailedCreatePipeline": "파이프라인을 만들지 못했습니다",
       "pipelineOwnerOnly": "계정 소유자만 파이프라인을 만들거나 삭제할 수 있습니다.",
       "toastPipelineCreated": "파이프라인이 생성되었습니다",
@@ -703,7 +725,9 @@
       "showMore": "더 보기 (+{count}) · {count}개 숨김",
       "showLess": "접기",
       "changeStageColor": "{stage} 색상 변경",
+      "columnSettings": "{stage} 설정",
       "columnColor": "열 색상",
+      "columnType": "열 유형",
       "noColumnColor": "색상 없음",
       "selectColumnColor": "열 색상 선택 {color}",
       "viewKanban": "칸반 보기",
@@ -750,6 +774,9 @@
       "paidAmountPlaceholder": "0.00",
       "currency": "통화",
       "expectedCloseDate": "예상 마감일",
+      "scheduledDate": "예약 날짜",
+      "scheduledTime": "예약 시간",
+      "scheduledDateTimeRequired": "이 단계로 이동하려면 예약 날짜와 시간을 입력하세요.",
       "stage": "단계",
       "assignedTo": "담당자",
       "unassigned": "담당자 없음",

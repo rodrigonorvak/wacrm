@@ -653,6 +653,27 @@
     }
   },
   "Pipelines": {
+    "stageTypes": {
+      "label": "Column type",
+      "other": "Custom — no Meta event",
+      "lead": "New lead — Lead",
+      "schedule": "Appointment/meeting — Schedule",
+      "purchase": "Sale — Purchase"
+    },
+    "scheduleDialog": {
+      "title": "Add date",
+      "moveTitle": "Schedule deal",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "time": "Time",
+      "required": "(required)",
+      "optional": "(optional)",
+      "clear": "Clear",
+      "remove": "Remove",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saveAndMove": "Save and move"
+    },
     "list": {
       "deal": "Deal",
       "stage": "Stage",
@@ -692,6 +713,7 @@
       "toastFailedLoadPipelines": "Failed to load pipelines",
       "toastFailedMoveDeal": "Failed to move deal",
       "toastFailedStageColor": "Could not change the column color.",
+      "toastFailedStageType": "Could not change the column type.",
       "toastFailedCreatePipeline": "Failed to create pipeline",
       "pipelineOwnerOnly": "Only the account owner can create or delete pipelines.",
       "toastPipelineCreated": "Pipeline created",
@@ -703,7 +725,9 @@
       "showMore": "Show more (+{count}) · {count} hidden",
       "showLess": "Show less",
       "changeStageColor": "Change color for {stage}",
+      "columnSettings": "Settings for {stage}",
       "columnColor": "Column color",
+      "columnType": "Column type",
       "noColumnColor": "No color",
       "selectColumnColor": "Select column color {color}",
       "viewKanban": "Kanban view",
@@ -750,6 +774,9 @@
       "paidAmountPlaceholder": "0.00",
       "currency": "Currency",
       "expectedCloseDate": "Expected Close Date",
+      "scheduledDate": "Appointment date",
+      "scheduledTime": "Appointment time",
+      "scheduledDateTimeRequired": "Enter the appointment date and time for this stage.",
       "stage": "Stage",
       "assignedTo": "Assigned To",
       "unassigned": "Unassigned",

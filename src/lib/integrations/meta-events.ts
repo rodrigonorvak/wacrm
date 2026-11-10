@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { getMetaEventForStageType } from '@/lib/pipelines/stage-type';
 import type { MetaIntegrationSource } from '@/types';
 
 type MetaIntegrationRow = {
@@ -233,21 +234,27 @@ export async function sendMetaEvent(
 
 export async function sendMetaEventForStage(input: MetaStageEventInput): Promise<void> {
   const db = supabaseAdmin();
-  const { data: integrations } = await db
-    .from('meta_integrations')
-    .select('id, schedule_stage_id, purchase_stage_id')
-    .eq('account_id', input.accountId)
-    .eq('pipeline_id', input.pipelineId)
-    .eq('is_active', true);
+  const [{ data: stage, error: stageError }, { data: integrations, error: integrationsError }] =
+    await Promise.all([
+      db
+        .from('pipeline_stages')
+        .select('stage_type')
+        .eq('id', input.stageId)
+        .eq('pipeline_id', input.pipelineId)
+        .maybeSingle(),
+      db
+        .from('meta_integrations')
+        .select('id')
+        .eq('account_id', input.accountId)
+        .eq('pipeline_id', input.pipelineId)
+        .eq('is_active', true),
+    ]);
+  if (stageError) throw stageError;
+  if (integrationsError) throw integrationsError;
 
+  const eventName = getMetaEventForStageType(stage?.stage_type);
+  if (!eventName) return;
   for (const integration of integrations ?? []) {
-    const eventName =
-      integration.schedule_stage_id === input.stageId
-        ? 'Schedule'
-        : integration.purchase_stage_id === input.stageId
-          ? 'Purchase'
-          : null;
-    if (!eventName) continue;
     await sendMetaEvent({ ...input, eventName }, integration.id);
   }
 }

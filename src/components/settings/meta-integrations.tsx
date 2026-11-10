@@ -11,18 +11,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SettingsPanelHead } from "./settings-panel-head";
+import { getMetaEventForStageType } from "@/lib/pipelines/stage-type";
+import type { PipelineStageType } from "@/lib/pipelines/stage-type";
 
 type SourceType = "elementor" | "meta_instant_form";
 type Pipeline = { id: string; name: string };
-type Stage = { id: string; name: string; pipeline_id: string };
+type Stage = { id: string; name: string; pipeline_id: string; stage_type: PipelineStageType };
 type Integration = {
   source_type: SourceType;
   pipeline_id: string;
   dataset_id: string;
   meta_page_id?: string | null;
   api_version: string;
-  schedule_stage_id: string | null;
-  purchase_stage_id: string | null;
   is_active: boolean;
 };
 type MetaEvent = {
@@ -42,8 +42,6 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
   const [stages, setStages] = useState<Stage[]>([]);
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [pipelineId, setPipelineId] = useState("");
-  const [scheduleStageId, setScheduleStageId] = useState("");
-  const [purchaseStageId, setPurchaseStageId] = useState("");
   const [datasetId, setDatasetId] = useState("");
   const [accessToken, setAccessToken] = useState("");
   const [pageId, setPageId] = useState("");
@@ -76,8 +74,6 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
       setPipelineId(current?.pipeline_id ?? nextPipelines[0]?.id ?? "");
       setDatasetId(current?.dataset_id ?? "");
       setPageId(current?.meta_page_id ?? "");
-      setScheduleStageId(current?.schedule_stage_id ?? "");
-      setPurchaseStageId(current?.purchase_stage_id ?? "");
       setLoading(false);
     })().catch(() => {
       if (!cancelled) {
@@ -94,7 +90,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
     if (!pipelineId) return;
     supabase
       .from("pipeline_stages")
-      .select("id, name, pipeline_id")
+      .select("id, name, pipeline_id, stage_type")
       .eq("pipeline_id", pipelineId)
       .order("position")
       .then(({ data }) => setStages((data ?? []) as Stage[]));
@@ -106,14 +102,12 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
     setPipelineId(current?.pipeline_id ?? pipelines[0]?.id ?? "");
     setDatasetId(current?.dataset_id ?? "");
     setPageId(current?.meta_page_id ?? "");
-    setScheduleStageId(current?.schedule_stage_id ?? "");
-    setPurchaseStageId(current?.purchase_stage_id ?? "");
     setAccessToken("");
   }
 
   async function handleSave() {
-    if (!pipelineId || !scheduleStageId || !purchaseStageId || !datasetId || (!selectedIntegration && !accessToken) || (sourceType === "meta_instant_form" && (!pageId || (!selectedIntegration && !pageAccessToken)))) {
-      toast.error("Selecione a pipeline, as duas colunas e informe as credenciais.");
+    if (!pipelineId || !datasetId || (!selectedIntegration && !accessToken) || (sourceType === "meta_instant_form" && (!pageId || (!selectedIntegration && !pageAccessToken)))) {
+      toast.error("Selecione a pipeline e informe as credenciais.");
       return;
     }
     setSaving(true);
@@ -123,8 +117,6 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
       body: JSON.stringify({
         source_type: sourceType,
         pipeline_id: pipelineId,
-        schedule_stage_id: scheduleStageId,
-        purchase_stage_id: purchaseStageId,
         dataset_id: datasetId,
         access_token: accessToken || undefined,
         meta_page_id: sourceType === "meta_instant_form" ? pageId : undefined,
@@ -193,7 +185,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
             <Radio className="size-4 text-primary" />
             Origem dos leads
           </CardTitle>
-          <CardDescription>Escolha uma origem e relacione as colunas da pipeline aos eventos.</CardDescription>
+          <CardDescription>Escolha uma origem. Os eventos enviados seguem o tipo padronizado de cada coluna.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-2 sm:max-w-sm">
@@ -221,20 +213,22 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
                   {pipelines.map((pipeline) => <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>)}
                 </select>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label>Coluna de reunião (Schedule)</Label>
-                  <select value={scheduleStageId} onChange={(event) => setScheduleStageId(event.target.value)} disabled={!canEditSettings} className="h-9 rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground">
-                    <option value="">Selecione uma coluna</option>
-                    {pipelineStages.filter((stage) => stage.name !== "Novo Lead").map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                  </select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Coluna de pagamento (Purchase)</Label>
-                  <select value={purchaseStageId} onChange={(event) => setPurchaseStageId(event.target.value)} disabled={!canEditSettings} className="h-9 rounded-lg border border-border bg-muted px-2.5 text-sm text-foreground">
-                    <option value="">Selecione uma coluna</option>
-                    {pipelineStages.filter((stage) => stage.name !== "Novo Lead").map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-                  </select>
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <p className="text-sm font-medium text-foreground">Eventos associados às colunas</p>
+                <div className="mt-2 space-y-1.5 text-xs text-muted-foreground">
+                  {(["lead", "schedule", "purchase"] as const).map((stageType) => {
+                    const eventName = getMetaEventForStageType(stageType);
+                    const names = pipelineStages
+                      .filter((stage) => stage.stage_type === stageType)
+                      .map((stage) => stage.name);
+                    return (
+                      <p key={stageType}>
+                        <span className="font-semibold text-foreground">{eventName}</span>
+                        {" · "}
+                        {names.length ? names.join(", ") : "Nenhuma coluna configurada"}
+                      </p>
+                    );
+                  })}
                 </div>
               </div>
               {sourceType === "meta_instant_form" ? (
@@ -243,7 +237,7 @@ export function MetaIntegrations({ onBack }: { onBack?: () => void }) {
                   <div className="grid gap-2"><Label>Page Access Token</Label><Input type="password" value={pageAccessToken} onChange={(event) => setPageAccessToken(event.target.value)} disabled={!canEditSettings} placeholder={selectedIntegration ? "Token salvo; informe apenas para substituir" : "Token da página Meta"} /></div>
                 </div>
               ) : null}
-              <p className="text-xs text-muted-foreground">Novo Lead envia o evento Lead automaticamente e não pode ser escolhido nesta configuração.</p>
+              <p className="text-xs text-muted-foreground">O nome da coluna pode ser personalizado; o evento é definido pelo tipo selecionado nos três pontos da coluna ou nas configurações da pipeline.</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2"><Label>Dataset ID</Label><Input value={datasetId} onChange={(event) => setDatasetId(event.target.value)} disabled={!canEditSettings} autoComplete="off" placeholder="ID do conjunto de dados" /></div>
                   <div className="grid gap-2"><Label>Access Token</Label><Input type="password" autoComplete="new-password" value={accessToken} onChange={(event) => setAccessToken(event.target.value)} disabled={!canEditSettings} placeholder={selectedIntegration ? "Token salvo; informe apenas para substituir" : "Cole o token da Meta"} /></div>

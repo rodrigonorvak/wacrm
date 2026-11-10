@@ -34,6 +34,7 @@ import {
   type PipelineCardField,
 } from "@/lib/pipelines/card-fields";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
   Building2,
@@ -134,6 +135,7 @@ function toDateTimeInputValue(date: Date): string {
 }
 
 export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
+  const tScheduleDialog = useTranslations("Pipelines.scheduleDialog");
   const router = useRouter();
   const supabase = createClient();
   const { accountId, user } = useAuth();
@@ -180,6 +182,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [stageScheduleMoveId, setStageScheduleMoveId] = useState<string | null>(null);
   const [dealFormOpen, setDealFormOpen] = useState(false);
   const [visibleCardFields, setVisibleCardFields] = useState<PipelineCardField[]>(DEFAULT_PIPELINE_CARD_FIELDS);
   const [deletingLead, setDeletingLead] = useState(false);
@@ -460,10 +463,17 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     if (!deal || !selectedStageId) return;
     const stage = stages.find((item) => item.id === selectedStageId);
     if (!stage) return;
-    const requiresAmount = isPaidStageName(stage.name);
+    const requiresAmount =
+      isPaidStageName(stage.name) || stage.stage_type === "purchase";
     const amount = Number(paidAmount);
     if (requiresAmount && !(amount > 0)) {
       toast.error("Informe o valor pago para mover o lead para esta etapa");
+      return;
+    }
+    if (stage.stage_type === "schedule" && stage.id !== deal.stage_id) {
+      setStageScheduleMoveId(stage.id);
+      setStageDialogOpen(false);
+      setScheduleDialogOpen(true);
       return;
     }
     setSavingStage(true);
@@ -486,6 +496,47 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
     );
     setStageDialogOpen(false);
     toast.success("Etapa atualizada");
+  }
+
+  async function saveScheduledStageMove(
+    dealId: string,
+    scheduledDate: string | null,
+    scheduledTime: string | null,
+  ): Promise<boolean> {
+    if (!deal || deal.id !== dealId || !stageScheduleMoveId || !scheduledDate || !scheduledTime) {
+      return false;
+    }
+    const stage = stages.find((item) => item.id === stageScheduleMoveId);
+    if (!stage) {
+      toast.error("Não foi possível localizar a etapa de agendamento");
+      return false;
+    }
+    const response = await fetch(`/api/deals/${deal.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stage_id: stage.id,
+        scheduled_date: scheduledDate,
+        scheduled_time: scheduledTime,
+      }),
+    });
+    if (!response.ok) {
+      toast.error("Não foi possível agendar e mover o lead");
+      return false;
+    }
+    setDeal((current) =>
+      current
+        ? {
+            ...current,
+            stage_id: stage.id,
+            stage,
+            scheduled_date: scheduledDate,
+            scheduled_time: scheduledTime,
+          }
+        : current,
+    );
+    toast.success("Agendamento salvo e etapa atualizada");
+    return true;
   }
 
   async function openReminderDialog() {
@@ -1107,7 +1158,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                 {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
               </select>
             </div>
-            {isPaidStageName(selectedStage?.name) && (
+            {(isPaidStageName(selectedStage?.name) || selectedStage?.stage_type === "purchase") && (
               <div className="grid gap-2">
                 <Label htmlFor="lead-paid-amount">Valor pago (R$)</Label>
                 <Input
@@ -1271,11 +1322,20 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
       />
       <DealScheduleDialog
         open={scheduleDialogOpen}
-        onOpenChange={setScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setScheduleDialogOpen(open);
+          if (!open) setStageScheduleMoveId(null);
+        }}
         dealId={deal.id}
         value={deal.scheduled_date}
         timeValue={deal.scheduled_time}
         canEdit={canManageLead}
+        requireTime={
+          stageScheduleMoveId !== null ||
+          stages.find((stage) => stage.id === deal.stage_id)?.stage_type === "schedule"
+        }
+        title={stageScheduleMoveId ? tScheduleDialog("moveTitle") : undefined}
+        onSave={stageScheduleMoveId ? saveScheduledStageMove : undefined}
         onChange={(_, scheduledDate, scheduledTime) =>
           setDeal((current) =>
             current ? { ...current, scheduled_date: scheduledDate, scheduled_time: scheduledTime } : current,

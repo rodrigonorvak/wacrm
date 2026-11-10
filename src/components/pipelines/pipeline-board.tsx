@@ -15,11 +15,13 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import type { Deal, PipelineStage } from "@/types";
+import { PIPELINE_STAGE_TYPES, type PipelineStageType } from "@/lib/pipelines/stage-type";
 import type { PipelineCardField } from "@/lib/pipelines/card-fields";
 import { PIPELINE_STAGE_COLOR_OPTIONS, PIPELINE_STAGE_NO_COLOR } from "@/lib/pipelines/stage-colors";
 import { DealCard } from "./deal-card";
 import { Button } from "@/components/ui/button";
 import {
+  Check,
   CircleSlash2,
   MoreHorizontal,
   Plus,
@@ -41,6 +43,7 @@ interface PipelineBoardProps {
   visibleCardFields: PipelineCardField[];
   canEditStageColors: boolean;
   onStageColorChange: (stageId: string, color: string) => void;
+  onStageTypeChange: (stageId: string, stageType: PipelineStageType) => void;
   onDealMoved: (dealId: string, newStageId: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
@@ -58,6 +61,7 @@ export function PipelineBoard({
   visibleCardFields,
   canEditStageColors,
   onStageColorChange,
+  onStageTypeChange,
   onDealMoved,
   onAddDeal,
   onEditDeal,
@@ -140,6 +144,7 @@ export function PipelineBoard({
             visibleCardFields={visibleCardFields}
             canEditStageColors={canEditStageColors}
             onStageColorChange={onStageColorChange}
+            onStageTypeChange={onStageTypeChange}
             onAddDeal={onAddDeal}
             onEditDeal={onEditDeal}
             onEditLabels={onEditLabels}
@@ -210,6 +215,7 @@ function StageColumn({
   visibleCardFields,
   canEditStageColors,
   onStageColorChange,
+  onStageTypeChange,
   onAddDeal,
   onEditDeal,
   onEditLabels,
@@ -221,12 +227,14 @@ function StageColumn({
   visibleCardFields: PipelineCardField[];
   canEditStageColors: boolean;
   onStageColorChange: (stageId: string, color: string) => void;
+  onStageTypeChange: (stageId: string, stageType: PipelineStageType) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
 }) {
   const t = useTranslations("Pipelines.board");
+  const tStageType = useTranslations("Pipelines.stageTypes");
   const { setNodeRef, isOver } = useDroppable({ id: stage.id });
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_DEALS);
   const visibleDeals = deals.slice(0, visibleCount);
@@ -262,12 +270,28 @@ function StageColumn({
           {canEditStageColors && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                aria-label={t("changeStageColor", { stage: stage.name })}
+                aria-label={t("columnSettings", { stage: stage.name })}
                 className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>{t("columnType")}</DropdownMenuLabel>
+                  {PIPELINE_STAGE_TYPES.map((type) => (
+                    <DropdownMenuItem
+                      key={type}
+                      onClick={() => onStageTypeChange(stage.id, type)}
+                      className="cursor-pointer"
+                    >
+                      {tStageType(type)}
+                      {type === (stage.stage_type ?? "other") && (
+                        <Check className="ml-auto size-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>{t("columnColor")}</DropdownMenuLabel>
                   <div className="grid grid-cols-5 gap-1 p-1">

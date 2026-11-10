@@ -68,6 +68,7 @@ import {
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
+import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
 // Pipeline creation is admin-class (settings-tier write under
 // the new RLS); deal creation is operational and only requires
@@ -84,11 +85,11 @@ const SPEC_DEFAULT_STAGES = [
 ] as const;
 
 const INTEGRATED_DEFAULT_STAGES = [
-  { name: 'Novo Lead', color: '#3b82f6', position: 0 },
+  { name: 'Novo Lead', color: '#3b82f6', position: 0, stage_type: 'lead' },
   { name: 'Prospecção iniciada', color: '#eab308', position: 1 },
-  { name: 'Reunião', color: '#f97316', position: 2 },
+  { name: 'Reunião', color: '#f97316', position: 2, stage_type: 'schedule' },
   { name: 'Contrato a ser assinado', color: '#8b5cf6', position: 3 },
-  { name: 'Contrato pago', color: '#22c55e', position: 4 },
+  { name: 'Contrato pago', color: '#22c55e', position: 4, stage_type: 'purchase' },
 ];
 
 const DEFAULT_ELEMENTOR_MAPPINGS = [
@@ -180,6 +181,7 @@ export default function PipelinesPage() {
   const router = useRouter();
   const t = useTranslations('Pipelines.page');
   const tBoard = useTranslations('Pipelines.board');
+  const tScheduleDialog = useTranslations('Pipelines.scheduleDialog');
   const supabase = createClient();
   const canEditSettings = useCan('edit-settings');
   const canCreateDeals = useCan('send-messages');
@@ -192,6 +194,10 @@ export default function PipelinesPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [labelsDealId, setLabelsDealId] = useState<string | null>(null);
   const [scheduleDealId, setScheduleDealId] = useState<string | null>(null);
+  const [scheduleMove, setScheduleMove] = useState<{
+    dealId: string;
+    stageId: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<DateFilter>('max');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -411,6 +417,7 @@ export default function PipelinesPage() {
         pipeline_id: pipeline.id,
         name: t(s.nameKey),
         color: s.color,
+        stage_type: 'stage_type' in s ? s.stage_type : s.position === 0 ? 'lead' : 'other',
         position: s.position,
       }));
       await supabase.from('pipeline_stages').insert(stagesPayload);
@@ -526,13 +533,39 @@ export default function PipelinesPage() {
     [selectedPipelineId, supabase, t]
   );
 
+  const handleStageTypeChange = useCallback(
+    async (stageId: string, stageType: PipelineStageType) => {
+      const { error } = await supabase
+        .from('pipeline_stages')
+        .update({ stage_type: stageType })
+        .eq('id', stageId)
+        .eq('pipeline_id', selectedPipelineId);
+      if (error) {
+        toast.error(t('toastFailedStageType'));
+        return;
+      }
+      setStages((current) =>
+        current.map((stage) =>
+          stage.id === stageId ? { ...stage, stage_type: stageType } : stage
+        )
+      );
+    },
+    [selectedPipelineId, supabase, t]
+  );
+
   const refreshDeals = useCallback(async () => {
     if (!selectedPipelineId) return;
     setDeals(await loadDeals(selectedPipelineId));
   }, [loadDeals, selectedPipelineId]);
 
   const saveDealStage = useCallback(
-    async (dealId: string, newStageId: string, paidAmount?: number) => {
+    async (
+      dealId: string,
+      newStageId: string,
+      paidAmount?: number,
+      scheduledDate?: string,
+      scheduledTime?: string
+    ) => {
       const nextStage = stages.find((stage) => stage.id === newStageId);
       setDeals((prev) =>
         prev.map((deal) =>
@@ -543,6 +576,9 @@ export default function PipelinesPage() {
                 stage: nextStage ?? deal.stage,
                 ...(paidAmount !== undefined
                   ? { value: paidAmount, currency: 'BRL' }
+                  : {}),
+                ...(scheduledDate !== undefined
+                  ? { scheduled_date: scheduledDate, scheduled_time: scheduledTime ?? null }
                   : {}),
               }
             : deal
@@ -555,6 +591,9 @@ export default function PipelinesPage() {
           stage_id: newStageId,
           ...(paidAmount !== undefined
             ? { value: paidAmount, currency: 'BRL' }
+            : {}),
+          ...(scheduledDate !== undefined
+            ? { scheduled_date: scheduledDate, scheduled_time: scheduledTime ?? null }
             : {}),
         }),
       });
@@ -573,9 +612,14 @@ export default function PipelinesPage() {
       const deal = deals.find((item) => item.id === dealId);
       const nextStage = stages.find((stage) => stage.id === newStageId);
       if (!deal || !nextStage) return;
-      if (isPaidStageName(nextStage.name)) {
+      if (isPaidStageName(nextStage.name) || nextStage.stage_type === 'purchase') {
         setPaidMove({ dealId, stageId: newStageId, dealTitle: deal.title });
         setPaidAmountInput('');
+        return;
+      }
+      if (nextStage.stage_type === 'schedule') {
+        setScheduleMove({ dealId, stageId: newStageId });
+        setScheduleDealId(dealId);
         return;
       }
       await saveDealStage(dealId, newStageId);
@@ -605,7 +649,8 @@ export default function PipelinesPage() {
       const isManual =
         pipelines.find((pipeline) => pipeline.id === selectedPipelineId)
           ?.pipeline_type !== 'integrated';
-      if (isManual) setPickContactsOpen(true);
+      const targetStage = stages.find((stage) => stage.id === (stageId ?? stages[0]?.id));
+      if (isManual && targetStage?.stage_type !== 'schedule') setPickContactsOpen(true);
       else setDealFormOpen(true);
     },
     [stages, pipelines, selectedPipelineId]
@@ -701,6 +746,7 @@ export default function PipelinesPage() {
       pipeline_id: pipeline.id,
       name: 'nameKey' in s ? t(s.nameKey) : s.name,
       color: s.color,
+      stage_type: s.position === 0 ? 'lead' : 'other',
       position: s.position,
     }));
     const { error: stagesError } = await supabase
@@ -1058,6 +1104,7 @@ export default function PipelinesPage() {
               visibleCardFields={visibleCardFields}
               canEditStageColors={canEditSettings}
               onStageColorChange={handleStageColorChange}
+              onStageTypeChange={handleStageTypeChange}
               onDealMoved={handleDealMoved}
               onAddDeal={handleAddDeal}
               onEditDeal={handleEditDeal}
@@ -1102,7 +1149,10 @@ export default function PipelinesPage() {
       <DealScheduleDialog
         open={scheduleDealId !== null}
         onOpenChange={(open) => {
-          if (!open) setScheduleDealId(null);
+          if (!open) {
+            setScheduleDealId(null);
+            setScheduleMove(null);
+          }
         }}
         dealId={scheduleDealId ?? ''}
         value={deals.find((deal) => deal.id === scheduleDealId)?.scheduled_date}
@@ -1110,6 +1160,26 @@ export default function PipelinesPage() {
           deals.find((deal) => deal.id === scheduleDealId)?.scheduled_time
         }
         canEdit={canCreateDeals}
+        requireTime={
+          scheduleMove !== null ||
+          stages.find(
+            (stage) =>
+              stage.id === deals.find((deal) => deal.id === scheduleDealId)?.stage_id
+          )?.stage_type === 'schedule'
+        }
+        title={scheduleMove ? tScheduleDialog('moveTitle') : undefined}
+        onSave={scheduleMove
+          ? async (dealId, scheduledDate, scheduledTime) => {
+              if (!scheduledDate || !scheduledTime) return false;
+              return saveDealStage(
+                dealId,
+                scheduleMove.stageId,
+                undefined,
+                scheduledDate,
+                scheduledTime
+              );
+            }
+          : undefined}
         onChange={(dealId, scheduledDate, scheduledTime) =>
           setDeals((prev) =>
             prev.map((deal) =>
@@ -1118,6 +1188,14 @@ export default function PipelinesPage() {
                     ...deal,
                     scheduled_date: scheduledDate,
                     scheduled_time: scheduledTime,
+                    ...(scheduleMove
+                      ? {
+                          stage_id: scheduleMove.stageId,
+                          stage:
+                            stages.find((stage) => stage.id === scheduleMove.stageId) ??
+                            deal.stage,
+                        }
+                      : {}),
                   }
                 : deal
             )

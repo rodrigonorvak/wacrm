@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { toDateKey } from "@/lib/schedule-date";
@@ -16,6 +16,13 @@ interface DealScheduleDialogProps {
   value: string | null | undefined;
   timeValue?: string | null;
   canEdit?: boolean;
+  requireTime?: boolean;
+  title?: string;
+  onSave?: (
+    dealId: string,
+    scheduledDate: string | null,
+    scheduledTime: string | null,
+  ) => Promise<boolean>;
   onChange: (dealId: string, scheduledDate: string | null, scheduledTime: string | null) => void;
 }
 
@@ -31,9 +38,13 @@ export function DealScheduleDialog({
   value,
   timeValue,
   canEdit = true,
+  requireTime = false,
+  title,
+  onSave,
   onChange,
 }: DealScheduleDialogProps) {
   const locale = useLocale();
+  const t = useTranslations("Pipelines.scheduleDialog");
   const supabase = useMemo(() => createClient(), []);
   const [month, setMonth] = useState(() => monthStart(value));
   const [selected, setSelected] = useState<string | null>(value ?? null);
@@ -73,8 +84,23 @@ export function DealScheduleDialog({
 
   async function save(next: string | null) {
     if (!canEdit || saving) return;
-    setSaving(true);
     const nextTime = next ? time || null : null;
+    if (requireTime && !nextTime) return;
+    setSaving(true);
+    if (onSave) {
+      try {
+        const saved = await onSave(dealId, next, nextTime);
+        setSaving(false);
+        if (!saved) return;
+        onChange(dealId, next, nextTime);
+        onOpenChange(false);
+      } catch (error) {
+        setSaving(false);
+        console.error("Could not save appointment stage move:", error);
+        toast.error("Não foi possível agendar e mover o lead");
+      }
+      return;
+    }
     const { error } = await supabase
       .from("deals")
       .update({ scheduled_date: next, scheduled_time: nextTime })
@@ -92,14 +118,14 @@ export function DealScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xs">
         <DialogHeader>
-          <DialogTitle>Inserir data</DialogTitle>
+          <DialogTitle>{title ?? t("title")}</DialogTitle>
         </DialogHeader>
         <div className="flex items-center justify-between">
-          <Button type="button" variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => shiftMonth(-1)}>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("previousMonth")} onClick={() => shiftMonth(-1)}>
             <ChevronLeft className="size-4" />
           </Button>
           <span className="text-sm font-semibold capitalize">{monthLabel}</span>
-          <Button type="button" variant="ghost" size="icon" aria-label="Próximo mês" onClick={() => shiftMonth(1)}>
+          <Button type="button" variant="ghost" size="icon" aria-label={t("nextMonth")} onClick={() => shiftMonth(1)}>
             <ChevronRight className="size-4" />
           </Button>
         </div>
@@ -133,7 +159,9 @@ export function DealScheduleDialog({
         </div>
         <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
           <label htmlFor="schedule-time" className="text-sm font-medium">
-            Horário <span className="font-normal text-muted-foreground">(opcional)</span>
+            {t("time")} <span className="font-normal text-muted-foreground">
+              {requireTime ? t("required") : t("optional")}
+            </span>
           </label>
           <div className="flex items-center gap-1">
             <input
@@ -146,7 +174,7 @@ export function DealScheduleDialog({
             />
             {time && (
               <Button type="button" variant="ghost" size="sm" onClick={() => setTime("")}>
-                Limpar
+                {t("clear")}
               </Button>
             )}
           </div>
@@ -156,23 +184,23 @@ export function DealScheduleDialog({
             type="button"
             variant="ghost"
             className="text-muted-foreground"
-            disabled={!canEdit || saving || !value}
+            disabled={!canEdit || saving || !value || Boolean(onSave) || requireTime}
             onClick={() => void save(null)}
           >
-            Remover
+            {t("remove")}
           </Button>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
+              {t("cancel")}
             </Button>
             <Button
               type="button"
               className="bg-blue-600 text-white hover:bg-blue-700"
-              disabled={!canEdit || saving || !selected}
+              disabled={!canEdit || saving || !selected || (requireTime && !time)}
               onClick={() => void save(selected)}
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
-              Salvar
+              {requireTime ? t("saveAndMove") : t("save")}
             </Button>
           </div>
         </div>
