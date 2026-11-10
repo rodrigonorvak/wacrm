@@ -118,6 +118,7 @@ interface SidebarProps {
   /** Controlled on mobile by the Header's hamburger button. Ignored on lg+. */
   open?: boolean;
   onClose?: () => void;
+  hideMobileNav?: boolean;
 }
 
 import { useTranslations } from "next-intl";
@@ -125,7 +126,11 @@ import { toast } from "sonner";
 import { usePlatformFeatureAccess } from "@/components/platform/feature-access-provider";
 import type { PlatformFeatureKey } from "@/lib/platform-features";
 
-export function Sidebar({ open = false, onClose }: SidebarProps) {
+export function Sidebar({
+  open = false,
+  onClose,
+  hideMobileNav = false,
+}: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
   const { profile, profileLoading, account, accountRole, signOut } = useAuth();
@@ -198,7 +203,10 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
       <nav
         aria-label="Primary mobile"
-        className="crm-sidebar fixed inset-x-0 bottom-0 z-50 flex h-16 items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] text-white shadow-[0_-4px_20px_rgb(0_0_0_/_20%)] lg:hidden"
+        className={cn(
+          "crm-sidebar fixed inset-x-0 bottom-0 z-50 flex h-16 items-center justify-around px-2 pb-[env(safe-area-inset-bottom)] text-white shadow-[0_-4px_20px_rgb(0_0_0_/_20%)] lg:hidden",
+          hideMobileNav && "max-lg:hidden",
+        )}
       >
         {mobileNavItems.map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

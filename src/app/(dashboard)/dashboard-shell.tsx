@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { useGlassTheme } from "@/hooks/use-glass-theme";
 import {
@@ -16,6 +16,7 @@ import {
   FeatureAccessProvider,
   PlatformFeatureRouteGuard,
 } from "@/components/platform/feature-access-provider";
+import { cn } from "@/lib/utils";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
@@ -25,6 +26,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const { user, loading, accountId } = useAuth();
   const { state: glassTheme } = useGlassTheme(accountId);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const mobileConversationOpen =
+    pathname === "/inbox" && searchParams.has("c");
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
@@ -55,15 +60,26 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background max-lg:h-dvh">
       {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
       <PresenceHeartbeat />
-      <Sidebar open={sidebarOpen} onClose={closeSidebar} />
+      <Sidebar
+        open={sidebarOpen}
+        onClose={closeSidebar}
+        hideMobileNav={mobileConversationOpen}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
+        <div className={mobileConversationOpen ? "max-lg:hidden" : undefined}>
+          <Header onOpenSidebar={() => setSidebarOpen(true)} />
+        </div>
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
-        <main className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-24 lg:pb-6">
+        <main
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-24 lg:pb-6",
+            mobileConversationOpen && "max-lg:!overflow-hidden max-lg:!p-0 max-lg:!pb-0",
+          )}
+        >
           {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
           <AccountAccessAlert />
@@ -78,7 +94,15 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <FeatureAccessProvider>
-        <DashboardShellInner>{children}</DashboardShellInner>
+        <Suspense
+          fallback={
+            <div className="flex h-screen items-center justify-center bg-background">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          }
+        >
+          <DashboardShellInner>{children}</DashboardShellInner>
+        </Suspense>
       </FeatureAccessProvider>
     </AuthProvider>
   );

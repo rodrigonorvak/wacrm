@@ -907,14 +907,14 @@ export function MessageThread({
     // clipped and the hover toolbar overlaps the Tags panel. Letting the
     // root shrink lets the bubbles' break-words / max-w caps apply.
     // Issue #257.
-    <div className={cn("relative flex min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
+    <div className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
       <InboxLeadActions
         key={contact.id}
         contactId={contact.id}
         onDealUpdated={onDealUpdated}
       />
-      <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
               conversation list is always visible next to the thread. */}
           {onBack && (
@@ -932,25 +932,30 @@ export function MessageThread({
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-sm font-semibold text-foreground">{displayName}</h2>
-            <p className="truncate text-xs text-muted-foreground">
-              {contact.phone || contact.email || "Telefone não informado"}
-            </p>
+            <div className="flex min-w-0 items-center gap-1">
+              <p className="min-w-0 truncate text-xs text-muted-foreground">
+                {contact.phone || contact.email || "Telefone não informado"}
+              </p>
+              <Badge
+                variant="outline"
+                title={sessionInfo.remaining}
+                className={cn(
+                  "inline-flex max-w-[7rem] shrink-0 gap-1 border-border px-1.5 text-[9px] sm:px-2 sm:text-[10px]",
+                  sessionInfo.expired ? "text-red-400" : "text-primary"
+                )}
+              >
+                <Clock className="h-3 w-3 shrink-0" />
+                <span className="max-w-[4.5rem] truncate sm:max-w-none">
+                  {sessionInfo.remaining}
+                </span>
+              </Badge>
+            </div>
           </div>
           {/* Session timer badge — hidden on the narrowest phones so
               the name + back arrow keep their room. */}
-          <Badge
-            variant="outline"
-            className={cn(
-              "ml-1 hidden gap-1 border-border text-[10px] sm:inline-flex sm:ml-2",
-              sessionInfo.expired ? "text-red-400" : "text-primary"
-            )}
-          >
-            <Clock className="h-3 w-3" />
-            {sessionInfo.remaining}
-          </Badge>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {/* Contact-panel toggle — desktop only. The contact sidebar
               eats a chunk of horizontal width that crowds the thread on
               smaller laptops; this lets agents reclaim it when they just
@@ -990,9 +995,7 @@ export function MessageThread({
               disabled={isRefreshing}
               aria-label={t("refreshConversation")}
               title={t("refresh")}
-              className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60",
-              )}
+              className="hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60 sm:inline-flex"
             >
               <RefreshCw
                 className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")}
@@ -1093,7 +1096,7 @@ export function MessageThread({
       </div>
 
       {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
