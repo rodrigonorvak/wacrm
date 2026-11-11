@@ -1,4 +1,5 @@
 {
+  "AdSource": { "advertisement": "Anúncio" },
   "ScheduledMessages": {
     "title": "Mensagem programada",
     "indicator": "Mensagem programada ou aguardando revisão",

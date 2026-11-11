@@ -4,6 +4,8 @@ import type { Deal } from "@/types";
 import { CalendarClock, CalendarDays, Clock, ExternalLink, MessageCircle, Pencil, StickyNote, Tag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
+import { visibleLeadSource } from "@/lib/integrations/source-display";
+import { AdSourceBadge } from "@/components/inbox/ad-source-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +60,7 @@ export function DealCard({
     .map((item) => `${item.field?.field_name}: ${item.value}`);
 
   const labels = deal.labels ?? [];
+  const source = visibleLeadSource(deal.source);
 
   return (
     <div
@@ -109,8 +112,9 @@ export function DealCard({
         isOverlay ? "shadow-lg" : "hover:border-primary/40 hover:bg-muted/30"
       }`}
     >
-      {labels.length > 0 && (
+      {(labels.length > 0 || deal.contact?.has_ad_referral) && (
         <div className="mb-1.5 flex flex-wrap gap-1 pr-7">
+          {deal.contact?.has_ad_referral && <AdSourceBadge />}
           {labels.map((label) => (
             <span
               key={label.id}
@@ -134,9 +138,9 @@ export function DealCard({
           </span>
         )}
       </div>
-      {deal.source && (
+      {source && (
         <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
-          <span className="truncate">{deal.source}</span>
+          <span className="truncate">{source}</span>
         </span>
       )}
       {details.map((detail, index) => (

@@ -7,6 +7,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine';
 import { decrypt } from '@/lib/whatsapp/encryption';
 import { verifyMetaWebhookSignature } from '@/lib/whatsapp/webhook-signature';
 import { sendMetaEvent } from '@/lib/integrations/meta-events';
+import { ensureAdLeadLabels } from '@/lib/integrations/ad-lead-labels';
 
 export const maxDuration = 60;
 
@@ -166,6 +167,17 @@ export async function POST(request: Request) {
         .select('id, stage_id')
         .single();
       if (dealError || !deal) throw dealError ?? new Error('Failed to create Meta lead deal');
+
+      if (change.value?.ad_id?.trim()) {
+        try {
+          await ensureAdLeadLabels({
+            db, accountId: integration.account_id, userId: auditUserId,
+            contactId, dealId: deal.id,
+          });
+        } catch (error) {
+          console.error('[meta lead webhook] could not record ad referral:', error);
+        }
+      }
 
       await db.from('lead_integration_events').update({
         status: 'processed',

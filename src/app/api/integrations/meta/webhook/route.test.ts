@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: vi.fn(),
+}))
+
 const mocks = vi.hoisted(() => ({
   supabaseAdmin: vi.fn(),
   findOrCreateContact: vi.fn(),
   resolveAuditUserId: vi.fn(),
   sendMetaEvent: vi.fn(),
+  ensureAdLeadLabels: vi.fn(),
 }))
 
 vi.mock('@/lib/flows/admin-client', () => ({
@@ -20,6 +26,9 @@ vi.mock('@/lib/whatsapp/webhook-signature', () => ({
 }))
 vi.mock('@/lib/integrations/meta-events', () => ({
   sendMetaEvent: mocks.sendMetaEvent,
+}))
+vi.mock('@/lib/integrations/ad-lead-labels', () => ({
+  ensureAdLeadLabels: mocks.ensureAdLeadLabels,
 }))
 
 import { POST } from './route'
@@ -102,6 +111,7 @@ beforeEach(() => {
   mocks.findOrCreateContact.mockReset().mockResolvedValue({ id: 'contact-1' })
   mocks.resolveAuditUserId.mockReset().mockResolvedValue('audit-user-1')
   mocks.sendMetaEvent.mockReset().mockResolvedValue(undefined)
+  mocks.ensureAdLeadLabels.mockReset().mockResolvedValue(undefined)
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({
@@ -132,7 +142,7 @@ describe('Meta Instant Form webhook tenant scoping', () => {
               changes: [
                 {
                   field: 'leadgen',
-                  value: { leadgen_id: 'lead-1', form_id: 'form-1' },
+                  value: { leadgen_id: 'lead-1', form_id: 'form-1', ad_id: 'ad-1' },
                 },
               ],
             },
@@ -156,8 +166,25 @@ describe('Meta Instant Form webhook tenant scoping', () => {
     expect(dealInsert?.payload).toEqual(
       expect.objectContaining({ account_id: 'account-1', pipeline_id: 'pipeline-1' }),
     )
+    expect(mocks.ensureAdLeadLabels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: 'account-1',
+        userId: 'audit-user-1',
+        contactId: 'contact-1',
+        dealId: 'deal-1',
+      }),
+    )
     expect(mocks.sendMetaEvent).toHaveBeenCalledWith(
       expect.objectContaining({ accountId: 'account-1', pipelineId: 'pipeline-1' }),
     )
+  })
+
+  it('does not classify a form lead as an ad without an ad id', async () => {
+    const response = await POST(new Request('http://localhost/api/integrations/meta/webhook', {
+      method: 'POST',
+      body: JSON.stringify({ entry: [{ id: 'meta-page-1', changes: [{ field: 'leadgen', value: { leadgen_id: 'lead-1' } }] }] }),
+    }))
+    expect(response.status).toBe(200)
+    expect(mocks.ensureAdLeadLabels).not.toHaveBeenCalled()
   })
 })

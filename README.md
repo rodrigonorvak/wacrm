@@ -149,6 +149,16 @@ Full walkthrough with screenshots:
 > (Vercel, Railway, your own VPS). Hostinger is recommended, not
 > required._
 
+## WhatsApp ad attribution
+
+Apply migration `083_ad_referral.sql` to enable ad origin indicators.
+When Meta sends an ad referral in a WhatsApp message, the contact is marked
+and its inbox conversations and pipeline cards show an ad badge. Organic
+messages are not marked. Earlier WhatsApp referrals were not stored, so
+existing contacts cannot be classified retrospectively from their message
+text alone. Identification requires Meta to include the referral in the
+webhook.
+
 ## Scheduled WhatsApp messages
 
 Apply migration `082_scheduled_whatsapp_messages.sql` before deploying this

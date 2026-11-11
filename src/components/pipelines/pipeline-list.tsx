@@ -1,5 +1,8 @@
 "use client";
 
+import { AdSourceBadge } from "@/components/inbox/ad-source-badge";
+import { visibleLeadSource } from "@/lib/integrations/source-display";
+
 import { CalendarClock, CalendarDays } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
@@ -75,9 +78,10 @@ export function PipelineList({
                   className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_150px] sm:items-center sm:gap-3"
                 >
                   <span className="min-w-0">
-                    {(deal.labels?.length ?? 0) > 0 && (
+                    {((deal.labels?.length ?? 0) > 0 || deal.contact?.has_ad_referral) && (
                       <span className="mb-1 flex flex-wrap gap-1">
-                        {deal.labels!.map((label) => (
+                        {deal.contact?.has_ad_referral && <AdSourceBadge />}
+                        {deal.labels?.map((label) => (
                           <span
                             key={label.id}
                             title={label.name || undefined}
@@ -92,9 +96,9 @@ export function PipelineList({
                     <span className="block truncate text-sm font-semibold text-foreground">
                       {deal.title}
                     </span>
-                    {deal.source && (
+                    {visibleLeadSource(deal.source) && (
                       <span className="mt-1 inline-flex max-w-full rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">
-                        <span className="truncate">{deal.source}</span>
+                        <span className="truncate">{visibleLeadSource(deal.source)}</span>
                       </span>
                     )}
                     {details.length > 0 && (

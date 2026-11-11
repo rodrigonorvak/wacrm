@@ -19,6 +19,7 @@ const h = vi.hoisted(() => ({
     afterCallbacks: [] as (() => Promise<void> | void)[],
     automationStarted: 0,
     automationCompleted: 0,
+    ensureAdLeadLabels: vi.fn(),
     /** whatsapp_config.mirror_inbound_media for the matched row (#466). */
     mirrorInboundMedia: true as boolean | undefined,
     /** Objects the inbound-media mirror pushed into chat-media. */
@@ -201,6 +202,9 @@ vi.mock('@/lib/ai/auto-reply', () => ({
 vi.mock('@/lib/webhooks/deliver', () => ({
   dispatchWebhookEvent: h.dispatchWebhookEvent,
 }))
+vi.mock('@/lib/integrations/ad-lead-labels', () => ({
+  ensureAdLeadLabels: h.state.ensureAdLeadLabels,
+}))
 
 import { POST } from './route'
 import { getMediaUrl, downloadMedia } from '@/lib/whatsapp/meta-api'
@@ -257,6 +261,7 @@ beforeEach(() => {
   h.state.afterCallbacks = []
   h.state.automationStarted = 0
   h.state.automationCompleted = 0
+  h.state.ensureAdLeadLabels.mockReset().mockResolvedValue(undefined)
   h.state.mirrorInboundMedia = true
   h.state.storageUploads = []
   h.state.storageUploadError = null
@@ -313,6 +318,36 @@ describe('inbound webhook: idempotent insert (#367)', () => {
     expect(h.runAutomationsForTrigger).not.toHaveBeenCalled()
     expect(h.dispatchInboundToAiReply).not.toHaveBeenCalled()
     expect(h.dispatchWebhookEvent).not.toHaveBeenCalled()
+  })
+
+  it('labels click-to-WhatsApp ad leads for the inbox and pipeline', async () => {
+    await runWebhook({
+      ...TEXT_MESSAGE,
+      referral: { source_type: 'ad', source_id: 'ad-1', ctwa_clid: 'click-1' },
+    })
+
+    expect(h.state.ensureAdLeadLabels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: 'acc-1',
+        userId: 'user-1',
+        contactId: 'contact-1',
+      }),
+    )
+  })
+
+  it('does not label organic WhatsApp messages as ad leads', async () => {
+    await runWebhook({
+      ...TEXT_MESSAGE,
+      referral: { source_type: 'post', source_id: 'post-1' },
+    })
+
+    expect(h.state.ensureAdLeadLabels).not.toHaveBeenCalled()
+  })
+
+  it('does not lose an inbound message if recording the referral fails', async () => {
+    h.state.ensureAdLeadLabels.mockRejectedValueOnce(new Error('database unavailable'))
+    await runWebhook({ ...TEXT_MESSAGE, referral: { source_type: 'ad' } })
+    expect(h.state.upsertCalls).toHaveLength(1)
   })
 })
 

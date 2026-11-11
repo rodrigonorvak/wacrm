@@ -1,4 +1,5 @@
 {
+  "AdSource": { "advertisement": "Advertisement" },
   "ScheduledMessages": {
     "title": "Scheduled message",
     "indicator": "Scheduled message or awaiting review",

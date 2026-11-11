@@ -15,6 +15,7 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import { ensureAdLeadLabels } from '@/lib/integrations/ad-lead-labels'
 import {
   handleTemplateWebhookChange,
   isTemplateWebhookField,
@@ -74,6 +75,12 @@ interface WhatsAppMessage {
   button?: { text?: string; payload?: string }
   /** Present when the customer swipe-replies to one of our messages. */
   context?: { id: string }
+  /** Present on customer messages that start from a click-to-WhatsApp ad. */
+  referral?: {
+    source_type?: string
+    source_id?: string
+    ctwa_clid?: string
+  }
 }
 
 interface WhatsAppWebhookEntry {
@@ -634,6 +641,19 @@ async function processMessage(
   )
   if (!contactOutcome) return
   const contactRecord = contactOutcome.contact
+
+  const cameFromAd =
+    message.referral?.source_type?.toLowerCase() === 'ad' ||
+    Boolean(message.referral?.ctwa_clid?.trim())
+  if (cameFromAd) {
+    try {
+      await ensureAdLeadLabels({
+        db: supabaseAdmin(), accountId, userId: configOwnerUserId, contactId: contactRecord.id,
+      })
+    } catch (error) {
+      console.error('[webhook] could not record ad referral:', error)
+    }
+  }
 
   // Find or create conversation
   const convResult = await findOrCreateConversation(

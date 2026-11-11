@@ -102,6 +102,7 @@ function InboxPageInner() {
   // hydrateConversation; the dedupe here keeps it at one refetch per
   // new conversation even when both events arrive within milliseconds.
   const hydratingConvIdsRef = useRef<Set<string>>(new Set());
+  const pendingHydrationsRef = useRef<Set<string>>(new Set());
 
   /**
    * Synchronous mirror of the conversation ids currently in `conversations`
@@ -129,8 +130,11 @@ function InboxPageInner() {
   // conversations stuck on "No messages yet" until the user reloaded.
   // Also self-heals if a realtime event was missed: callers can invoke
   // this whenever they reference a conversation id they don't recognise.
-  const hydrateConversation = useCallback(async (convId: string) => {
-    if (hydratingConvIdsRef.current.has(convId)) return;
+  const hydrateConversation = useCallback(async (convId: string): Promise<void> => {
+    if (hydratingConvIdsRef.current.has(convId)) {
+      pendingHydrationsRef.current.add(convId);
+      return;
+    }
     hydratingConvIdsRef.current.add(convId);
     try {
       const supabase = createClient();
@@ -155,14 +159,11 @@ function InboxPageInner() {
       setConversations((prev) => {
         const existing = prev.find((c) => c.id === fetched.id);
         if (existing) {
-          // Already in state — keep its fields (a realtime UPDATE may
-          // have landed while the fetch was in flight and patched
-          // last_message_text / unread_count to fresher values than
-          // the row we just read). Only backfill `contact`, which the
-          // realtime payloads never carry.
+          // Keep the live conversation fields but refresh the contact join,
+          // which realtime conversation updates never include.
           return prev.map((c) =>
             c.id === fetched.id
-              ? { ...c, contact: c.contact ?? fetched.contact }
+              ? { ...c, contact: fetched.contact ?? c.contact }
               : c,
           );
         }
@@ -170,6 +171,9 @@ function InboxPageInner() {
       });
     } finally {
       hydratingConvIdsRef.current.delete(convId);
+      if (pendingHydrationsRef.current.delete(convId)) {
+        void hydrateConversation(convId);
+      }
     }
   }, []);
 
@@ -301,6 +305,7 @@ function InboxPageInner() {
       }
 
       if (event.eventType === "UPDATE") {
+        hydrateConversation(conv.id);
         if (knownConvIdsRef.current.has(conv.id)) {
           // If this UPDATE is for the conv the user is currently viewing,
           // suppress the incoming unread_count — the user is reading it

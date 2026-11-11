@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
 import { Search, ChevronDown, X, Clock, MessageCircle } from "lucide-react";
 import { useScheduledContacts } from "@/hooks/use-scheduled-contacts";
+import { AdSourceBadge } from "./ad-source-badge";
 import { formatDistanceToNow } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
 import { inboxDateLocale } from "@/lib/inbox/date-locale";
@@ -522,6 +523,7 @@ function ConversationItem({
               )}
             />
           </div>
+          {contact?.has_ad_referral && <div className="mt-1"><AdSourceBadge /></div>}
         </div>
       </div>
     </button>
