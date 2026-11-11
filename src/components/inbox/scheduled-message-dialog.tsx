@@ -54,12 +54,29 @@ function VariableField({ label, value, onChange }: {
   );
 }
 
-export function ScheduledMessageDialog({ contactId, contactName }: { contactId: string; contactName?: string | null }) {
+type ScheduledMessageDialogProps = {
+  contactId: string;
+  contactName?: string | null;
+  showTrigger?: boolean;
+} & (
+  | { open: boolean; onOpenChange: (open: boolean) => void }
+  | { open?: never; onOpenChange?: never }
+);
+
+export function ScheduledMessageDialog({
+  contactId,
+  contactName,
+  showTrigger = true,
+  open: controlledOpen,
+  onOpenChange,
+}: ScheduledMessageDialogProps) {
   const t = useTranslations("ScheduledMessages");
   const locale = useLocale();
   const canSend = useCan("send-messages");
   const canCreateTemplate = useCan("edit-settings");
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -172,9 +189,11 @@ export function ScheduledMessageDialog({ contactId, contactName }: { contactId: 
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} title={t("title")}>
-        <CalendarClock className="size-4" /> <span className="hidden sm:inline">{t("title")}</span>
-      </Button>
+      {showTrigger && (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)} title={t("title")}>
+          <CalendarClock className="size-4" /> <span className="hidden sm:inline">{t("title")}</span>
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>

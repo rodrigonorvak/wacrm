@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { ScheduledMessageDialog } from "@/components/inbox/scheduled-message-dialog";
 import type { LucideIcon } from "lucide-react";
 import {
   AlarmClock,
@@ -22,6 +24,8 @@ interface LeadQuickActionsProps {
   canManageLead: boolean;
   phone: string | null;
   conversationId: string | null;
+  contactId: string | null;
+  contactName: string | null;
   onAddNote: () => void;
   onScheduleAlert: () => void;
   onChangeStage: () => void;
@@ -50,6 +54,8 @@ export function LeadQuickActions({
   canManageLead,
   phone,
   conversationId,
+  contactId,
+  contactName,
   onAddNote,
   onScheduleAlert,
   onChangeStage,
@@ -59,7 +65,9 @@ export function LeadQuickActions({
   onEditSchedule,
   onDeleteLead,
 }: LeadQuickActionsProps) {
+  const tScheduled = useTranslations("ScheduledMessages");
   const [expanded, setExpanded] = useState(false);
+  const [scheduledMessageOpen, setScheduledMessageOpen] = useState(false);
   const cleanPhone = phone ? phoneDigits(phone) : "";
   const whatsappHref = conversationId
     ? `/inbox?c=${conversationId}`
@@ -70,6 +78,7 @@ export function LeadQuickActions({
   const actions: QuickAction[] = [
     { label: "Adicionar Nota", icon: MessageCircle, color: "text-blue-600", onClick: onAddNote, disabled: !canManageLead },
     { label: "Agendar Alerta", icon: AlarmClock, color: "text-orange-600", onClick: onScheduleAlert, disabled: !canManageLead },
+    { label: tScheduled("title"), icon: CalendarClock, color: "text-blue-600", onClick: () => setScheduledMessageOpen(true), disabled: !contactId },
     { label: "Alterar Estágio", icon: CircleCheck, color: "text-emerald-600", onClick: onChangeStage, disabled: !canManageLead },
     { label: "Editar Informações", icon: SquarePen, color: "text-violet-600", onClick: onEditInformation, disabled: !canManageLead },
     { label: "Etapas de Atendimento", icon: ClipboardList, color: "text-indigo-600", onClick: onServiceSteps },
@@ -100,6 +109,7 @@ export function LeadQuickActions({
   }
 
   return (
+    <>
     <div className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 flex max-h-[calc(100dvh-2rem)] flex-col items-end gap-2 sm:right-6 sm:bottom-6">
       {expanded && (
         <nav
@@ -171,5 +181,16 @@ export function LeadQuickActions({
         {expanded ? <X className="size-5" /> : <Plus className="size-5" />}
       </button>
     </div>
+    {contactId && (
+      <ScheduledMessageDialog
+        key={contactId}
+        contactId={contactId}
+        contactName={contactName}
+        open={scheduledMessageOpen}
+        onOpenChange={setScheduledMessageOpen}
+        showTrigger={false}
+      />
+    )}
+    </>
   );
 }

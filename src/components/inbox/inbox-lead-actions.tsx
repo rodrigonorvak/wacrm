@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleCheck, Plus, Tag, X } from "lucide-react";
+import { CalendarClock, CircleCheck, Plus, Tag, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isPaidStageName } from "@/lib/pipelines/paid-stage";
 import type { DealLabel, PipelineStage } from "@/types";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
+import { ScheduledMessageDialog } from "./scheduled-message-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ interface InboxDeal {
 
 interface InboxLeadActionsProps {
   contactId: string;
+  contactName?: string | null;
   onDealUpdated?: () => void;
 }
 
@@ -42,13 +44,15 @@ type DealRow = Omit<InboxDeal, "labels"> & {
   deal_label_links?: { label: DealLabel | null }[];
 };
 
-export function InboxLeadActions({ contactId, onDealUpdated }: InboxLeadActionsProps) {
+export function InboxLeadActions({ contactId, contactName, onDealUpdated }: InboxLeadActionsProps) {
   const t = useTranslations("Inbox.leadActions");
+  const tScheduled = useTranslations("ScheduledMessages");
   const { accountId } = useAuth();
   const canEdit = useCan("send-messages");
   const [deals, setDeals] = useState<InboxDeal[]>([]);
   const [loadingDeals, setLoadingDeals] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [scheduledMessageOpen, setScheduledMessageOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<Action | null>(null);
   const [dealSelectorOpen, setDealSelectorOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState("");
@@ -194,8 +198,6 @@ export function InboxLeadActions({ contactId, onDealUpdated }: InboxLeadActionsP
     }
   }
 
-  if (loadingDeals || deals.length === 0) return null;
-
   return (
     <>
       <div className="absolute bottom-24 right-4 z-40 flex flex-col items-end gap-2">
@@ -203,22 +205,37 @@ export function InboxLeadActions({ contactId, onDealUpdated }: InboxLeadActionsP
           <nav aria-label={t("actionsTitle")} className="flex flex-col items-end gap-2">
             <button
               type="button"
-              onClick={() => chooseAction("stage")}
-              disabled={!canEdit}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted disabled:opacity-45"
+              onClick={() => {
+                setExpanded(false);
+                setScheduledMessageOpen(true);
+              }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted"
             >
-              <span>{t("changeStage")}</span>
-              <CircleCheck className="size-4 text-emerald-600" />
+              <span>{tScheduled("title")}</span>
+              <CalendarClock className="size-4 text-blue-600" />
             </button>
-            <button
-              type="button"
-              onClick={() => chooseAction("labels")}
-              disabled={!canEdit}
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted disabled:opacity-45"
-            >
-              <span>{t("editLabels")}</span>
-              <Tag className="size-4 text-pink-600" />
-            </button>
+            {!loadingDeals && deals.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => chooseAction("stage")}
+                  disabled={!canEdit}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted disabled:opacity-45"
+                >
+                  <span>{t("changeStage")}</span>
+                  <CircleCheck className="size-4 text-emerald-600" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => chooseAction("labels")}
+                  disabled={!canEdit}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted disabled:opacity-45"
+                >
+                  <span>{t("editLabels")}</span>
+                  <Tag className="size-4 text-pink-600" />
+                </button>
+              </>
+            )}
           </nav>
         )}
         <button
@@ -231,6 +248,14 @@ export function InboxLeadActions({ contactId, onDealUpdated }: InboxLeadActionsP
           {expanded ? <X className="size-5" /> : <Plus className="size-5" />}
         </button>
       </div>
+
+      <ScheduledMessageDialog
+        contactId={contactId}
+        contactName={contactName}
+        open={scheduledMessageOpen}
+        onOpenChange={setScheduledMessageOpen}
+        showTrigger={false}
+      />
 
       <Dialog open={dealSelectorOpen} onOpenChange={setDealSelectorOpen}>
         <DialogContent>

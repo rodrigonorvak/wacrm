@@ -161,6 +161,10 @@ webhook.
 
 ## Scheduled WhatsApp messages
 
+Open **Mensagem programada** from the floating actions menu in a lead card or
+conversation, or use the existing shortcut in the conversation header or
+contact details. A lead card must have a linked contact to schedule messages.
+
 Apply migration `082_scheduled_whatsapp_messages.sql` before deploying this
 feature. Configure `CRON_SECRET` or `AUTOMATION_CRON_SECRET` and invoke
 `GET /api/automations/cron` at least once per minute with the secret in the

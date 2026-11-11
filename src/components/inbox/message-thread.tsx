@@ -912,6 +912,7 @@ export function MessageThread({
       <InboxLeadActions
         key={contact.id}
         contactId={contact.id}
+        contactName={contact.name}
         onDealUpdated={onDealUpdated}
       />
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">

@@ -1294,9 +1294,12 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         </div>
       )}
       <LeadQuickActions
+        key={contact?.id ?? deal.id}
         canManageLead={canManageLead}
         phone={contact?.phone ?? null}
         conversationId={conversation?.id ?? null}
+        contactId={contact?.id ?? null}
+        contactName={contact?.name ?? null}
         onAddNote={() => {
           setTab("notes");
           requestAnimationFrame(() => document.getElementById("lead-note-input")?.focus());
