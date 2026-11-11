@@ -149,6 +149,21 @@ Full walkthrough with screenshots:
 > (Vercel, Railway, your own VPS). Hostinger is recommended, not
 > required._
 
+## Scheduled WhatsApp messages
+
+Apply migration `082_scheduled_whatsapp_messages.sql` before deploying this
+feature. Configure `CRON_SECRET` or `AUTOMATION_CRON_SECRET` and invoke
+`GET /api/automations/cron` at least once per minute with the secret in the
+`Authorization: Bearer <secret>` or `x-cron-secret` header. Each invocation
+processes at most 20 scheduled messages; delivery can be delayed by cron
+frequency, backlog, or outages.
+
+Only approved templates may be scheduled. The worker checks their approval
+again with Meta before sending. A pending schedule can be cancelled; a send
+whose outcome is uncertain is never retried automatically. Check the inbox
+and Meta before scheduling a replacement. A message marked sent was accepted
+by Meta, not necessarily delivered or read.
+
 ## Email campaign delivery
 
 Email campaigns use the SMTP sender selected in each campaign. Configure

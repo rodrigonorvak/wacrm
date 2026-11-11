@@ -125,7 +125,7 @@ function emptyButton(type: TemplateButton['type']): TemplateButton {
   }
 }
 
-export function TemplateManager() {
+export function TemplateManager({ createOnly = false, onCreateClose }: { createOnly?: boolean; onCreateClose?: () => void } = {}) {
   const t = useTranslations('Settings.templates');
   const formatSubmissionError = (message: string) =>
     formatTemplateSubmissionError(message, {
@@ -145,7 +145,7 @@ export function TemplateManager() {
 
   const [loading, setLoading] = useState(true);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(createOnly);
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -338,6 +338,7 @@ export function TemplateManager() {
             : t('toastSubmitNewSuccess'),
       );
       setDialogOpen(false);
+      if (createOnly) onCreateClose?.();
       setForm(emptyForm);
       setEditingId(null);
     } catch (err) {
@@ -534,6 +535,7 @@ export function TemplateManager() {
 
   return (
     <section className="animate-in fade-in-50 space-y-4 duration-200">
+      {!createOnly && <>
       <SettingsPanelHead
         title={t('title')}
         description={t('description')}
@@ -680,6 +682,7 @@ export function TemplateManager() {
           })}
         </div>
       )}
+      </>}
 
       <Dialog
         open={dialogOpen}
@@ -689,6 +692,7 @@ export function TemplateManager() {
             setEditingId(null);
             setForm(emptyForm);
             setSubmissionError(null);
+            if (createOnly) onCreateClose?.();
           }
         }}
       >
@@ -1109,7 +1113,10 @@ export function TemplateManager() {
           <DialogFooter className="bg-popover border-border">
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => {
+                setDialogOpen(false);
+                if (createOnly) onCreateClose?.();
+              }}
               className="border-border text-muted-foreground hover:bg-muted"
             >
               {t('cancel')}

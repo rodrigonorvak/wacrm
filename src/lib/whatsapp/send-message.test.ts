@@ -273,6 +273,26 @@ const TEMPLATE_ROW = {
 };
 
 describe('sendMessageToConversation — template persistence (#483)', () => {
+  it('uses the validated template for scheduled sends and records the sender as a bot', async () => {
+    sendTemplateMessage.mockClear();
+    const captured: CapturedWrites = {};
+    await sendMessageToConversation(sendPathDb([], captured), 'acct-1', {
+      conversationId: 'cv-1',
+      messageType: 'template',
+      templateName: TEMPLATE_ROW.name,
+      resolvedTemplate: { ...TEMPLATE_ROW, category: 'Utility' },
+      automated: true,
+      templateMessageParams: { body: ['42', 'tomorrow'] },
+    });
+    expect(captured.message).toMatchObject({
+      sender_type: 'bot',
+      content_text: 'Your order 42 ships on tomorrow',
+    });
+    expect(sendTemplateMessage).toHaveBeenCalledWith(expect.objectContaining({
+      template: expect.objectContaining({ id: 'tpl-1' }),
+    }));
+  });
+
   it('stores the substituted body when the caller sends no text', async () => {
     const captured: CapturedWrites = {};
     const result = await sendMessageToConversation(

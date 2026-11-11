@@ -1,7 +1,7 @@
 "use client";
 
 import type { Deal } from "@/types";
-import { CalendarClock, CalendarDays, ExternalLink, Pencil, StickyNote, Tag } from "lucide-react";
+import { CalendarClock, CalendarDays, Clock, ExternalLink, MessageCircle, Pencil, StickyNote, Tag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
 import {
@@ -21,6 +21,7 @@ interface DealCardProps {
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
   isOverlay?: boolean;
+  hasScheduledMessage?: boolean;
 }
 
 export function DealCard({
@@ -31,9 +32,11 @@ export function DealCard({
   onEditLabels,
   onEditSchedule,
   isOverlay,
+  hasScheduledMessage = false,
 }: DealCardProps) {
   const locale = useLocale();
   const t = useTranslations("Pipelines.list");
+  const tScheduled = useTranslations("ScheduledMessages");
   const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale, deal.scheduled_time);
   const createdAt = new Date(deal.created_at);
   const createdAtLabel = Number.isNaN(createdAt.getTime())
@@ -124,6 +127,12 @@ export function DealCard({
         <h4 className="truncate text-sm font-semibold leading-snug text-foreground">
           {deal.title}
         </h4>
+        {hasScheduledMessage && (
+          <span className="relative mt-1 inline-flex text-primary" role="img" aria-label={tScheduled("indicator")} title={tScheduled("indicator")}>
+            <MessageCircle className="size-4" />
+            <Clock className="absolute -bottom-1 -right-1 size-3 rounded-full bg-card" />
+          </span>
+        )}
       </div>
       {deal.source && (
         <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-medium text-primary">

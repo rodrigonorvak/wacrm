@@ -9,7 +9,8 @@ import {
 } from "@/lib/inbox/conversations";
 import { cn } from "@/lib/utils";
 import type { Conversation, ConversationStatus, Tag } from "@/types";
-import { Search, ChevronDown, X } from "lucide-react";
+import { Search, ChevronDown, X, Clock, MessageCircle } from "lucide-react";
+import { useScheduledContacts } from "@/hooks/use-scheduled-contacts";
 import { formatDistanceToNow } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
 import { inboxDateLocale } from "@/lib/inbox/date-locale";
@@ -45,7 +46,7 @@ const STATUS_COLORS: Record<ConversationStatus, string> = {
 
 
 
-type InboxFilter = ConversationStatus | "all" | "unread";
+type InboxFilter = ConversationStatus | "all" | "unread" | "scheduled";
 
 export function ConversationList({
   activeConversationId,
@@ -55,14 +56,17 @@ export function ConversationList({
   resyncToken = 0,
 }: ConversationListProps) {
   const t = useTranslations("Inbox.conversationList");
+  const tScheduled = useTranslations("ScheduledMessages");
+  const scheduledContacts = useScheduledContacts();
   
   const FILTER_OPTIONS: { label: string; value: InboxFilter }[] = useMemo(() => [
     { label: t("filterAll"), value: "all" },
     { label: t("filterUnread"), value: "unread" },
+    { label: tScheduled("title"), value: "scheduled" },
     { label: t("filterOpen"), value: "open" },
     { label: t("filterPending"), value: "pending" },
     { label: t("filterClosed"), value: "closed" },
-  ], [t]);
+  ], [t, tScheduled]);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<InboxFilter>("all");
@@ -164,6 +168,8 @@ export function ConversationList({
 
     if (filter === "unread") {
       result = result.filter((c) => c.unread_count > 0);
+    } else if (filter === "scheduled") {
+      result = result.filter((c) => !!c.contact_id && scheduledContacts.has(c.contact_id));
     } else if (filter !== "all") {
       result = result.filter((c) => c.status === filter);
     }
@@ -189,7 +195,7 @@ export function ConversationList({
     }
 
     return result;
-  }, [conversations, filter, search, selectedTagIds, selectedCompany]);
+  }, [conversations, filter, search, selectedTagIds, selectedCompany, scheduledContacts]);
 
   const toggleTag = useCallback((id: string) => {
     setSelectedTagIds((prev) =>
@@ -415,6 +421,7 @@ export function ConversationList({
                 isActive={conv.id === activeConversationId}
                 onSelect={handleSelect}
                 t={t}
+                hasScheduledMessage={!!conv.contact_id && scheduledContacts.has(conv.contact_id)}
               />
             ))}
           </div>
@@ -429,6 +436,7 @@ interface ConversationItemProps {
   isActive: boolean;
   onSelect: (conversation: Conversation) => void;
   t: ReturnType<typeof useTranslations>;
+  hasScheduledMessage: boolean;
 }
 
 function ConversationItem({
@@ -436,7 +444,9 @@ function ConversationItem({
   isActive,
   onSelect,
   t,
+  hasScheduledMessage,
 }: ConversationItemProps) {
+  const tScheduled = useTranslations("ScheduledMessages");
   const locale = useLocale();
   const contact = conversation.contact;
   const displayName = contact?.name || contact?.phone || t("unknown");
@@ -487,6 +497,12 @@ function ConversationItem({
             {conversation.last_message_text || t("noMessagesYet")}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
+            {hasScheduledMessage && (
+              <span className="relative inline-flex text-primary" role="img" aria-label={tScheduled("indicator")} title={tScheduled("indicator")}>
+                <MessageCircle className="size-4" />
+                <Clock className="absolute -bottom-1 -right-1 size-3 rounded-full bg-card" />
+              </span>
+            )}
             {conversation.unread_count > 0 && (
               <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                 {conversation.unread_count}

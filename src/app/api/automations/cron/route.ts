@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { resumePendingExecution } from '@/lib/automations/engine'
 import type { AutomationContext } from '@/lib/automations/engine'
+import { dispatchScheduledMessages } from '@/lib/whatsapp/scheduled-dispatch'
 
 /**
  * Drain due `automation_pending_executions` rows. Meant to be hit
@@ -54,12 +55,8 @@ export async function GET(request: Request) {
     .limit(50)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!due || due.length === 0) {
-    return NextResponse.json({ processed: 0, reminders_processed: reminderCount })
-  }
-
   let processed = 0
-  for (const row of due) {
+  for (const row of due ?? []) {
     const { data: claim } = await admin
       .from('automation_pending_executions')
       .update({ status: 'running' })
@@ -86,5 +83,11 @@ export async function GET(request: Request) {
     processed++
   }
 
-  return NextResponse.json({ processed, reminders_processed: reminderCount })
+  try {
+    const scheduledMessagesProcessed = await dispatchScheduledMessages(admin)
+    return NextResponse.json({ processed, reminders_processed: reminderCount, scheduled_messages_processed: scheduledMessagesProcessed })
+  } catch (error) {
+    console.error('[scheduled-whatsapp] cron failed:', error)
+    return NextResponse.json({ error: 'scheduled message processing failed', processed, reminders_processed: reminderCount }, { status: 500 })
+  }
 }

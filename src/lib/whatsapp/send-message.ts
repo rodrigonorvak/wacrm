@@ -77,6 +77,10 @@ export interface SendMessageParams {
   conversationId: string;
   /** Set only by the authenticated dashboard composer, not the public API or automations. */
   crmAgentUserId?: string;
+  /** Internal automated send; does not pause a running flow. */
+  automated?: boolean;
+  /** Account-scoped template already validated by an internal caller. */
+  resolvedTemplate?: MessageTemplate;
   messageType: string;
   contentText?: string | null;
   mediaUrl?: string | null;
@@ -195,6 +199,8 @@ export async function sendMessageToConversation(
   const {
     conversationId,
     crmAgentUserId,
+    automated,
+    resolvedTemplate,
     messageType,
     contentText,
     mediaUrl,
@@ -323,7 +329,11 @@ export async function sendMessageToConversation(
   let templateRow: MessageTemplate | null = null;
   let sendLanguage = templateLanguage || 'en_US';
   if (messageType === 'template' && templateName) {
-    const resolved = await resolveTemplateRow(
+    const resolved = resolvedTemplate ? {
+      row: resolvedTemplate,
+      malformed: false,
+      language: templateLanguage || resolvedTemplate.language || 'en_US',
+    } : await resolveTemplateRow(
       db,
       accountId,
       templateName,
@@ -476,7 +486,7 @@ export async function sendMessageToConversation(
     .from('messages')
     .insert({
       conversation_id: conversationId,
-      sender_type: 'agent',
+      sender_type: automated ? 'bot' : 'agent',
       content_type: messageType,
       content_text: persistedText,
       media_url: mediaUrl || null,
@@ -515,7 +525,7 @@ export async function sendMessageToConversation(
 
   // Pause any active Flow run for this contact — the agent stepping in
   // is the strongest "yield, human is here" signal. Best-effort.
-  try {
+  if (!automated) try {
     const { error: pauseErr } = await supabaseAdmin()
       .from('flow_runs')
       .update({

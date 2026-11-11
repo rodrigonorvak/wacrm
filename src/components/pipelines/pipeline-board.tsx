@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTranslations } from "next-intl";
+import { useScheduledContacts } from "@/hooks/use-scheduled-contacts";
 
 interface PipelineBoardProps {
   stages: PipelineStage[];
@@ -70,6 +71,7 @@ export function PipelineBoard({
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [visibleStageCount, setVisibleStageCount] = useState(1);
+  const scheduledContacts = useScheduledContacts();
 
   const sortedStages = useMemo(
     () => [...stages].sort((a, b) => a.position - b.position),
@@ -149,6 +151,7 @@ export function PipelineBoard({
             onEditDeal={onEditDeal}
             onEditLabels={onEditLabels}
             onEditSchedule={onEditSchedule}
+            scheduledContacts={scheduledContacts}
           />
         ))}
       </div>
@@ -166,6 +169,7 @@ export function PipelineBoard({
               visibleFields={visibleCardFields}
               onEdit={() => {}}
               isOverlay
+              hasScheduledMessage={!!activeDeal.contact_id && scheduledContacts.has(activeDeal.contact_id)}
             />
           </div>
         ) : null}
@@ -220,6 +224,7 @@ function StageColumn({
   onEditDeal,
   onEditLabels,
   onEditSchedule,
+  scheduledContacts,
 }: {
   stage: PipelineStage;
   isVisible: boolean;
@@ -232,6 +237,7 @@ function StageColumn({
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  scheduledContacts: Set<string>;
 }) {
   const t = useTranslations("Pipelines.board");
   const tStageType = useTranslations("Pipelines.stageTypes");
@@ -345,6 +351,7 @@ function StageColumn({
               onEdit={onEditDeal}
               onEditLabels={onEditLabels}
               onEditSchedule={onEditSchedule}
+              hasScheduledMessage={!!deal.contact_id && scheduledContacts.has(deal.contact_id)}
             />
           ))
         )}
@@ -393,6 +400,7 @@ function DraggableDealCard({
   onEdit,
   onEditLabels,
   onEditSchedule,
+  hasScheduledMessage,
 }: {
   deal: Deal;
   entranceDelay: string;
@@ -400,6 +408,7 @@ function DraggableDealCard({
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  hasScheduledMessage: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: deal.id,
@@ -419,6 +428,7 @@ function DraggableDealCard({
         onEdit={onEdit}
         onEditLabels={onEditLabels}
         onEditSchedule={onEditSchedule}
+        hasScheduledMessage={hasScheduledMessage}
       />
     </div>
   );

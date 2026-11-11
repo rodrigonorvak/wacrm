@@ -12,6 +12,7 @@ import { DealScheduleDialog } from "@/components/pipelines/deal-schedule-dialog"
 import { formatScheduledDate } from "@/lib/schedule-date";
 import { ContactForm } from "@/components/contacts/contact-form";
 import { LeadQuickActions } from "@/components/pipelines/lead-quick-actions";
+import { ScheduledMessageDialog } from "@/components/inbox/scheduled-message-dialog";
 import { DealForm } from "@/components/pipelines/deal-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1287,6 +1288,11 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         onSaved={() => setDealReloadToken((current) => current + 1)}
       />
 
+      {contact && (
+        <div className="fixed bottom-4 left-4 z-40">
+          <ScheduledMessageDialog key={contact.id} contactId={contact.id} contactName={contact.name} />
+        </div>
+      )}
       <LeadQuickActions
         canManageLead={canManageLead}
         phone={contact?.phone ?? null}

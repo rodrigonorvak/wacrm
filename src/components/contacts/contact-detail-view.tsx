@@ -11,6 +11,7 @@ import {
   TemplatePicker,
   type TemplateSendValues,
 } from '@/components/inbox/template-picker';
+import { ScheduledMessageDialog } from '@/components/inbox/scheduled-message-dialog';
 import {
   Sheet,
   SheetContent,
@@ -439,7 +440,7 @@ export function ContactDetailView({
                   </div>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   onClick={() => setTemplatePickerOpen(true)}
@@ -453,6 +454,7 @@ export function ContactDetailView({
                   )}
                   {t('sendTemplateBtn')}
                 </Button>
+                <ScheduledMessageDialog key={contact.id} contactId={contact.id} contactName={contact.name} />
               </div>
             </SheetHeader>
 
