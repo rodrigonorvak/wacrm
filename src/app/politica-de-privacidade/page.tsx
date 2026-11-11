@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   },
 };
 
-const lastUpdated = "11 de outubro de 2026";
+const lastUpdated = "10 de novembro de 2026";
 
 function Section({
   title,
@@ -90,6 +90,11 @@ export default function PrivacyPolicyPage() {
               <li>
                 dados de contatos, negócios, mensagens e campos cadastrados
                 pelos clientes no CRM;
+              </li>
+              <li>
+                registros de campanhas de e-mail, incluindo o aceite do SMTP e
+                solicitações de carregamento de imagens usadas para estimar
+                aberturas;
               </li>
               <li>
                 informações técnicas, como endereço IP, navegador, dispositivo,

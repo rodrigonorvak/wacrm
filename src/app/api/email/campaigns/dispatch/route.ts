@@ -1,8 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { toErrorResponse } from '@/lib/auth/account';
+import { resolveInviteBaseUrl } from '@/lib/auth/invite-base-url';
 import { requireEmailSenderAdmin } from '@/lib/email-senders/access';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { appendEmailOpenTrackingPixel } from '@/lib/email-campaigns/open-tracking';
 import {
   createEmailUnsubscribeLink,
   getUnsubscribedAddressHashes,
@@ -394,6 +396,10 @@ async function processDeliveryBatch(request: Request) {
         job.email_address,
         job.campaign_id
       );
+      const baseUrl = resolveInviteBaseUrl(request);
+      if (!baseUrl) {
+        throw new Error('Could not resolve the public URL for open tracking');
+      }
       const rendered = renderEmailCampaign(
         prepared.campaign.subject,
         prepared.campaign.preheader,
@@ -405,7 +411,11 @@ async function processDeliveryBatch(request: Request) {
         to: job.email_address,
         subject: prepared.campaign.subject,
         text: rendered.text,
-        html: rendered.html,
+        html: appendEmailOpenTrackingPixel(
+          rendered.html,
+          baseUrl,
+          job.delivery_id
+        ),
         headers: unsubscribe.headers,
       });
     } catch (error) {

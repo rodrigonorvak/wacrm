@@ -15,6 +15,12 @@ describe('parseEmailCampaignReportQuery', () => {
     ).toEqual({ page: 3, status: 'failed' });
   });
 
+  it('accepts the opened-recipient filter', () => {
+    expect(
+      parseEmailCampaignReportQuery(new URLSearchParams('status=opened'))
+    ).toEqual({ page: 1, status: 'opened' });
+  });
+
   it.each(['page=0', 'page=-1', 'page=1.5', 'page=100001', 'status=delivered'])(
     'rejects invalid query parameters: %s',
     (query) => {

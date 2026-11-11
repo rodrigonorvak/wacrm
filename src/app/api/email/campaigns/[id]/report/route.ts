@@ -61,22 +61,31 @@ export async function GET(
       );
     }
 
-    const countResults = await Promise.all(
-      EMAIL_CAMPAIGN_DELIVERY_STATUSES.map(async (status) => {
-        const { count, error } = await admin
-          .from('email_campaign_deliveries')
-          .select('id', { count: 'exact', head: true })
-          .eq('campaign_id', id)
-          .eq('account_id', context.accountId)
-          .eq('status', status);
-        return { status, count, error };
-      })
-    );
+    const [countResults, openedResult] = await Promise.all([
+      Promise.all(
+        EMAIL_CAMPAIGN_DELIVERY_STATUSES.map(async (status) => {
+          const { count, error } = await admin
+            .from('email_campaign_deliveries')
+            .select('id', { count: 'exact', head: true })
+            .eq('campaign_id', id)
+            .eq('account_id', context.accountId)
+            .eq('status', status);
+          return { status, count, error };
+        })
+      ),
+      admin
+        .from('email_campaign_deliveries')
+        .select('id', { count: 'exact', head: true })
+        .eq('campaign_id', id)
+        .eq('account_id', context.accountId)
+        .eq('status', 'sent')
+        .not('opened_at', 'is', null),
+    ]);
     const countError = countResults.find((result) => result.error)?.error;
-    if (countError) {
+    if (countError || openedResult.error) {
       console.error(
         '[email-campaigns/report] delivery counts lookup failed:',
-        countError.message
+        countError?.message ?? openedResult.error?.message
       );
       return NextResponse.json(
         { error: 'Não foi possível carregar as métricas da campanha.' },
@@ -87,16 +96,20 @@ export async function GET(
     const counts = Object.fromEntries(
       countResults.map(({ status, count }) => [status, count ?? 0])
     );
+    const openedCount = openedResult.count ?? 0;
+    const openRate = counts.sent ? openedCount / counts.sent : 0;
 
     let deliveriesQuery = admin
       .from('email_campaign_deliveries')
       .select(
-        'id, email_address, status, attempt_count, sent_at, last_error, created_at',
+        'id, email_address, status, attempt_count, sent_at, opened_at, last_error, created_at',
         { count: 'exact' }
       )
       .eq('campaign_id', id)
       .eq('account_id', context.accountId);
-    if (query.status !== 'all') {
+    if (query.status === 'opened') {
+      deliveriesQuery = deliveriesQuery.not('opened_at', 'is', null);
+    } else if (query.status !== 'all') {
       deliveriesQuery = deliveriesQuery.eq('status', query.status);
     }
 
@@ -124,6 +137,8 @@ export async function GET(
       {
         campaign,
         counts,
+        openedCount,
+        openRate,
         deliveries: deliveries ?? [],
         total: count ?? 0,
         page: query.page,

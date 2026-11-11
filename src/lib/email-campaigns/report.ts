@@ -9,7 +9,8 @@ export const EMAIL_CAMPAIGN_DELIVERY_STATUSES = [
 export type EmailCampaignDeliveryStatus =
   (typeof EMAIL_CAMPAIGN_DELIVERY_STATUSES)[number];
 
-export type EmailCampaignReportFilter = 'all' | EmailCampaignDeliveryStatus;
+export type EmailCampaignReportFilter =
+  'all' | 'opened' | EmailCampaignDeliveryStatus;
 
 export const EMAIL_CAMPAIGN_REPORT_PAGE_SIZE = 50;
 
@@ -25,6 +26,9 @@ export function parseEmailCampaignReportQuery(
   if (!Number.isSafeInteger(page) || page > MAX_REPORT_PAGE) return null;
 
   const statusValue = searchParams.get('status') ?? 'all';
+  if (statusValue === 'opened') {
+    return { page, status: 'opened' };
+  }
   const matchedStatus = EMAIL_CAMPAIGN_DELIVERY_STATUSES.find(
     (status) => status === statusValue
   );

@@ -163,8 +163,11 @@ provider's sending limits. A message counts as sent when the SMTP server
 accepts it; SMTP does not confirm inbox delivery.
 
 The campaign report shows recipients queued, accepted by SMTP, failed, or
-skipped, with paginated recipient history. Generic SMTP does not provide
-delivery, open, or click events, so those metrics are not reported.
+skipped, with paginated recipient history. A tracking pixel records unique
+email opens and the open rate; image blocking can hide opens, and privacy
+proxies may record opens without a human reading. SMTP acceptance does not
+confirm inbox delivery, and generic SMTP cannot report bounces or spam
+complaints.
 
 ## Documentation
 

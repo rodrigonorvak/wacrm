@@ -27,12 +27,15 @@ interface CampaignReport {
     scheduled_at: string | null;
   };
   counts: Record<EmailCampaignDeliveryStatus, number>;
+  openedCount: number;
+  openRate: number;
   deliveries: Array<{
     id: string;
     email_address: string;
     status: EmailCampaignDeliveryStatus;
     attempt_count: number;
     sent_at: string | null;
+    opened_at: string | null;
     last_error: string | null;
     created_at: string;
   }>;
@@ -177,7 +180,7 @@ export default function EmailCampaignReportPage() {
       ) : (
         <>
           <section aria-label={t('reportMetrics')} className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
               <MetricCard
                 label={t('totalRecipients')}
                 value={totalRecipients}
@@ -202,9 +205,23 @@ export default function EmailCampaignReportPage() {
                   sending: report.counts.sending,
                 })}
               />
+              <MetricCard
+                label={t('deliveryOpened')}
+                value={report.openedCount}
+              />
+              <MetricCard
+                label={t('openRate')}
+                value={new Intl.NumberFormat(locale, {
+                  style: 'percent',
+                  maximumFractionDigits: 1,
+                }).format(report.openRate)}
+              />
             </div>
             <p className="text-muted-foreground text-xs">
               {t('reportMetricDisclaimer')}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              {t('spamNotTracked')}
             </p>
             {report.campaign.scheduled_at && (
               <p className="text-muted-foreground text-xs">
@@ -240,6 +257,7 @@ export default function EmailCampaignReportPage() {
                   }}
                 >
                   <option value="all">{t('allStatuses')}</option>
+                  <option value="opened">{t('deliveryOpened')}</option>
                   {EMAIL_CAMPAIGN_DELIVERY_STATUSES.map((item) => (
                     <option key={item} value={item}>
                       {statusLabel(item)}
@@ -259,7 +277,7 @@ export default function EmailCampaignReportPage() {
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+                <table className="w-full min-w-[900px] text-left text-sm">
                   <thead className="bg-muted/50 text-muted-foreground">
                     <tr>
                       <th className="px-4 py-3 font-medium">
@@ -276,6 +294,9 @@ export default function EmailCampaignReportPage() {
                       </th>
                       <th className="px-4 py-3 font-medium">
                         {t('reportDate')}
+                      </th>
+                      <th className="px-4 py-3 font-medium">
+                        {t('reportOpened')}
                       </th>
                     </tr>
                   </thead>
@@ -296,6 +317,11 @@ export default function EmailCampaignReportPage() {
                         </td>
                         <td className="text-muted-foreground px-4 py-3">
                           {formatDate(delivery.sent_at ?? delivery.created_at)}
+                        </td>
+                        <td className="text-muted-foreground px-4 py-3">
+                          {delivery.opened_at
+                            ? formatDate(delivery.opened_at)
+                            : t('notOpened')}
                         </td>
                       </tr>
                     ))}
@@ -352,14 +378,14 @@ function MetricCard({
   detail,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   detail?: string;
 }) {
   return (
     <article className="border-border bg-card rounded-xl border p-4">
       <p className="text-muted-foreground text-sm">{label}</p>
       <p className="text-foreground mt-2 text-2xl font-semibold">
-        {value.toLocaleString()}
+        {typeof value === 'number' ? value.toLocaleString() : value}
       </p>
       {detail && <p className="text-muted-foreground mt-1 text-xs">{detail}</p>}
     </article>
