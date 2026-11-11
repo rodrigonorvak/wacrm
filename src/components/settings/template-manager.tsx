@@ -48,6 +48,7 @@ import type {
   TemplateSampleValues,
 } from '@/types';
 import { templateStatusConfig } from '@/lib/template-status';
+import { formatTemplateSubmissionError } from '@/lib/whatsapp/template-error';
 import {
   extractVariableIndices,
   TEMPLATE_LIMITS,
@@ -126,6 +127,12 @@ function emptyButton(type: TemplateButton['type']): TemplateButton {
 
 export function TemplateManager() {
   const t = useTranslations('Settings.templates');
+  const formatSubmissionError = (message: string) =>
+    formatTemplateSubmissionError(message, {
+      invalidParameter: t('invalidMetaParameter'),
+      unknownError: t('toastSubmitFailed'),
+      details: t('providerErrorDetails'),
+    });
   const headerLabels: Record<HeaderFormat, string> = {
     none: t('headerNone'),
     text: t('headerText'),
@@ -140,6 +147,7 @@ export function TemplateManager() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [form, setForm] = useState<TemplateFormData>(emptyForm);
   // Non-null when the dialog is editing an existing row — switches the
@@ -270,6 +278,7 @@ export function TemplateManager() {
     if (form.category === 'Authentication') return;
     try {
       setSubmitting(true);
+      setSubmissionError(null);
       const isEdit = editingId !== null;
       const url = isEdit
         ? `/api/whatsapp/templates/${editingId}`
@@ -302,7 +311,11 @@ export function TemplateManager() {
       setEditingId(null);
     } catch (err) {
       console.error('Submit error:', err);
-      toast.error(err instanceof Error ? err.message : t('toastSubmitFailed'));
+      const message = err instanceof Error
+        ? formatSubmissionError(err.message)
+        : t('toastSubmitFailed');
+      setSubmissionError(message);
+      toast.error(message, { duration: 10000 });
     } finally {
       setSubmitting(false);
     }
@@ -572,7 +585,9 @@ export function TemplateManager() {
                       <div className="flex items-start gap-1.5 text-xs text-red-400 bg-red-950/20 border border-red-900/40 rounded px-2 py-1.5">
                         <AlertCircle className="size-3.5 mt-0.5 shrink-0" />
                         <span>
-                          {template.rejection_reason || template.submission_error}
+                          {template.rejection_reason ||
+                            (template.submission_error &&
+                              formatSubmissionError(template.submission_error))}
                         </span>
                       </div>
                     )}
@@ -642,6 +657,7 @@ export function TemplateManager() {
           if (!open) {
             setEditingId(null);
             setForm(emptyForm);
+            setSubmissionError(null);
           }
         }}
       >
@@ -656,6 +672,13 @@ export function TemplateManager() {
                 : t('dialogNewDesc')}
             </DialogDescription>
           </DialogHeader>
+
+          {submissionError && (
+            <div role="alert" className="flex items-start gap-2 rounded border border-red-900/40 bg-red-950/20 px-3 py-2 text-sm text-red-400">
+              <AlertCircle className="size-4 mt-0.5 shrink-0" />
+              <p>{submissionError}</p>
+            </div>
+          )}
 
           {form.category === 'Authentication' && (
             <div className="flex items-start gap-2 rounded border border-amber-700/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-300">

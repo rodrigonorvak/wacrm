@@ -2113,6 +2113,8 @@
 
       "toastLoadFailed": "템플릿을 불러오지 못했습니다",
       "toastSubmitFailed": "제출하지 못했습니다",
+      "invalidMetaParameter": "Meta가 템플릿 매개변수를 거부했습니다. 정확한 이유가 제공되지 않았거나 아래 상세 정보에 있습니다.",
+      "providerErrorDetails": "원본 기술 정보",
       "toastSubmitEditSuccess": "수정 사항이 제출되었습니다 — Meta는 보통 24시간 이내에 검토합니다.",
       "toastSubmitNewSuccess": "Meta에 제출되었습니다 — 일반적인 검토 시간은 24시간입니다. 상태는 자동으로 업데이트됩니다.",
       "toastSaveEditDry": "템플릿이 업데이트되었습니다 (드라이런 — Meta 호출 없음)",

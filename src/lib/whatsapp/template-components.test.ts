@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMetaTemplatePayload } from './template-components';
-import type { TemplatePayload } from './template-validators';
+import { validateTemplatePayload, type TemplatePayload } from './template-validators';
 
 const base: TemplatePayload = {
   name: 'order_confirmation',
@@ -10,6 +10,39 @@ const base: TemplatePayload = {
 };
 
 describe('buildMetaTemplatePayload', () => {
+  it('builds a text header and static WhatsApp group URL like the reported template', () => {
+    const input: TemplatePayload = {
+      name: 'grupo_imersao',
+      category: 'Marketing',
+      language: 'pt_BR',
+      header_type: 'text',
+      header_content: 'Entre no Grupo da Imersão',
+      body_text: 'Você adquiriu o ingresso, agora só falta entrar no grupo.',
+      buttons: [
+        {
+          type: 'URL',
+          text: 'Entrar no Grupo',
+          url: 'https://chat.whatsapp.com/example',
+        },
+      ],
+    };
+
+    expect(() => validateTemplatePayload(input)).not.toThrow();
+    expect(buildMetaTemplatePayload(input)).toMatchObject({
+      name: 'grupo_imersao',
+      category: 'MARKETING',
+      language: 'pt_BR',
+      components: [
+        { type: 'HEADER', format: 'TEXT', text: input.header_content },
+        { type: 'BODY', text: input.body_text },
+        {
+          type: 'BUTTONS',
+          buttons: [{ type: 'URL', text: 'Entrar no Grupo', url: 'https://chat.whatsapp.com/example' }],
+        },
+      ],
+    });
+  });
+
   it('upcases category and produces minimal components (body only)', () => {
     const payload = buildMetaTemplatePayload(base);
     expect(payload).toEqual({

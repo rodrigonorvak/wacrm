@@ -2113,6 +2113,8 @@
 
       "toastLoadFailed": "Failed to load templates",
       "toastSubmitFailed": "Failed to submit",
+      "invalidMetaParameter": "Meta rejected a template parameter. The exact reason was not provided or is in the details below.",
+      "providerErrorDetails": "Original technical details",
       "toastSubmitEditSuccess": "Edit submitted — Meta typically reviews within 24 hours.",
       "toastSubmitNewSuccess": "Submitted to Meta — typical review time is 24 hours. Status updates automatically.",
       "toastSaveEditDry": "Template updated (dry-run — no Meta call)",

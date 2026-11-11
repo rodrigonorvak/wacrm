@@ -548,6 +548,8 @@
       "delete": "Excluir",
       "toastLoadFailed": "Não foi possível carregar os templates",
       "toastSubmitFailed": "Não foi possível enviar",
+      "invalidMetaParameter": "A Meta rejeitou um parâmetro do template. O motivo exato não foi informado ou está nos detalhes abaixo.",
+      "providerErrorDetails": "Detalhes técnicos originais",
       "toastSubmitEditSuccess": "Alteração enviada. A análise da Meta geralmente leva até 24 horas.",
       "toastSubmitNewSuccess": "Enviado à Meta. A análise geralmente leva até 24 horas e o status é atualizado automaticamente.",
       "toastSaveEditDry": "Template atualizado (simulação, sem envio à Meta)",

@@ -24,7 +24,15 @@ export interface MetaPhoneInfo {
 }
 
 interface MetaErrorResponse {
-  error?: { message?: string; code?: number; type?: string }
+  error?: {
+    message?: string
+    code?: number
+    type?: string
+    error_subcode?: number
+    error_user_msg?: string
+    error_data?: { details?: string }
+    fbtrace_id?: string
+  }
 }
 
 async function throwMetaError(response: Response, fallback: string): Promise<never> {
@@ -36,6 +44,39 @@ async function throwMetaError(response: Response, fallback: string): Promise<nev
     // response body wasn't JSON — keep the fallback
   }
   throw new Error(message)
+}
+
+export class MetaTemplateApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+    this.name = 'MetaTemplateApiError'
+  }
+}
+
+async function throwTemplateMetaError(response: Response): Promise<never> {
+  const fallback = `Meta API error: ${response.status}`
+  let data: MetaErrorResponse
+  try {
+    data = (await response.json()) as MetaErrorResponse
+  } catch {
+    throw new MetaTemplateApiError(fallback, response.status)
+  }
+
+  const error = data?.error
+  const message = typeof error?.message === 'string' ? error.message : fallback
+  const details = [error?.error_user_msg, error?.error_data?.details]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .filter((value, index, values) => value !== message && values.indexOf(value) === index)
+  const codes = [
+    typeof error?.code === 'number' ? `code ${error.code}` : null,
+    typeof error?.error_subcode === 'number' ? `subcode ${error.error_subcode}` : null,
+    typeof error?.fbtrace_id === 'string' ? `trace ${error.fbtrace_id}` : null,
+  ].filter(Boolean)
+
+  throw new MetaTemplateApiError(
+    [message, ...details, codes.length ? `(${codes.join(', ')})` : ''].filter(Boolean).join(' — '),
+    response.status,
+  )
 }
 
 // ============================================================
@@ -565,7 +606,7 @@ export async function submitMessageTemplate(
     body: JSON.stringify(payload),
   })
   if (!response.ok) {
-    await throwMetaError(response, `Meta API error: ${response.status}`)
+    await throwTemplateMetaError(response)
   }
   const data = await response.json()
   if (!data?.id) {
@@ -617,7 +658,7 @@ export async function editMessageTemplate(
     body: JSON.stringify(body),
   })
   if (!response.ok) {
-    await throwMetaError(response, `Meta API error: ${response.status}`)
+    await throwTemplateMetaError(response)
   }
   const data = await response.json().catch(() => ({}))
   return { success: data?.success !== false }

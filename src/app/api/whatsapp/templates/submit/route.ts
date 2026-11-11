@@ -7,7 +7,7 @@ import {
   toErrorResponse,
 } from '@/lib/auth/account'
 import { decrypt } from '@/lib/whatsapp/encryption'
-import { submitMessageTemplate } from '@/lib/whatsapp/meta-api'
+import { MetaTemplateApiError, submitMessageTemplate } from '@/lib/whatsapp/meta-api'
 import {
   validateTemplatePayload,
   type TemplatePayload,
@@ -198,7 +198,9 @@ export async function POST(request: Request) {
             submissionError: message,
           }),
         )
-        const isRateLimit = /\b429\b/.test(message)
+        const isRateLimit =
+          (e instanceof MetaTemplateApiError && e.status === 429) ||
+          /\b429\b/.test(message)
         return NextResponse.json(
           {
             error: isRateLimit
