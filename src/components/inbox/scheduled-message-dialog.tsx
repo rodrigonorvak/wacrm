@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScheduleDateTimeFields } from "@/components/ui/schedule-date-time-fields";
+import { toDateKey } from "@/lib/schedule-date";
 
 interface Schedule {
   id: string;
@@ -22,11 +24,6 @@ interface Schedule {
   scheduled_at: string;
   status: "pending" | "processing" | "sent" | "failed" | "uncertain" | "cancelled";
   error_code: string | null;
-}
-
-function localDateTime(date: Date) {
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
 function defaultVariable(): ScheduledVariable {
@@ -85,6 +82,11 @@ export function ScheduledMessageDialog({
   const [templateId, setTemplateId] = useState("");
   const [label, setLabel] = useState("");
   const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [variables, setVariables] = useState<ScheduledTemplateVariables>({ body: [] });
 
   const load = useCallback(async () => {
@@ -128,11 +130,11 @@ export function ScheduledMessageDialog({
   }
 
   async function submit() {
-    if (!date) {
+    if (!date || !time) {
       toast.error(t("invalidDate"));
       return;
     }
-    const selected = new Date(date);
+    const selected = new Date(`${date}T${time}`);
     if (!Number.isFinite(selected.getTime())) {
       toast.error(t("invalidDate"));
       return;
@@ -152,6 +154,9 @@ export function ScheduledMessageDialog({
       toast.success(t("saveSuccess"));
       setLabel("");
       setDate("");
+      setTime("");
+      const now = new Date();
+      setMonth(new Date(now.getFullYear(), now.getMonth(), 1));
       chooseTemplate("");
       window.dispatchEvent(new Event("scheduled-messages-changed"));
       await load();
@@ -244,12 +249,27 @@ export function ScheduledMessageDialog({
               {Object.entries(variables.buttonParams ?? {}).map(([index, variable]) => <VariableField key={index} label={t("button", { number: Number(index) + 1 })} value={variable} onChange={(next) => setVariables((prev) => ({ ...prev, buttonParams: { ...prev.buttonParams, [index]: next } }))} />)}
               <Label htmlFor="scheduled-label">{t("label")}</Label>
               <Input id="scheduled-label" placeholder={t("labelPlaceholder")} maxLength={120} value={label} onChange={(event) => setLabel(event.target.value)} />
-              <Label htmlFor="scheduled-date">{t("date")}</Label>
-              <Input id="scheduled-date" type="datetime-local" value={date} onChange={(event) => setDate(event.target.value)} />
-              <div className="flex gap-2">
-                {[1, 3, 6].map((months) => <Button key={months} type="button" variant="outline" size="sm" onClick={() => { const next = addMonths(new Date(), months); next.setSeconds(0, 0); setDate(localDateTime(next)); }}>{months === 1 ? t("month") : t("months", { count: months })}</Button>)}
+              <div className="w-full max-w-xs space-y-3 rounded-md border border-border p-3">
+                <p className="text-sm font-medium">{t("date")}</p>
+                <ScheduleDateTimeFields
+                  month={month}
+                  onMonthChange={setMonth}
+                  date={date || null}
+                  onDateChange={setDate}
+                  time={time}
+                  onTimeChange={setTime}
+                  requireTime
+                />
               </div>
-              <Button disabled={saving || loading || !label.trim() || !templateId || !date} onClick={() => void submit()}>{t("submit")}</Button>
+              <div className="flex gap-2">
+                {[1, 3, 6].map((months) => <Button key={months} type="button" variant="outline" size="sm" onClick={() => {
+                  const next = addMonths(new Date(), months);
+                  setDate(toDateKey(next));
+                  setTime(`${String(next.getHours()).padStart(2, "0")}:${String(next.getMinutes()).padStart(2, "0")}`);
+                  setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
+                }}>{months === 1 ? t("month") : t("months", { count: months })}</Button>)}
+              </div>
+              <Button disabled={saving || loading || !label.trim() || !templateId || !date || !time} onClick={() => void submit()}>{t("submit")}</Button>
             </div>
           )}
         </DialogContent>

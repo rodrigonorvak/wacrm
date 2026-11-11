@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { toDateKey } from "@/lib/schedule-date";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScheduleDateTimeFields } from "@/components/ui/schedule-date-time-fields";
 
 interface DealScheduleDialogProps {
   open: boolean;
@@ -43,7 +44,6 @@ export function DealScheduleDialog({
   onSave,
   onChange,
 }: DealScheduleDialogProps) {
-  const locale = useLocale();
   const t = useTranslations("Pipelines.scheduleDialog");
   const supabase = useMemo(() => createClient(), []);
   const [month, setMonth] = useState(() => monthStart(value));
@@ -58,29 +58,6 @@ export function DealScheduleDialog({
     setTime(timeValue?.slice(0, 5) ?? "");
     setMonth(monthStart(value));
   }, [open, value, timeValue]);
-
-  const todayKey = toDateKey(new Date());
-  const monthLabel = month.toLocaleDateString(locale, { month: "long", year: "numeric" });
-  const weekdays = useMemo(() => {
-    // 2024-01-07 is a Sunday.
-    return Array.from({ length: 7 }, (_, i) =>
-      new Date(2024, 0, 7 + i).toLocaleDateString(locale, { weekday: "short" }).replace(".", ""),
-    );
-  }, [locale]);
-
-  const cells = useMemo(() => {
-    const first = new Date(month.getFullYear(), month.getMonth(), 1);
-    const total = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-    const blanks = Array.from({ length: first.getDay() }, () => null);
-    const days = Array.from({ length: total }, (_, i) =>
-      toDateKey(new Date(month.getFullYear(), month.getMonth(), i + 1)),
-    );
-    return [...blanks, ...days];
-  }, [month]);
-
-  function shiftMonth(delta: number) {
-    setMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
-  }
 
   async function save(next: string | null) {
     if (!canEdit || saving) return;
@@ -120,65 +97,16 @@ export function DealScheduleDialog({
         <DialogHeader>
           <DialogTitle>{title ?? t("title")}</DialogTitle>
         </DialogHeader>
-        <div className="flex items-center justify-between">
-          <Button type="button" variant="ghost" size="icon" aria-label={t("previousMonth")} onClick={() => shiftMonth(-1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="text-sm font-semibold capitalize">{monthLabel}</span>
-          <Button type="button" variant="ghost" size="icon" aria-label={t("nextMonth")} onClick={() => shiftMonth(1)}>
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-7 gap-y-1 text-center">
-          {weekdays.map((day) => (
-            <span key={day} className="text-[11px] font-medium capitalize text-muted-foreground">
-              {day}
-            </span>
-          ))}
-          {cells.map((key, index) =>
-            key ? (
-              <button
-                key={key}
-                type="button"
-                disabled={!canEdit}
-                onClick={() => setSelected(key)}
-                className={`mx-auto flex size-8 items-center justify-center rounded-full text-sm transition-colors ${
-                  key === selected
-                    ? "bg-blue-600 font-semibold text-white"
-                    : key === todayKey
-                      ? "font-semibold text-blue-600 ring-1 ring-blue-600/40 hover:bg-muted"
-                      : "text-foreground hover:bg-muted"
-                }`}
-              >
-                {Number(key.slice(8))}
-              </button>
-            ) : (
-              <span key={`blank-${index}`} />
-            ),
-          )}
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-          <label htmlFor="schedule-time" className="text-sm font-medium">
-            {t("time")} <span className="font-normal text-muted-foreground">
-              {requireTime ? t("required") : t("optional")}
-            </span>
-          </label>
-          <div className="flex items-center gap-1">
-            <input
-              id="schedule-time"
-              type="time"
-              value={time}
-              disabled={!canEdit}
-              onChange={(event) => setTime(event.target.value)}
-              className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-            />
-            {time && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setTime("")}>
-                {t("clear")}
-              </Button>
-            )}
-          </div>
-        </div>
+        <ScheduleDateTimeFields
+          month={month}
+          onMonthChange={setMonth}
+          date={selected}
+          onDateChange={setSelected}
+          time={time}
+          onTimeChange={setTime}
+          disabled={!canEdit}
+          requireTime={requireTime}
+        />
         <div className="flex items-center justify-between gap-2 pt-1">
           <Button
             type="button"
