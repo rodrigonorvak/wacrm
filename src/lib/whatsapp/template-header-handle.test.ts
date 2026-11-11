@@ -11,6 +11,19 @@ vi.mock('@/lib/webhooks/ssrf', () => ({
   isDeliverableUrl: vi.fn(async () => true),
 }));
 
+const appLookup = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/flows/admin-client', () => ({
+  supabaseAdmin: () => ({
+    from: () => ({
+      select: () => ({
+        eq: (_column: string, id: string) => ({
+          maybeSingle: () => appLookup(id),
+        }),
+      }),
+    }),
+  }),
+}));
+
 import { ensureImageHeaderHandle } from './template-header-handle';
 import { uploadResumableMedia } from './meta-api';
 import { isDeliverableUrl } from '@/lib/webhooks/ssrf';
@@ -39,6 +52,8 @@ function imgResponse(type = 'image/jpeg', size = 1024, ok = true, status = 200):
 
 describe('ensureImageHeaderHandle', () => {
   beforeEach(() => {
+    appLookup.mockReset();
+    vi.stubEnv('META_APP_ID', '');
     vi.mocked(uploadResumableMedia).mockClear();
     vi.mocked(isDeliverableUrl).mockClear();
     vi.mocked(isDeliverableUrl).mockResolvedValue(true);
@@ -64,7 +79,10 @@ describe('ensureImageHeaderHandle', () => {
 
   it('throws an actionable error when META_APP_ID is unset', async () => {
     const p = payload();
-    await expect(ensureImageHeaderHandle(p, 'tok')).rejects.toThrow(/META_APP_ID/);
+    await expect(ensureImageHeaderHandle(p, 'tok')).rejects.toMatchObject({
+      code: 'image_app_id_missing',
+      message: expect.stringContaining('META_APP_ID'),
+    });
   });
 
   it('derives + sets header_handle from a valid image URL', async () => {
@@ -76,16 +94,51 @@ describe('ensureImageHeaderHandle', () => {
     expect(p.header_handle).toBe('HANDLE123');
   });
 
+  it('uses the app linked to the connection rather than the global app ID', async () => {
+    vi.stubEnv('META_APP_ID', 'global-app');
+    appLookup.mockResolvedValue({ data: { app_id: 'linked-app' }, error: null });
+    vi.stubGlobal('fetch', vi.fn(async () => imgResponse()));
+    await ensureImageHeaderHandle(payload(), 'tok', 'linked-record');
+    expect(appLookup).toHaveBeenCalledWith('linked-record');
+    expect(uploadResumableMedia).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: 'linked-app' })
+    );
+  });
+
+  it('surfaces a linked app lookup failure instead of using an unrelated app', async () => {
+    vi.stubEnv('META_APP_ID', 'global-app');
+    appLookup.mockResolvedValue({ data: null, error: { message: 'database unavailable' } });
+    await expect(ensureImageHeaderHandle(payload(), 'tok', 'linked-record')).rejects.toMatchObject({
+      code: 'image_app_lookup_failed',
+    });
+    expect(uploadResumableMedia).not.toHaveBeenCalled();
+  });
+
+  it('reports a missing linked app instead of using an unrelated global app', async () => {
+    vi.stubEnv('META_APP_ID', 'global-app');
+    appLookup.mockResolvedValue({ data: null, error: null });
+    await expect(ensureImageHeaderHandle(payload(), 'tok', 'linked-record')).rejects.toMatchObject({
+      code: 'image_app_id_missing',
+    });
+    expect(uploadResumableMedia).not.toHaveBeenCalled();
+  });
+
   it('rejects a non-image content type', async () => {
     vi.stubEnv('META_APP_ID', 'app-1');
     vi.stubGlobal('fetch', vi.fn(async () => imgResponse('text/html')));
-    await expect(ensureImageHeaderHandle(payload(), 'tok')).rejects.toThrow(/JPEG or PNG/);
+    await expect(ensureImageHeaderHandle(payload(), 'tok')).rejects.toMatchObject({
+      code: 'image_invalid_type',
+      detail: 'text/html',
+    });
   });
 
   it('rejects an image over 5 MB', async () => {
     vi.stubEnv('META_APP_ID', 'app-1');
     vi.stubGlobal('fetch', vi.fn(async () => imgResponse('image/png', 6 * 1024 * 1024)));
-    await expect(ensureImageHeaderHandle(payload(), 'tok')).rejects.toThrow(/5 MB/);
+    await expect(ensureImageHeaderHandle(payload(), 'tok')).rejects.toMatchObject({
+      code: 'image_too_large',
+      detail: '6.0',
+    });
   });
 
   // Regression: `header_media_url` is caller-supplied and any authenticated

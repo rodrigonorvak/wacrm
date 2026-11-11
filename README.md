@@ -169,6 +169,14 @@ proxies may record opens without a human reading. SMTP acceptance does not
 confirm inbox delivery, and generic SMTP cannot report bounces or spam
 complaints.
 
+## WhatsApp template images
+
+Creating or editing a WhatsApp message template with an image header requires
+Meta's resumable upload. Embedded Signup connections use the Meta app linked
+to that WhatsApp connection. For a manual connection, configure `META_APP_ID`
+with the ID of the Meta app associated with its access token and restart the
+application. Images must be publicly reachable JPEG or PNG files up to 5 MB.
+
 ## Documentation
 
 Full self-host documentation — Supabase migrations, WhatsApp Business

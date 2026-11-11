@@ -290,6 +290,37 @@ export function TemplateManager() {
       });
       const data = await res.json();
       if (!res.ok) {
+        const detail =
+          typeof data?.errorDetail === 'string' ? data.errorDetail : '';
+        let imageError: string | null = null;
+        switch (data?.errorCode) {
+          case 'image_app_id_missing':
+            imageError = t('imageAppIdMissing');
+            break;
+          case 'image_app_lookup_failed':
+            imageError = t('imageAppLookupFailed');
+            break;
+          case 'image_unreachable':
+            imageError = t('imageUnreachable');
+            break;
+          case 'image_http_error':
+            imageError = t('imageHttpError', { detail });
+            break;
+          case 'image_invalid_type':
+            imageError = t('imageInvalidType', { detail });
+            break;
+          case 'image_empty':
+            imageError = t('imageEmpty');
+            break;
+          case 'image_too_large':
+            imageError = t('imageTooLarge', { detail });
+            break;
+        }
+        if (imageError) {
+          setSubmissionError(imageError);
+          toast.error(imageError, { duration: 10000 });
+          return;
+        }
         throw new Error(
           data?.error || `${isEdit ? 'Edit' : 'Submit'} failed (HTTP ${res.status})`,
         );
