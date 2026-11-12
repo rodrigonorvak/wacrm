@@ -510,7 +510,7 @@ export function MessageThread({
           console.error("Failed to send message:", reason);
           toast.error(t("sendError", { reason }));
           // Mark the optimistic bubble as failed so the user sees what happened
-          onUpdateMessage(tempId, { status: "failed" });
+          onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
           return;
         }
 
@@ -523,7 +523,7 @@ export function MessageThread({
         console.error("Failed to send message:", err);
         const reason = err instanceof Error ? err.message : t("networkError");
         toast.error(t("sendError", { reason }));
-        onUpdateMessage(tempId, { status: "failed" });
+        onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
       }
     },
     [conversation, onNewMessage, onUpdateMessage, t]
@@ -576,7 +576,7 @@ export function MessageThread({
           const reason = data?.error || `HTTP ${res.status}`;
           console.error("Failed to send media:", reason);
           toast.error(t("sendError", { reason }));
-          onUpdateMessage(tempId, { status: "failed" });
+          onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
           // The upload never reached the recipient — GC the orphaned
           // object rather than leaving it in the public bucket forever.
           void deleteAccountMedia(CHAT_MEDIA_BUCKET, payload.path).catch(() => {});
@@ -589,7 +589,7 @@ export function MessageThread({
         console.error("Failed to send media:", err);
         const reason = err instanceof Error ? err.message : t("networkError");
         toast.error(t("sendError", { reason }));
-        onUpdateMessage(tempId, { status: "failed" });
+        onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
         void deleteAccountMedia(CHAT_MEDIA_BUCKET, payload.path).catch(() => {});
       }
     },
@@ -634,7 +634,7 @@ export function MessageThread({
           const reason = data?.error || `HTTP ${res.status}`;
           console.error("Failed to send interactive message:", reason);
           toast.error(t("sendError", { reason }));
-          onUpdateMessage(tempId, { status: "failed" });
+          onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
           return;
         }
 
@@ -644,7 +644,7 @@ export function MessageThread({
         console.error("Failed to send interactive message:", err);
         const reason = err instanceof Error ? err.message : t("networkError");
         toast.error(t("sendError", { reason }));
-        onUpdateMessage(tempId, { status: "failed" });
+        onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
       }
     },
     [conversation, onNewMessage, onUpdateMessage, t],
@@ -724,7 +724,7 @@ export function MessageThread({
           const reason = payload?.error || `HTTP ${res.status}`;
           console.error("Failed to send template:", reason);
           toast.error(t("sendTemplateError", { reason }));
-          onUpdateMessage(tempId, { status: "failed" });
+          onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
           return;
         }
 
@@ -734,7 +734,7 @@ export function MessageThread({
         console.error("Failed to send template:", err);
         const reason = err instanceof Error ? err.message : t("networkError");
         toast.error(t("sendTemplateError", { reason }));
-        onUpdateMessage(tempId, { status: "failed" });
+        onUpdateMessage(tempId, { status: "failed", delivery_error: reason });
       }
     },
     [conversation, onNewMessage, onUpdateMessage, t],

@@ -15,6 +15,10 @@ import { runAutomationsForTrigger } from '@/lib/automations/engine'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
+import {
+  formatMessageDeliveryError,
+  type WhatsAppDeliveryError,
+} from '@/lib/whatsapp/message-delivery-error'
 import { ensureAdLeadLabels } from '@/lib/integrations/ad-lead-labels'
 import {
   handleTemplateWebhookChange,
@@ -102,6 +106,7 @@ interface WhatsAppWebhookEntry {
         status: string
         timestamp: string
         recipient_id: string
+        errors?: WhatsAppDeliveryError[]
       }>
     }
     field: string
@@ -410,6 +415,7 @@ async function handleStatusUpdate(status: {
   status: string
   timestamp: string
   recipient_id: string
+  errors?: WhatsAppDeliveryError[]
 }) {
   // 1) Mirror onto messages (legacy behavior) — Meta's status values
   //    already match the CHECK constraint on messages.status. No
@@ -418,7 +424,12 @@ async function handleStatusUpdate(status: {
   //    assume a single row.
   const { error: msgErr } = await supabaseAdmin()
     .from('messages')
-    .update({ status: status.status })
+    .update({
+      status: status.status,
+      ...(status.status === 'failed'
+        ? { delivery_error: formatMessageDeliveryError(status.errors) }
+        : {}),
+    })
     .eq('message_id', status.id)
 
   if (msgErr) {

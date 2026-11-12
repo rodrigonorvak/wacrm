@@ -240,6 +240,7 @@ export interface Message {
   template_name?: string;
   message_id?: string;
   status: MessageStatus;
+  delivery_error?: string | null;
   created_at: string;
   reply_to_message_id?: string;
   /**

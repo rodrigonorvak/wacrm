@@ -416,6 +416,7 @@
       "unsupported": "[Unsupported message type]",
       "aiBadge": "AI",
       "aiBadgeTitle": "Sent automatically by the AI assistant",
+      "deliveryFailed": "Message not delivered",
       "download": "Download",
       "downloadFailed": "Couldn't download the attachment",
       "viewImage": "View image",

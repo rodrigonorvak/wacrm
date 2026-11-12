@@ -40,7 +40,15 @@ interface MessageBubbleProps {
   onOpenMedia?: (messageId: string) => void;
 }
 
-function StatusIcon({ status }: { status: Message["status"] }) {
+function StatusIcon({
+  status,
+  deliveryError,
+  failedLabel,
+}: {
+  status: Message["status"];
+  deliveryError?: string | null;
+  failedLabel: string;
+}) {
   switch (status) {
     case "sending":
       return <Clock className="h-3 w-3 text-muted-foreground" />;
@@ -51,7 +59,14 @@ function StatusIcon({ status }: { status: Message["status"] }) {
     case "read":
       return <CheckCheck className="h-3 w-3 text-blue-400" />;
     case "failed":
-      return <XCircle className="h-3 w-3 text-red-400" />;
+      return (
+        <span
+          aria-label={deliveryError || failedLabel}
+          title={deliveryError || failedLabel}
+        >
+          <XCircle className="h-3 w-3 text-red-400" />
+        </span>
+      );
     default:
       return null;
   }
@@ -256,7 +271,13 @@ export function MessageBubble({
           <span className="text-[10px] text-muted-foreground">
             {time}
           </span>
-          {isAgent && <StatusIcon status={message.status} />}
+          {isAgent && (
+            <StatusIcon
+              status={message.status}
+              deliveryError={message.delivery_error}
+              failedLabel={t("deliveryFailed")}
+            />
+          )}
         </div>
       </div>
       {reactions && reactions.length > 0 && onToggleReaction && (

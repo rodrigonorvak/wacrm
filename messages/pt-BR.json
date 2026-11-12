@@ -1006,6 +1006,7 @@
       "unsupported": "[Tipo de mensagem não compatível]",
       "aiBadge": "IA",
       "aiBadgeTitle": "Enviada automaticamente pelo assistente de IA",
+      "deliveryFailed": "A mensagem não foi entregue",
       "download": "Baixar",
       "downloadFailed": "Não foi possível baixar o anexo",
       "viewImage": "Ver imagem",
