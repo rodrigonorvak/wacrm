@@ -265,7 +265,7 @@ function StageColumn({
             className="size-2.5 shrink-0 rounded-full border border-black/10"
             style={{ backgroundColor: stage.color || "transparent" }}
           />
-          <h3 className="truncate text-sm font-semibold text-foreground">
+          <h3 className="min-w-0 break-words text-sm font-semibold text-foreground">
             {stage.name}
           </h3>
         </div>
