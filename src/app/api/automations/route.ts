@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireRole, toErrorResponse } from '@/lib/auth/account'
+import { getPlatformAdminSupportSession } from '@/lib/auth/platform-admin'
 import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { getTemplate } from '@/lib/automations/templates'
 import { insertSteps, type BuilderStepInput } from '@/lib/automations/steps-tree'
@@ -16,6 +17,26 @@ export async function GET() {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  let supportSession
+  try {
+    supportSession = await getPlatformAdminSupportSession(user.id)
+  } catch (error) {
+    return toErrorResponse(error)
+  }
+  if (supportSession) {
+    const { data, error } = await supabaseAdmin()
+      .from('automations')
+      .select('*')
+      .eq('account_id', supportSession.accountId)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    if (error) {
+      console.error('[automations] support-mode list failed:', error.message)
+      return NextResponse.json({ error: 'Could not load automations' }, { status: 500 })
+    }
+    return NextResponse.json({ automations: data ?? [] }, { headers: { 'Cache-Control': 'no-store' } })
+  }
+
   const { data, error } = await supabase
     .from('automations')
     .select('*')
@@ -28,27 +49,35 @@ export async function POST(request: Request) {
   // Creating an automation is a write — the RLS automations_insert policy
   // requires `agent`, but this route inserts via the service-role client
   // which bypasses RLS, so the role must be enforced here.
-  try {
-    await requireRole('agent')
-  } catch (err) {
-    return toErrorResponse(err)
-  }
-
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  let supportSession
+  try {
+    supportSession = await getPlatformAdminSupportSession(user.id)
+  } catch (error) {
+    return toErrorResponse(error)
+  }
+  if (!supportSession) {
+    try {
+      await requireRole('agent')
+    } catch (err) {
+      return toErrorResponse(err)
+    }
+  }
+
   // Resolve the caller's account_id — `automations.account_id` is NOT
   // NULL post-017, so an INSERT without it trips the not-null constraint
   // even though the admin client bypasses RLS.
-  const { data: profile } = await supabase
+  const { data: profile } = supportSession ? { data: null } : await supabase
     .from('profiles')
     .select('account_id')
     .eq('user_id', user.id)
     .single()
-  const accountId = profile?.account_id as string | undefined
+  const accountId = supportSession?.accountId ?? profile?.account_id as string | undefined
   if (!accountId) {
     return NextResponse.json(
       { error: 'Your profile is not linked to an account.' },
@@ -60,6 +89,12 @@ export async function POST(request: Request) {
   if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
   const { name, description, trigger_type, trigger_config, is_active, steps, template } = body
+  if (supportSession && is_active !== undefined && is_active !== false) {
+    return NextResponse.json(
+      { error: 'Automations created during support access must remain drafts until approved by the account owner.' },
+      { status: 403 },
+    )
+  }
 
   let effectiveSteps: BuilderStepInput[] | undefined = steps
   let effectiveName = name
@@ -114,7 +149,7 @@ export async function POST(request: Request) {
       description: effectiveDescription ?? null,
       trigger_type: effectiveTriggerType,
       trigger_config: effectiveTriggerConfig ?? {},
-      is_active: !!is_active,
+      is_active: supportSession ? false : !!is_active,
     })
     .select()
     .single()
@@ -129,6 +164,21 @@ export async function POST(request: Request) {
   if (effectiveSteps && effectiveSteps.length > 0) {
     const err = await insertSteps(automation.id, effectiveSteps)
     if (err) return NextResponse.json({ error: err }, { status: 500 })
+  }
+
+  if (supportSession) {
+    const { error: auditError } = await supabaseAdmin().from('platform_admin_access_audit').insert({
+      session_id: supportSession.id,
+      admin_user_id: user.id,
+      account_id: supportSession.accountId,
+      action: 'automation_created',
+      table_name: 'automations',
+    })
+    if (auditError) {
+      console.error('[automations] support-mode audit failed:', auditError.message)
+      await supabaseAdmin().from('automations').delete().eq('id', automation.id).eq('account_id', accountId)
+      return NextResponse.json({ error: 'Could not record support action audit' }, { status: 500 })
+    }
   }
 
   return NextResponse.json({ automation }, { status: 201 })

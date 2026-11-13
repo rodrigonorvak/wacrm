@@ -73,6 +73,7 @@ import {
   type StepPath,
 } from "@/lib/automations/builder-tree"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
 // ------------------------------------------------------------
 // Types (builder-local — mirror the flattened rows we POST)
@@ -270,6 +271,7 @@ function useResources(): AutomationResources {
 }
 
 function ResourcesProvider({ children }: { children: ReactNode }) {
+  const { accountId, isSupportSession } = useAuth()
   const [tags, setTags] = useState<TagRecord[]>([])
   const [members, setMembers] = useState<AccountMember[]>([])
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
@@ -310,7 +312,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
       setStages((stagesRes.data as PipelineStageOption[] | null) ?? [])
     })()
 
-    void (async () => {
+    if (!isSupportSession) void (async () => {
       try {
         const response = await fetch("/api/email/templates", { cache: "no-store" })
         const payload = (await response.json()) as { templates?: EmailAutomationTemplate[]; error?: string }
@@ -324,7 +326,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
     // Members go through the API so we inherit its email-visibility
     // rules (agents/viewers don't see emails). Unreachable on older
     // deployments → pickers fall back to a raw agent-id input.
-    void (async () => {
+    if (!isSupportSession) void (async () => {
       try {
         const res = await fetch("/api/account/members", { cache: "no-store" })
         if (!res.ok) return
@@ -338,7 +340,7 @@ function ResourcesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [accountId, isSupportSession])
 
   return (
     <ResourcesContext.Provider
@@ -714,6 +716,7 @@ function SendTemplateFields({
 
 export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
   const router = useRouter()
+  const { isSupportSession } = useAuth()
   const t = useTranslations("Automations.builder")
   const isEditing = !!initial.id
   const [state, setState] = useState<BuilderInitial>(initial)
@@ -757,7 +760,7 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
         description: state.description || null,
         trigger_type: state.trigger_type,
         trigger_config: state.trigger_config,
-        is_active: state.is_active,
+        is_active: isSupportSession ? false : state.is_active,
         steps: toApiSteps(state.steps),
       }
 
@@ -818,14 +821,16 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
           placeholder={t("untitled")}
           className="min-w-0 flex-1 rounded-md bg-transparent px-2 py-1 text-sm font-semibold text-foreground placeholder:text-muted-foreground focus:bg-muted focus:outline-none sm:text-base"
         />
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="hidden sm:inline">{t("active")}</span>
-          <Switch
-            checked={state.is_active}
-            onCheckedChange={(v) => patchTop("is_active", !!v)}
-            aria-label={t("activeAria")}
-          />
-        </div>
+        {isSupportSession
+          ? <span className="text-xs text-amber-700 dark:text-amber-400">Rascunho até aprovação do proprietário</span>
+          : <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="hidden sm:inline">{t("active")}</span>
+              <Switch
+                checked={state.is_active}
+                onCheckedChange={(v) => patchTop("is_active", !!v)}
+                aria-label={t("activeAria")}
+              />
+            </div>}
         <Button
           onClick={save}
           disabled={saving}

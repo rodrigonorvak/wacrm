@@ -17,19 +17,23 @@ import {
   PlatformFeatureRouteGuard,
 } from "@/components/platform/feature-access-provider";
 import { cn } from "@/lib/utils";
+import { LockKeyhole } from "lucide-react";
 
 // Auth-gated dashboard shell. Extracted from the layout so the layout
 // itself can stay a server component and export metadata (noindex) —
 // client components can't export Next's metadata object.
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
-  const { user, loading, accountId } = useAuth();
+  const { user, loading, accountId, supportSession, supportSessionLoading } = useAuth();
   const { state: glassTheme } = useGlassTheme(accountId);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mobileConversationOpen =
     pathname === "/inbox" && searchParams.has("c");
+  const supportRouteAllowed = pathname === "/automations"
+    || pathname === "/automations/new"
+    || /^\/automations\/[^/]+\/edit$/.test(pathname);
 
   // Sidebar drawer state — only used on mobile. On lg+ the sidebar is
   // always visible and this stays at `false` (ignored by the component).
@@ -46,7 +50,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading) {
+  if (loading || (user && supportSessionLoading)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -63,7 +67,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-background max-lg:h-dvh">
       {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
-      <PresenceHeartbeat />
+      {!supportSession && <PresenceHeartbeat />}
       <Sidebar
         open={sidebarOpen}
         onClose={closeSidebar}
@@ -82,8 +86,20 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         >
           {/* Above every page: writes are being rejected and here's why.
               Renders nothing unless the account/role failed to resolve. */}
-          <AccountAccessAlert />
-          <PlatformFeatureRouteGuard>{children}</PlatformFeatureRouteGuard>
+          {supportSession && !supportRouteAllowed ? (
+            <section className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
+              <LockKeyhole className="size-9 text-amber-600" />
+              <h2 className="text-lg font-semibold">Área bloqueada durante o acesso de suporte</h2>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Caixa de entrada, contatos, funis, calendário e demais áreas ficam indisponíveis para proteger os dados do cliente.
+              </p>
+            </section>
+          ) : (
+            <>
+              <AccountAccessAlert />
+              <PlatformFeatureRouteGuard>{children}</PlatformFeatureRouteGuard>
+            </>
+          )}
         </main>
       </div>
     </div>

@@ -47,6 +47,13 @@ interface AccountSummary {
   default_currency: string;
 }
 
+interface PlatformAdminSupportSession {
+  id: string;
+  accountId: string;
+  accountName: string;
+  expiresAt: string;
+}
+
 /**
  * Whether we managed to establish what this user may do.
  *
@@ -84,6 +91,9 @@ interface AuthContextValue {
    * and may take the "not opted in" branch incorrectly.
    */
   profileLoading: boolean;
+  supportSession: PlatformAdminSupportSession | null;
+  supportSessionLoading: boolean;
+  isSupportSession: boolean;
   signOut: () => Promise<void>;
   /** Re-fetch the current user's profile row — call after a save from
    *  the settings form so header/sidebar reflect the change without a
@@ -184,6 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [account, setAccount] = useState<AccountSummary | null>(null);
+  const [supportSession, setSupportSession] = useState<PlatformAdminSupportSession | null>(null);
+  const [supportSessionLoading, setSupportSessionLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   // Why the account/role couldn't be established, when it couldn't.
   // Null on the happy path.
@@ -417,12 +429,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [fetchProfile]);
 
+  useEffect(() => {
+    if (!user || profileLoading) {
+      if (!user) {
+        setSupportSession(null);
+        setSupportSessionLoading(false);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setSupportSessionLoading(true);
+    setSupportSession(null);
+    void fetch("/api/platform-admin/support-session", { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401 || response.status === 403) return null;
+        if (!response.ok) throw new Error(`Support session lookup failed (${response.status})`);
+        return response.json() as Promise<{ session: PlatformAdminSupportSession | null }>;
+      })
+      .then((body) => {
+        if (!cancelled) setSupportSession(body?.session ?? null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        console.error("[AuthProvider] support session lookup failed:", error);
+        setSupportSession(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSupportSessionLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, profileLoading]);
+
   const signOut = useCallback(async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
     setAccount(null);
+    setSupportSession(null);
     window.location.href = "/login";
   }, []);
 
@@ -436,19 +484,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // each derived value a stable identity for React.memo / useEffect
   // dependencies downstream.
   const derived = useMemo(() => {
-    const role = profile?.account_role ?? null;
+    const role = supportSession ? "admin" : profile?.account_role ?? null;
     return {
       accountRole: role,
-      accountId: profile?.account_id ?? null,
-      isOwner: role === "owner",
+      accountId: supportSession?.accountId ?? profile?.account_id ?? null,
+      isOwner: !supportSession && role === "owner",
       isAdmin: role === "admin",
-      isAgent: role === "agent",
-      isViewer: role === "viewer",
-      canManageMembers: role ? canManageMembersFor(role) : false,
-      canEditSettings: role ? canEditSettingsFor(role) : false,
-      canSendMessages: role ? canSendMessagesFor(role) : false,
+      isAgent: !supportSession && role === "agent",
+      isViewer: !supportSession && role === "viewer",
+      canManageMembers: !supportSession && role ? canManageMembersFor(role) : false,
+      canEditSettings: supportSession ? true : role ? canEditSettingsFor(role) : false,
+      canSendMessages: !supportSession && role ? canSendMessagesFor(role) : false,
     };
-  }, [profile?.account_role, profile?.account_id]);
+  }, [profile?.account_role, profile?.account_id, supportSession]);
 
   // Signed out is not a broken account — the shell redirects to /login
   // before anything reads this.
@@ -456,6 +504,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ? "loading"
     : profileLoading
       ? "loading"
+      : supportSession
+        ? "ready"
       : !profile
         ? "error"
         : derived.accountId && derived.accountRole
@@ -469,9 +519,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         loading,
         profileLoading,
+        supportSession,
+        supportSessionLoading,
+        isSupportSession: supportSession !== null,
         signOut,
         refreshProfile,
-        account,
+        account: supportSession
+          ? {
+              id: supportSession.accountId,
+              name: supportSession.accountName,
+              logo_url: null,
+              default_currency: DEFAULT_CURRENCY,
+            }
+          : account,
         defaultCurrency: account?.default_currency ?? DEFAULT_CURRENCY,
         accountStatus,
         accountStatusDetail: statusDetail,
@@ -499,6 +559,9 @@ export function useAuth(): AuthContextValue {
       profile: null,
       loading: false,
       profileLoading: false,
+      supportSession: null,
+      supportSessionLoading: false,
+      isSupportSession: false,
       signOut: async () => {
         window.location.href = "/login";
       },

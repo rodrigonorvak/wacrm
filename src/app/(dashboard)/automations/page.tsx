@@ -18,8 +18,8 @@ import {
   Loader2,
 } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
 import { useCan } from "@/hooks/use-can"
+import { useAuth } from "@/hooks/use-auth"
 import { useLocale, useTranslations } from "next-intl"
 import type { Automation } from "@/types"
 import { Button } from "@/components/ui/button"
@@ -80,7 +80,8 @@ const TEMPLATE_COPY: Record<TemplateSlug, { name: string; description: string }>
 export default function AutomationsPage() {
   const router = useRouter()
   const locale = useLocale()
-  const canCreate = useCan("send-messages")
+  const { isSupportSession } = useAuth()
+  const canCreate = useCan("send-messages") || isSupportSession
   const t = useTranslations("Automations.list")
   const [automations, setAutomations] = useState<Automation[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -89,13 +90,10 @@ export default function AutomationsPage() {
 
   async function load() {
     try {
-      const supabase = createClient()
-      const { data, error: fetchErr } = await supabase
-        .from("automations")
-        .select("*")
-        .order("created_at", { ascending: false })
-      if (fetchErr) throw fetchErr
-      setAutomations((data ?? []) as Automation[])
+      const response = await fetch("/api/automations", { cache: "no-store" })
+      const body = await response.json() as { automations?: Automation[]; error?: string }
+      if (!response.ok) throw new Error(body.error ?? "Não foi possível carregar as automações")
+      setAutomations(body.automations ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Não foi possível carregar as automações")
     }
@@ -186,6 +184,11 @@ export default function AutomationsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {t("subtitle")}
           </p>
+          {isSupportSession && (
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              Acesso restrito: automações criadas aqui ficam como rascunho até aprovação do proprietário.
+            </p>
+          )}
         </div>
         <GatedButton
           canAct={canCreate}
@@ -244,6 +247,7 @@ export default function AutomationsPage() {
               onDuplicate={() => duplicate(a)}
               onLogs={() => router.push(`/automations/${a.id}/logs`)}
               onDelete={() => setPendingDelete(a)}
+              supportMode={isSupportSession}
               t={t}
               locale={locale}
             />
@@ -289,6 +293,7 @@ function AutomationCard({
   onDuplicate,
   onLogs,
   onDelete,
+  supportMode,
   t,
   locale,
 }: {
@@ -298,6 +303,7 @@ function AutomationCard({
   onDuplicate: () => void
   onLogs: () => void
   onDelete: () => void
+  supportMode: boolean
   t: ReturnType<typeof useTranslations>
   locale: string
 }) {
@@ -331,7 +337,7 @@ function AutomationCard({
           {automation.description && (
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{automation.description}</p>
           )}
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {!supportMode && <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span
               className={cn(
                 "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium",
@@ -357,15 +363,17 @@ function AutomationCard({
                 }, locale)}
               )}
             </span>
-          </div>
+          </div>}
         </button>
 
         <div className="flex items-center gap-3">
-          <Switch
-            checked={automation.is_active}
-            onCheckedChange={(v) => onToggle(!!v)}
-            aria-label={automation.is_active ? t("deactivate") : t("activate")}
-          />
+          {supportMode
+            ? <span className="text-xs text-muted-foreground">Rascunho</span>
+            : <Switch
+                checked={automation.is_active}
+                onCheckedChange={(v) => onToggle(!!v)}
+                aria-label={automation.is_active ? t("deactivate") : t("activate")}
+              />}
 
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -379,14 +387,18 @@ function AutomationCard({
                 <Pencil className="h-4 w-4" />
                 {t("edit")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate}>
-                <Copy className="h-4 w-4" />
-                {t("duplicate")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onLogs}>
-                <FileText className="h-4 w-4" />
-                {t("viewLogs")}
-              </DropdownMenuItem>
+              {!supportMode && (
+                <>
+                  <DropdownMenuItem onClick={onDuplicate}>
+                    <Copy className="h-4 w-4" />
+                    {t("duplicate")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onLogs}>
+                    <FileText className="h-4 w-4" />
+                    {t("viewLogs")}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={onDelete}>
                 <Trash2 className="h-4 w-4" />

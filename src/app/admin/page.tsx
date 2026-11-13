@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
+import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { PLATFORM_FEATURES } from "@/lib/platform-features";
@@ -33,6 +33,7 @@ export default function PlatformAdminPage() {
   const [featuresError, setFeaturesError] = useState(false);
   const [schemaWarnings, setSchemaWarnings] = useState<string[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
+  const [openingAccount, setOpeningAccount] = useState<string | null>(null);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -124,6 +125,25 @@ export default function PlatformAdminPage() {
       await loadAccounts();
     } catch (error) {
       window.alert(error instanceof Error ? error.message : `Não foi possível ${label.toLowerCase()} a conta.`);
+    }
+  }
+
+  async function accessAccount(account: PlatformAccount) {
+    setOpeningAccount(account.id);
+    try {
+      const response = await fetch("/api/platform-admin/support-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId: account.id }),
+      });
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error ?? "Não foi possível acessar a conta.");
+      }
+      window.location.assign("/automations");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível acessar a conta.");
+      setOpeningAccount(null);
     }
   }
 
@@ -246,6 +266,18 @@ export default function PlatformAdminPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={openingAccount !== null || suspended}
+                            onClick={() => void accessAccount(account)}
+                          >
+                            {openingAccount === account.id
+                              ? <LoaderCircle className="size-4 animate-spin" />
+                              : <LockKeyhole className="size-4" />}
+                            <span>Acessar</span>
+                          </Button>
                           <Button
                             type="button"
                             size="sm"

@@ -135,7 +135,7 @@ export function Sidebar({
 }: SidebarProps) {
   const t = useTranslations("Sidebar");
   const pathname = usePathname();
-  const { profile, profileLoading, account, accountRole, signOut } = useAuth();
+  const { profile, profileLoading, account, accountRole, signOut, isSupportSession, supportSession } = useAuth();
   const { features, loading: featuresLoading } = usePlatformFeatureAccess();
   const totalUnread = useTotalUnread();
   const unreadNotifications = useUnreadNotifications();
@@ -157,6 +157,17 @@ export function Sidebar({
     !profileLoading &&
     !!account?.name &&
     account.name !== profile?.full_name;
+  const supportLockedPaths = new Set([
+    "/dashboard",
+    "/inbox",
+    "/notifications",
+    "/contacts",
+    "/pipelines",
+    "/calendar",
+    "/broadcasts",
+    "/flows",
+    "/agents",
+  ]);
 
   useEffect(() => {
     if (onCampaignsRoute) setCampaignsOpen(true);
@@ -214,23 +225,31 @@ export function Sidebar({
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const badge =
             item.href === "/notifications" && unreadNotifications > 0;
+          const supportLocked = isSupportSession && supportLockedPaths.has(item.href);
           return (
-            <Link
+            <button
               key={item.href}
-              href={item.href}
-              aria-label={t(item.labelKey as string)}
+              type="button"
+              aria-label={supportLocked ? `${t(item.labelKey as string)} — dados protegidos` : t(item.labelKey as string)}
+              aria-disabled={supportLocked}
+              onClick={() => {
+                if (supportLocked) toast.info("Acesso bloqueado para proteger os dados do cliente");
+                else window.location.href = item.href;
+              }}
               className={cn(
                 "relative flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
                 active
                   ? "crm-mobile-tab-active bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
                   : "text-white/75 active:bg-white/10",
+                supportLocked && "text-white/40",
               )}
             >
               <item.icon className="h-5 w-5" />
-              {badge && (
+              {supportLocked && <LockKeyhole className="absolute -right-0.5 bottom-0.5 size-3.5 rounded-full bg-[#1c2340] p-0.5" />}
+              {badge && !supportLocked && (
                 <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-white ring-2 ring-[#e10c8c]" />
               )}
-            </Link>
+            </button>
           );
         })}
         <Link
@@ -314,19 +333,21 @@ export function Sidebar({
               const isFeatureLocked = Boolean(
                 item.feature && (featuresLoading || !features[item.feature]),
               );
+              const isSupportLocked = isSupportSession && supportLockedPaths.has(item.href);
+              const isNavLocked = isFeatureLocked || isSupportLocked;
               const linkClassName = cn(
                 "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                 collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
                 isActive
                   ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
                   : "text-white/70 hover:bg-white/10 hover:text-white",
-                isFeatureLocked && "text-white/45 hover:bg-white/5 hover:text-white/60",
+                isNavLocked && "text-white/45 hover:bg-white/5 hover:text-white/60",
               );
               const navContent = (
                 <>
                   <item.icon className="h-4 w-4" />
                   <span className={cn("flex-1 text-left", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
-                  {isFeatureLocked ? (
+                  {isNavLocked ? (
                     <LockKeyhole className={cn("size-3.5 shrink-0", collapsed ? "lg:hidden" : "")} />
                   ) : item.beta && !collapsed ? (
                     <span
@@ -356,7 +377,7 @@ export function Sidebar({
                 </>
               );
 
-              if (item.href === "/broadcasts" && !isFeatureLocked) {
+              if (item.href === "/broadcasts" && !isNavLocked) {
                 const subItems = [
                   { key: "email", label: t("campaignsEmail"), href: "/broadcasts/email" },
                   { key: "sms", label: t("campaignsSms"), href: null },
@@ -421,12 +442,14 @@ export function Sidebar({
 
               return (
                 <li key={item.href}>
-                  {isFeatureLocked ? (
+                  {isNavLocked ? (
                     <button
                       type="button"
-                      title="Essa função ainda não foi liberada ou está em manutenção"
+                      title={isSupportLocked ? "Acesso bloqueado para proteger os dados do cliente" : "Essa função ainda não foi liberada ou está em manutenção"}
                       onClick={() =>
-                        toast.info("Essa função ainda não foi liberada ou está em manutenção")
+                        toast.info(isSupportLocked
+                          ? "Acesso bloqueado para proteger os dados do cliente"
+                          : "Essa função ainda não foi liberada ou está em manutenção")
                       }
                       className={linkClassName}
                     >
@@ -447,21 +470,38 @@ export function Sidebar({
           <ul className="flex flex-col gap-1">
             {bottomNavItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
+              const supportLocked = isSupportSession;
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
-                      collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
-                      isActive
-                        ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
-                        : "text-white/70 hover:bg-white/10 hover:text-white",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span className={collapsed ? "lg:hidden" : ""}>{t(item.labelKey as string)}</span>
-                  </Link>
+                  {supportLocked ? (
+                    <button
+                      type="button"
+                      aria-disabled="true"
+                      onClick={() => toast.info("Configurações estão bloqueadas durante este acesso restrito")}
+                      className={cn(
+                        "crm-sidebar-item flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-white/45 transition-none hover:bg-white/5 lg:py-2",
+                        collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className={cn("flex-1", collapsed ? "lg:hidden" : "")}>{t(item.labelKey as string)}</span>
+                      <LockKeyhole className={cn("size-3.5", collapsed ? "lg:hidden" : "")} />
+                    </button>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
+                        collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",
+                        isActive
+                          ? cn("crm-sidebar-item-active", item.href === "/settings" && "crm-sidebar-item-gray")
+                          : "text-white/70 hover:bg-white/10 hover:text-white",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span className={collapsed ? "lg:hidden" : ""}>{t(item.labelKey as string)}</span>
+                    </Link>
+                  )}
                 </li>
               );
             })}
@@ -470,6 +510,28 @@ export function Sidebar({
 
         {/* User section */}
         <div className={cn("shrink-0 border-t border-white/10 p-3", collapsed ? "lg:p-2" : "")}>
+          {isSupportSession && supportSession && (
+            <div className="mb-2 space-y-2 rounded-lg border border-amber-300/30 bg-amber-300/10 p-2 text-xs">
+              <p className="flex items-center gap-1.5 font-medium text-amber-100">
+                <LockKeyhole className="size-3.5 shrink-0" />
+                Acesso restrito: {supportSession.accountName}
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  const response = await fetch("/api/platform-admin/support-session", { method: "DELETE" });
+                  if (!response.ok) {
+                    toast.error("Não foi possível encerrar o acesso à conta");
+                    return;
+                  }
+                  window.location.assign("/admin");
+                }}
+                className="w-full rounded-md bg-white/10 px-2 py-1.5 text-left text-white hover:bg-white/20"
+              >
+                Encerrar acesso
+              </button>
+            </div>
+          )}
           {/* Account name display — surfaced only when the account
               name differs from the user's own name (see
               `showAccountStrip`). For a default solo account the two
