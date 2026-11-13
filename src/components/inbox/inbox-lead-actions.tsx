@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CalendarClock, CircleCheck, Plus, Tag, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { isPaidStageName } from "@/lib/pipelines/paid-stage";
 import type { DealLabel, PipelineStage } from "@/types";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
+import { DealScheduleDialog } from "@/components/pipelines/deal-schedule-dialog";
 import { ScheduledMessageDialog } from "./scheduled-message-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,8 @@ interface InboxDeal {
   pipeline_id: string;
   stage_id: string;
   value: number;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
   stage: PipelineStage | null;
   labels: DealLabel[];
 }
@@ -63,6 +66,8 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
   const [selectedStageId, setSelectedStageId] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [savingStage, setSavingStage] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const scheduleSaved = useRef(false);
 
   useEffect(() => {
     if (!accountId) return;
@@ -73,7 +78,7 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
       try {
         const { data, error } = await supabase
           .from("deals")
-          .select("id, title, pipeline_id, stage_id, value, stage:pipeline_stages(*), deal_label_links(label:deal_labels(*))")
+          .select("id, title, pipeline_id, stage_id, value, scheduled_date, scheduled_time, stage:pipeline_stages(*), deal_label_links(label:deal_labels(*))")
           .eq("account_id", accountId)
           .eq("contact_id", contactId)
           .order("created_at", { ascending: false });
@@ -154,13 +159,21 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
     setDealSelectorOpen(true);
   }
 
-  async function saveStage() {
-    if (!selectedDeal || !selectedStageId || savingStage) return;
-    const requiresAmount = isPaidStageName(selectedStage?.name);
+  const requiresAmount = selectedStage?.stage_type === "purchase" || isPaidStageName(selectedStage?.name);
+
+  async function saveStage(scheduledDate?: string, scheduledTime?: string): Promise<boolean> {
+    if (!selectedDeal || !selectedStage || savingStage) return false;
     const amount = Number(paidAmount);
-    if (requiresAmount && !(amount > 0)) {
+    if (requiresAmount && (!Number.isFinite(amount) || !(amount > 0))) {
       toast.error(t("paidAmountRequired"));
-      return;
+      return false;
+    }
+
+    if (selectedStage.stage_type === "schedule" && selectedStage.id !== selectedDeal.stage_id && !scheduledDate) {
+      scheduleSaved.current = false;
+      setStageDialogOpen(false);
+      setScheduleDialogOpen(true);
+      return false;
     }
 
     setSavingStage(true);
@@ -171,11 +184,13 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
         body: JSON.stringify({
           stage_id: selectedStageId,
           ...(requiresAmount ? { value: amount, currency: "BRL" } : {}),
+          ...(scheduledDate && scheduledTime ? { scheduled_date: scheduledDate, scheduled_time: scheduledTime } : {}),
         }),
       });
       if (!response.ok) {
+        console.error("[inbox-lead-actions] failed to update deal stage:", response.status, await response.text());
         toast.error(t("stageUpdateError"));
-        return;
+        return false;
       }
 
       setDeals((current) => current.map((deal) => deal.id === selectedDeal.id
@@ -184,15 +199,18 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
             stage_id: selectedStageId,
             stage: selectedStage ?? deal.stage,
             ...(requiresAmount ? { value: amount } : {}),
+            ...(scheduledDate && scheduledTime ? { scheduled_date: scheduledDate, scheduled_time: scheduledTime } : {}),
           }
         : deal,
       ));
       onDealUpdated?.();
       setStageDialogOpen(false);
       toast.success(t("stageUpdated"));
+      return true;
     } catch (error) {
       console.error("[inbox-lead-actions] failed to update deal stage:", error);
       toast.error(t("stageUpdateError"));
+      return false;
     } finally {
       setSavingStage(false);
     }
@@ -320,7 +338,7 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
                   ))}
                 </select>
               </div>
-              {isPaidStageName(selectedStage?.name) && (
+              {requiresAmount && (
                 <div className="grid gap-2">
                   <Label htmlFor="inbox-lead-paid-amount">{t("paidAmount")}</Label>
                   <Input
@@ -349,6 +367,28 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedDeal && (
+        <DealScheduleDialog
+          open={scheduleDialogOpen}
+          onOpenChange={(open) => {
+            setScheduleDialogOpen(open);
+            if (!open && !scheduleSaved.current) setStageDialogOpen(true);
+          }}
+          dealId={selectedDeal.id}
+          value={selectedDeal.scheduled_date}
+          timeValue={selectedDeal.scheduled_time}
+          requireTime
+          onSave={async (dealId, date, time) => {
+            if (dealId !== selectedDeal.id || !date || !time) {
+              toast.error(t("stageUpdateError"));
+              return false;
+            }
+            return saveStage(date, time);
+          }}
+          onChange={() => { scheduleSaved.current = true; }}
+        />
+      )}
 
       {selectedDeal && (
         <DealLabelsDialog
