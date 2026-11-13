@@ -16,6 +16,8 @@ export default async function PipelineDealRoute({ params, searchParams }: RouteP
     if (typeof value === "string" && value) returnParams.set(key, value);
   }
 
-  const returnTo = returnParams.size > 0 ? `/pipelines?${returnParams.toString()}` : "/pipelines";
+  const returnTo = query.return === "calendar"
+    ? "/calendar"
+    : returnParams.size > 0 ? `/pipelines?${returnParams.toString()}` : "/pipelines";
   return <PipelineLeadPage dealId={dealId} returnTo={returnTo} />;
 }

@@ -11,6 +11,7 @@ import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
   Bell,
   Bot,
+  CalendarDays,
   ChevronDown,
   Crown,
   GitBranch,
@@ -100,6 +101,7 @@ const navItems: NavItem[] = [
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
+  { href: "/calendar", labelKey: "calendar", icon: CalendarDays },
   { href: "/broadcasts", labelKey: "broadcasts", icon: Radio, feature: "broadcasts" },
   { href: "/automations", labelKey: "automations", icon: Zap, feature: "automations" },
   { href: "/flows", labelKey: "flows", icon: Workflow, feature: "flows", beta: true },
@@ -111,7 +113,7 @@ const bottomNavItems = [
 ];
 
 const mobileNavItems = navItems.filter((item) =>
-  ["/dashboard", "/inbox", "/notifications", "/pipelines"].includes(item.href),
+  ["/dashboard", "/inbox", "/notifications", "/pipelines", "/calendar"].includes(item.href),
 );
 
 interface SidebarProps {
@@ -356,7 +358,6 @@ export function Sidebar({
 
               if (item.href === "/broadcasts" && !isFeatureLocked) {
                 const subItems = [
-                  { key: "calendar", label: t("campaignsCalendar"), href: null },
                   { key: "email", label: t("campaignsEmail"), href: "/broadcasts/email" },
                   { key: "sms", label: t("campaignsSms"), href: null },
                   { key: "whatsapp", label: t("campaignsWhatsapp"), href: "/broadcasts" },

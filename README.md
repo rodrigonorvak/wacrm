@@ -179,6 +179,20 @@ whose outcome is uncertain is never retried automatically. Check the inbox
 and Meta before scheduling a replacement. A message marked sent was accepted
 by Meta, not necessarily delivered or read.
 
+## Lead calendar
+
+The **Calendar** navigation item shows lead appointments with a date and time
+in the browser's local time zone. Appointments without a time are not shown.
+Select a lead to open its pipeline card. Choose day, four-day, week, or month
+views, search by lead or label, and filter appointments by pipeline.
+Event markers represent a start time, not an appointment duration.
+
+Scheduled WhatsApp messages can be displayed using the separate checkbox;
+they are hidden by default. Pending, processing, and uncertain schedules
+are shown in a different color. The pipeline filter applies to lead
+appointments, not scheduled messages. The pipeline's default date filter
+shows leads created today; an explicitly supplied date filter is preserved.
+
 ## Email campaign delivery
 
 Email campaigns use the SMTP sender selected in each campaign. Configure

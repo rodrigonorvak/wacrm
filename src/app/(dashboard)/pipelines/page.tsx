@@ -68,6 +68,7 @@ import {
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
+import { isCreatedToday } from '@/lib/pipelines/date-filter';
 import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
 // Pipeline creation is admin-class (settings-tier write under
@@ -199,7 +200,7 @@ export default function PipelinesPage() {
     stageId: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<DateFilter>('max');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
@@ -856,7 +857,7 @@ export default function PipelinesPage() {
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
 
-    if (dateFilter === 'today') return createdAt >= dayStart;
+    if (dateFilter === 'today') return isCreatedToday(deal.created_at);
     if (dateFilter === '7' || dateFilter === '14' || dateFilter === '30') {
       const start = new Date(dayStart);
       start.setDate(start.getDate() - Number(dateFilter) + 1);
