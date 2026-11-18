@@ -2,8 +2,50 @@ import { NextResponse } from "next/server";
 import { requirePlatformAdmin } from "@/lib/auth/platform-admin";
 import { toErrorResponse } from "@/lib/auth/account";
 import { supabaseAdmin } from "@/lib/flows/admin-client";
+import { emailPhotoUrl } from "@/lib/admin/email-photo";
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+export async function GET(_request: Request, context: RouteContext) {
+  try {
+    const platformAdmin = await requirePlatformAdmin();
+    if (platformAdmin.role !== "super_admin") {
+      return NextResponse.json({ error: "Super administrator access required" }, { status: 403 });
+    }
+    const { id } = await context.params;
+    const admin = supabaseAdmin();
+    const { data, error } = await admin.auth.admin.getUserById(id);
+    if (error || !data.user) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("full_name, avatar_url, account_id, account_role, access_status")
+      .eq("user_id", id)
+      .maybeSingle();
+    let accountName: string | null = null;
+    if (profile?.account_id) {
+      const { data: account } = await admin.from("accounts").select("name").eq("id", profile.account_id).maybeSingle();
+      accountName = account?.name ?? null;
+    }
+    const bannedUntil = data.user.banned_until;
+    const suspended = Boolean(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
+    return NextResponse.json({
+      user: {
+        id: data.user.id,
+        email: data.user.email ?? null,
+        full_name: profile?.full_name ?? null,
+        photo_url: emailPhotoUrl(data.user.email, profile?.avatar_url),
+        account_id: profile?.account_id ?? null,
+        account_name: accountName,
+        account_role: profile?.account_role ?? null,
+        access_status: suspended ? "suspended" : "enabled",
+      },
+    });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+}
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {

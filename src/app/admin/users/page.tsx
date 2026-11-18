@@ -88,25 +88,6 @@ export default function PlatformUsersPage() {
       .some((value) => value?.toLowerCase().includes(normalizedQuery));
   });
 
-  async function updateUser(user: PlatformUser, action: "suspend" | "reactivate" | "delete") {
-    const labels = { suspend: "Suspender", reactivate: "Reativar", delete: "Excluir" };
-    if (!window.confirm(`${labels[action]} este usuário?`)) return;
-    try {
-      const response = await fetch(`/api/platform-admin/users/${encodeURIComponent(user.id)}`, {
-        method: action === "delete" ? "DELETE" : "PATCH",
-        headers: { "Content-Type": "application/json" },
-        ...(action === "delete" ? {} : { body: JSON.stringify({ action }) }),
-      });
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Não foi possível atualizar o usuário.");
-      }
-      await loadUsers();
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar o usuário.");
-    }
-  }
-
   return (
     <div>
       <div>
@@ -160,36 +141,28 @@ export default function PlatformUsersPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {visibleUsers.map((user) => {
                 const name = user.full_name || user.email || "Usuário";
-                const suspended = user.access_status === "suspended";
                 return (
                   <article
                     key={user.id}
-                    className={`rounded-2xl border border-[#e6ebf2] bg-white p-5 text-center shadow-[0_8px_24px_rgb(15_23_42_/_4%)] ${suspended ? "bg-[#fffaf0]" : ""}`}
+                    className="rounded-2xl border border-[#e6ebf2] bg-white p-5 text-center shadow-[0_8px_24px_rgb(15_23_42_/_4%)]"
                   >
-                    <button
-                      type="button"
-                      className="w-full"
-                      onClick={() => {
-                        if (user.account_id) router.push(`/admin/accounts/${user.account_id}`);
-                      }}
-                    >
-                      <UserAvatar name={name} src={user.photo_url} size={72} />
-                      <p className="mt-3 truncate text-base font-semibold text-[#1d2327]">{name}</p>
-                      <p className="truncate text-sm text-[#646970]">{user.email ?? "Sem e-mail"}</p>
-                      <p className="mt-1 truncate text-xs text-[#646970]">{user.account_name ?? "Sem conta"}</p>
-                      <span className="mt-3 inline-flex rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-medium text-[#1d2327]">
-                        {user.account_role ? ROLE_LABELS[user.account_role] ?? user.account_role : "Sem papel"}
-                      </span>
-                    </button>
+                    <UserAvatar name={name} src={user.photo_url} size={72} />
+                    <p className="mt-3 truncate text-base font-semibold text-[#1d2327]">{name}</p>
+                    <p className="truncate text-sm text-[#646970]">{user.email ?? "Sem e-mail"}</p>
+                    <p className="mt-1 truncate text-xs text-[#646970]">{user.account_name ?? "Sem conta"}</p>
+                    <span className="mt-3 inline-flex rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-medium text-[#1d2327]">
+                      {user.account_role ? ROLE_LABELS[user.account_role] ?? user.account_role : "Sem papel"}
+                    </span>
                     <p className="mt-3 text-xs text-[#646970]">Último acesso {formatDate(user.last_sign_in_at)}</p>
-                    <div className="mt-3 flex justify-center gap-2">
-                      {suspended ? (
-                        <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "reactivate")}>Reativar</Button>
-                      ) : (
-                        <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "suspend")}>Suspender</Button>
-                      )}
-                      <Button type="button" size="sm" variant="destructive" onClick={() => void updateUser(user, "delete")}>Excluir</Button>
-                    </div>
+                    <Button
+                      type="button"
+                      className="mt-4"
+                      onClick={() => router.push(user.account_id
+                        ? `/admin/accounts/${user.account_id}?user=${user.id}`
+                        : `/admin/users/${user.id}`)}
+                    >
+                      Abrir
+                    </Button>
                   </article>
                 );
               })}

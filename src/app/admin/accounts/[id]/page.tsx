@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, UnlockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/admin/user-avatar";
+import { UserAccessBar } from "@/components/admin/user-access-bar";
 import {
   DEFAULT_PLATFORM_FEATURE_ACCESS,
   PLATFORM_FEATURES,
@@ -67,7 +68,9 @@ function StatusText({ active, error, t }: {
 
 export default function PlatformAccountPage() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
   const accountId = params.id;
+  const openedUserId = searchParams.get("user");
   const t = useTranslations("PlatformAdmin");
   const [detail, setDetail] = useState<AccountDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,6 +84,7 @@ export default function PlatformAccountPage() {
   const [memberPassword, setMemberPassword] = useState("");
   const [memberRole, setMemberRole] = useState("agent");
   const [creatingMember, setCreatingMember] = useState(false);
+  const [openedAccess, setOpenedAccess] = useState<"enabled" | "suspended" | null>(null);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -109,6 +113,21 @@ export default function PlatformAccountPage() {
   useEffect(() => {
     void loadDetail();
   }, [loadDetail]);
+
+  const loadOpenedUser = useCallback(async () => {
+    if (!openedUserId) {
+      setOpenedAccess(null);
+      return;
+    }
+    const response = await fetch(`/api/platform-admin/users/${encodeURIComponent(openedUserId)}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const body = (await response.json()) as { user: { access_status: "enabled" | "suspended" } };
+    setOpenedAccess(body.user.access_status);
+  }, [openedUserId]);
+
+  useEffect(() => {
+    void loadOpenedUser();
+  }, [loadOpenedUser]);
 
   const loadFeatures = useCallback(async () => {
     setFeaturesFailed(false);
@@ -206,6 +225,9 @@ export default function PlatformAccountPage() {
 
   return (
     <div>
+      {openedUserId && openedAccess && (
+        <UserAccessBar userId={openedUserId} accessStatus={openedAccess} onChanged={() => void loadOpenedUser()} />
+      )}
       <div className="flex flex-wrap items-start justify-between gap-4 pb-5">
         <div>
           <Link href="/admin" className="text-xs text-muted-foreground hover:text-foreground">← Voltar para contas</Link>
