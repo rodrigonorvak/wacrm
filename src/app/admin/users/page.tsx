@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/admin/user-avatar";
 
 interface PlatformUser {
   id: string;
   email: string | null;
   full_name: string | null;
+  photo_url: string | null;
   account_id: string | null;
   account_name: string | null;
   account_role: string | null;
@@ -26,8 +29,16 @@ function formatDate(value: string | null): string {
   return new Date(value).toLocaleString();
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  owner: "Dono",
+  admin: "Administrador",
+  agent: "Atendente",
+  viewer: "Visualizador",
+};
+
 export default function PlatformUsersPage() {
   const t = useTranslations("PlatformAdmin");
+  const router = useRouter();
   const [users, setUsers] = useState<PlatformUser[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -146,53 +157,42 @@ export default function PlatformUsersPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-md border border-[#dcdcde] bg-white shadow-sm">
-              <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                <thead className="bg-[#f6f7f7]">
-                  <tr className="border-b border-[#dcdcde] text-xs text-[#646970]">
-                    <th className="py-3 pr-4 font-medium">{t("email")}</th>
-                    <th className="py-3 pr-4 font-medium">{t("account")}</th>
-                    <th className="py-3 pr-4 font-medium">{t("members")}</th>
-                    <th className="py-3 pr-4 font-medium">{t("confirmed")}</th>
-                    <th className="py-3 pr-4 font-medium">{t("access")}</th>
-                    <th className="py-3 pr-4 font-medium">Status da conta</th>
-                    <th className="py-3 pr-4 font-medium">{t("createdAt")}</th>
-                    <th className="py-3 font-medium">{t("lastLogin")}</th>
-                    <th className="py-3 font-medium">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-border/70 align-top">
-                      <td className="py-4 pr-4">
-                        <p className="font-medium">{user.email ?? "—"}</p>
-                        {user.full_name && <p className="mt-1 text-xs text-muted-foreground">{user.full_name}</p>}
-                      </td>
-                      <td className="py-4 pr-4">{user.account_name ?? t("noProfile")}</td>
-                      <td className="py-4 pr-4">{user.account_role ?? "—"}</td>
-                      <td className="py-4 pr-4 text-muted-foreground">{user.email_confirmed ? t("confirmed") : t("unconfirmed")}</td>
-                      <td className="py-4 pr-4">
-                        <span className={user.access_status === "suspended" ? "rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700" : "rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"}>
-                          {t(user.access_status)}
-                        </span>
-                      </td>
-                      <td className="py-4 pr-4 capitalize">{user.profile_status}</td>
-                      <td className="py-4 pr-4 text-muted-foreground">{formatDate(user.created_at)}</td>
-                      <td className="py-4 text-muted-foreground">{formatDate(user.last_sign_in_at)}</td>
-                      <td className="py-4">
-                        <div className="flex flex-wrap gap-2">
-                          {user.access_status === "suspended" ? (
-                            <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "reactivate")}>Reativar</Button>
-                          ) : (
-                            <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "suspend")}>Suspender</Button>
-                          )}
-                          <Button type="button" size="sm" variant="destructive" onClick={() => void updateUser(user, "delete")}>Excluir</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {visibleUsers.map((user) => {
+                const name = user.full_name || user.email || "Usuário";
+                const suspended = user.access_status === "suspended";
+                return (
+                  <article
+                    key={user.id}
+                    className={`rounded-2xl border border-[#e6ebf2] bg-white p-5 text-center shadow-[0_8px_24px_rgb(15_23_42_/_4%)] ${suspended ? "bg-[#fffaf0]" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="w-full"
+                      onClick={() => {
+                        if (user.account_id) router.push(`/admin/accounts/${user.account_id}`);
+                      }}
+                    >
+                      <UserAvatar name={name} src={user.photo_url} size={72} />
+                      <p className="mt-3 truncate text-base font-semibold text-[#1d2327]">{name}</p>
+                      <p className="truncate text-sm text-[#646970]">{user.email ?? "Sem e-mail"}</p>
+                      <p className="mt-1 truncate text-xs text-[#646970]">{user.account_name ?? "Sem conta"}</p>
+                      <span className="mt-3 inline-flex rounded-full bg-[#f4f7fb] px-3 py-1 text-xs font-medium text-[#1d2327]">
+                        {user.account_role ? ROLE_LABELS[user.account_role] ?? user.account_role : "Sem papel"}
+                      </span>
+                    </button>
+                    <p className="mt-3 text-xs text-[#646970]">Último acesso {formatDate(user.last_sign_in_at)}</p>
+                    <div className="mt-3 flex justify-center gap-2">
+                      {suspended ? (
+                        <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "reactivate")}>Reativar</Button>
+                      ) : (
+                        <Button type="button" size="sm" variant="outline" onClick={() => void updateUser(user, "suspend")}>Suspender</Button>
+                      )}
+                      <Button type="button" size="sm" variant="destructive" onClick={() => void updateUser(user, "delete")}>Excluir</Button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
 
             <footer className="flex items-center justify-between border-t border-border py-4">

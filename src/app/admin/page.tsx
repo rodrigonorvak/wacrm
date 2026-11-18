@@ -2,301 +2,200 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert } from "lucide-react";
+import { LoaderCircle, RefreshCw, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { PLATFORM_FEATURES } from "@/lib/platform-features";
+import { UserAvatar } from "@/components/admin/user-avatar";
+import {
+  DATE_FILTER_LABELS,
+  DATE_FILTER_OPTIONS,
+  presetBounds,
+  type DateFilter,
+} from "@/lib/pipelines/date-filter";
 
-interface PlatformAccount {
+interface StageStat {
+  name: string;
+  count: number;
+  value: number;
+}
+
+interface OverviewAccount {
   id: string;
   name: string;
   created_at: string;
   member_count: number;
-  access_status: "approved" | "suspended";
-  features: Record<string, boolean>;
-  owner: {
-    user_id: string;
-    full_name: string | null;
-    email: string | null;
-  } | null;
+  owner: { full_name: string | null; email: string | null; photo_url: string | null } | null;
+  members: Array<{ full_name: string | null; email: string | null; photo_url: string | null }>;
+  activity: {
+    leads: number;
+    appointments: number;
+    broadcasts: number;
+    emails: number;
+    deal_value: number;
+    stages: StageStat[];
+  };
 }
 
-export default function PlatformAdminPage() {
-  const t = useTranslations("PlatformAdmin");
-  const [accounts, setAccounts] = useState<PlatformAccount[]>([]);
-  const [truncated, setTruncated] = useState(false);
+const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+export default function PlatformOverviewPage() {
+  const [accounts, setAccounts] = useState<OverviewAccount[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [failedMessage, setFailedMessage] = useState<string | null>(null);
-  const [featuresError, setFeaturesError] = useState(false);
-  const [schemaWarnings, setSchemaWarnings] = useState<string[]>([]);
-  const [saving, setSaving] = useState<string | null>(null);
-  const [openingAccount, setOpeningAccount] = useState<string | null>(null);
+  const [filter, setFilter] = useState<DateFilter>("30");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
-  const loadAccounts = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setDenied(false);
     setFailed(false);
-    setFailedMessage(null);
+    const params = new URLSearchParams();
+    if (filter === "custom") {
+      if (customStart) params.set("from", new Date(`${customStart}T00:00:00`).toISOString());
+      const endKey = customEnd || customStart;
+      if (endKey) params.set("to", new Date(`${endKey}T23:59:59.999`).toISOString());
+    } else {
+      const bounds = presetBounds(filter);
+      if (bounds) {
+        params.set("from", bounds.start.toISOString());
+        params.set("to", bounds.end.toISOString());
+      }
+    }
     try {
-      const response = await fetch("/api/platform-admin/accounts", { cache: "no-store" });
+      const response = await fetch(`/api/platform-admin/overview?${params.toString()}`, { cache: "no-store" });
       if (response.status === 401 || response.status === 403) {
         setDenied(true);
         return;
       }
       if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string } | null;
-        setFailedMessage(body?.error ?? `Não foi possível carregar os dados da plataforma (HTTP ${response.status}).`);
         setFailed(true);
         return;
       }
-      const data = (await response.json()) as {
-        accounts: PlatformAccount[];
-        truncated: boolean;
-        features_error?: boolean;
-        schema_warnings?: string[];
-      };
-      setFeaturesError(Boolean(data.features_error));
-      setSchemaWarnings(data.schema_warnings ?? []);
+      const data = (await response.json()) as { accounts: OverviewAccount[]; warnings?: string[] };
       setAccounts(data.accounts);
-      setTruncated(data.truncated);
-    } catch (error) {
-      setFailedMessage(
-        error instanceof Error
-          ? `Falha ao conectar com a API: ${error.message}`
-          : "Não foi possível conectar com a API da plataforma.",
-      );
+      setWarnings(data.warnings ?? []);
+    } catch {
       setFailed(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter, customStart, customEnd]);
 
   useEffect(() => {
-    void loadAccounts();
-  }, [loadAccounts]);
-
-  const memberTotal = accounts.reduce((total, account) => total + account.member_count, 0);
-  const suspendedTotal = accounts.filter((account) => account.access_status === "suspended").length;
-
-  async function toggleFeature(account: PlatformAccount, feature: string, enabled: boolean) {
-    const savingKey = `${account.id}:${feature}`;
-    setSaving(savingKey);
-    try {
-      const response = await fetch(
-        `/api/platform-admin/accounts/${encodeURIComponent(account.id)}/features`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ feature, enabled }),
-        },
-      );
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Não foi possível atualizar a permissão.");
-      }
-      setAccounts((current) =>
-        current.map((item) =>
-          item.id === account.id ? { ...item, features: { ...item.features, [feature]: enabled } } : item,
-        ),
-      );
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível atualizar a permissão.");
-    } finally {
-      setSaving(null);
-    }
-  }
-
-  async function updateAccount(account: PlatformAccount, action: "suspend" | "reactivate") {
-    const label = action === "suspend" ? "Desativar" : "Reativar";
-    if (!window.confirm(`${label} a conta "${account.name}"?`)) return;
-    try {
-      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(account.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? `Não foi possível ${label.toLowerCase()} a conta.`);
-      }
-      await loadAccounts();
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : `Não foi possível ${label.toLowerCase()} a conta.`);
-    }
-  }
-
-  async function accessAccount(account: PlatformAccount) {
-    setOpeningAccount(account.id);
-    try {
-      const response = await fetch("/api/platform-admin/support-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId: account.id }),
-      });
-      if (!response.ok) {
-        const body = (await response.json()) as { error?: string };
-        throw new Error(body.error ?? "Não foi possível acessar a conta.");
-      }
-      window.location.assign("/automations");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Não foi possível acessar a conta.");
-      setOpeningAccount(null);
-    }
-  }
-
-  const stats = [
-    { label: "Contas", value: accounts.length },
-    { label: "Ativas", value: accounts.length - suspendedTotal },
-    { label: "Desativadas", value: suspendedTotal },
-    { label: "Usuários", value: memberTotal },
-  ];
+    void load();
+  }, [load]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Contas</h2>
-        <Button type="button" variant="outline" onClick={() => void loadAccounts()} disabled={loading}>
+        <div>
+          <h2 className="text-2xl font-semibold text-[#1d2327]">Resultados</h2>
+          <p className="text-sm text-[#646970]">Cada conta, no período escolhido.</p>
+        </div>
+        <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
           {loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          <span>{t("refresh")}</span>
+          Atualizar
         </Button>
       </div>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-md border border-[#dcdcde] bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs text-[#646970]">{stat.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-[#1d2327]">{loading ? "—" : stat.value}</p>
-          </div>
-        ))}
-      </section>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={filter}
+          onChange={(event) => setFilter(event.target.value as DateFilter)}
+          className="h-10 rounded-full border border-[#dcdcde] bg-white px-4 text-sm"
+          aria-label="Período"
+        >
+          {DATE_FILTER_OPTIONS.map((option) => (
+            <option key={option} value={option}>{DATE_FILTER_LABELS[option]}</option>
+          ))}
+        </select>
+        {filter === "custom" && (
+          <>
+            <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} className="h-10 rounded-full border border-[#dcdcde] bg-white px-3 text-sm" aria-label="Data inicial" />
+            <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="h-10 rounded-full border border-[#dcdcde] bg-white px-3 text-sm" aria-label="Data final" />
+          </>
+        )}
+      </div>
 
-      {featuresError && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          A tabela de permissões não foi encontrada. Aplique a migration 060_account_feature_access.sql no Supabase para
-          poder liberar módulos.
-        </p>
-      )}
-      {schemaWarnings.includes("account_lifecycle") && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          A migration 058_account_lifecycle_status.sql está pendente. A lista foi carregada sem filtrar contas
-          desativadas; aplique a migration para restaurar esse filtro.
-        </p>
-      )}
-      {schemaWarnings.includes("account_creation_approval") && (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          A migration 057_account_creation_approval.sql está pendente. O resumo de status das contas fica limitado até
-          aplicá-la.
+      {warnings.length > 0 && (
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Alguns números não carregaram: {warnings.join(", ")}.
         </p>
       )}
 
       {denied ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 text-center">
           <ShieldAlert className="size-8 text-amber-500" />
-          <p className="max-w-md text-sm text-muted-foreground">{t("accessDenied")}</p>
+          <p className="max-w-md text-sm text-[#646970]">Esta conta não administra a plataforma.</p>
         </div>
       ) : failed ? (
-        <div className="flex min-h-64 items-center justify-center text-center text-sm text-destructive">
-          {failedMessage ?? t("loadFailed")}
-        </div>
+        <p className="py-16 text-center text-sm text-red-600">Não foi possível carregar os resultados.</p>
       ) : loading ? (
-        <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">
-          <LoaderCircle className="mr-2 size-4 animate-spin" />
-          {t("loading")}
-        </div>
-      ) : accounts.length === 0 ? (
-        <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">{t("empty")}</div>
+        <p className="flex items-center justify-center py-16 text-sm text-[#646970]">
+          <LoaderCircle className="mr-2 size-4 animate-spin" /> Carregando resultados...
+        </p>
       ) : (
-        <>
-          <div className="overflow-x-auto rounded-md border border-[#dcdcde] bg-white shadow-sm">
-            <table className="w-full min-w-[960px] border-collapse text-left text-sm">
-              <thead className="bg-[#f6f7f7]">
-                <tr className="text-xs text-muted-foreground">
-                  <th className="px-4 py-3 font-medium">Conta</th>
-                  <th className="px-4 py-3 font-medium">Responsável</th>
-                  <th className="px-4 py-3 font-medium">Usuários</th>
-                  {PLATFORM_FEATURES.map((feature) => (
-                    <th key={feature.key} className="px-3 py-3 text-center font-medium">
-                      {feature.label}
-                    </th>
+        <div className="space-y-4">
+          {accounts.map((account) => (
+            <article key={account.id} className="rounded-2xl border border-[#e6ebf2] bg-white p-5 shadow-[0_8px_24px_rgb(15_23_42_/_4%)]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <UserAvatar name={account.owner?.full_name || account.name} src={account.owner?.photo_url ?? null} size={48} />
+                  <div className="min-w-0">
+                    <Link href={`/admin/accounts/${account.id}`} className="block truncate text-base font-semibold text-[#1d2327] hover:text-[#e10c8c]">
+                      {account.name}
+                    </Link>
+                    <p className="truncate text-sm text-[#646970]">
+                      {account.owner?.full_name || account.owner?.email || "Sem responsável"} · criada em {new Date(account.created_at).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  {account.members.map((member, index) => (
+                    <span key={`${member.email}-${index}`} className={index === 0 ? "" : "-ml-2"} title={member.full_name || member.email || ""}>
+                      <UserAvatar name={member.full_name || member.email || "?"} src={member.photo_url} size={32} />
+                    </span>
                   ))}
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accounts.map((account) => {
-                  const suspended = account.access_status === "suspended";
-                  return (
-                    <tr key={account.id} className="border-t border-border/70 align-top">
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/admin/accounts/${encodeURIComponent(account.id)}`}
-                          className="font-medium text-primary hover:underline"
-                        >
-                          {account.name}
-                        </Link>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          Criada em {new Date(account.created_at).toLocaleDateString()}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p>{account.owner?.full_name || account.owner?.email || "—"}</p>
-                        {account.owner?.full_name && account.owner.email && (
-                          <p className="mt-1 text-xs text-muted-foreground">{account.owner.email}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">{account.member_count}</td>
-                      {PLATFORM_FEATURES.map((feature) => (
-                        <td key={feature.key} className="px-3 py-3 text-center">
-                          <Switch
-                            aria-label={`${feature.label} — ${account.name}`}
-                            checked={Boolean(account.features[feature.key])}
-                            disabled={saving === `${account.id}:${feature.key}`}
-                            onCheckedChange={(checked) => void toggleFeature(account, feature.key, checked)}
-                          />
-                        </td>
-                      ))}
-                      <td className="px-4 py-3">
-                        <span className={suspended ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive" : "rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400"}>
-                          {suspended ? "Desativada" : "Ativa"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={openingAccount !== null || suspended}
-                            onClick={() => void accessAccount(account)}
-                          >
-                            {openingAccount === account.id
-                              ? <LoaderCircle className="size-4 animate-spin" />
-                              : <LockKeyhole className="size-4" />}
-                            <span>Acessar</span>
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void updateAccount(account, suspended ? "reactivate" : "suspend")}
-                          >
-                            {suspended ? "Reativar" : "Desativar"}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {truncated && <p className="text-xs text-muted-foreground">{t("truncated")}</p>}
-        </>
+                  {account.member_count > account.members.length && (
+                    <span className="-ml-2 inline-flex size-8 items-center justify-center rounded-full bg-[#f4f7fb] text-xs font-semibold text-[#646970]">
+                      +{account.member_count - account.members.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                <Metric label="Leads" value={String(account.activity.leads)} />
+                <Metric label="Valor dos negócios" value={money.format(account.activity.deal_value)} />
+                <Metric label="Agendamentos" value={String(account.activity.appointments)} />
+                <Metric label="Disparos" value={String(account.activity.broadcasts)} />
+                <Metric label="E-mails enviados" value={String(account.activity.emails)} />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {account.activity.stages.length === 0 ? (
+                  <span className="text-xs text-[#646970]">Nenhum negócio neste período.</span>
+                ) : account.activity.stages.map((stage) => (
+                  <span key={stage.name} className="rounded-full bg-[#f7f9fc] px-3 py-1 text-xs text-[#1d2327]">
+                    {stage.name}: {stage.count} · {money.format(stage.value)}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       )}
+    </div>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[#f7f9fc] px-4 py-3">
+      <p className="text-xs text-[#646970]">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-[#1d2327]">{value}</p>
     </div>
   );
 }

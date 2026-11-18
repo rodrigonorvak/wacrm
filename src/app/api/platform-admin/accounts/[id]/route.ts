@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin'
 import { toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
+import { emailPhotoUrl } from '@/lib/admin/email-photo'
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -35,7 +36,7 @@ export async function GET(
     const [membersResult, whatsappResult, metaResult, contactsResult, conversationsResult] = await Promise.all([
       admin
         .from('profiles')
-        .select('user_id, full_name, email, account_role, access_status, created_at')
+        .select('user_id, full_name, email, avatar_url, account_role, access_status, created_at')
         .eq('account_id', id)
         .order('created_at', { ascending: true }),
       admin
@@ -81,6 +82,7 @@ export async function GET(
         user_id: member.user_id,
         full_name: member.full_name,
         email: member.email,
+        photo_url: emailPhotoUrl(member.email, member.avatar_url),
         role: member.account_role,
         joined_at: member.created_at,
       })),

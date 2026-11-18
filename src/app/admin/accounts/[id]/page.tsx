@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { LoaderCircle, LockKeyhole, RefreshCw, ShieldAlert, UnlockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/admin/user-avatar";
 import {
   DEFAULT_PLATFORM_FEATURE_ACCESS,
   PLATFORM_FEATURES,
@@ -26,6 +27,7 @@ interface AccountDetail {
     user_id: string;
     full_name: string | null;
     email: string | null;
+    photo_url: string | null;
     role: string;
     joined_at: string;
   }>;
@@ -74,6 +76,11 @@ export default function PlatformAccountPage() {
   const [features, setFeatures] = useState<PlatformFeatureAccess>(DEFAULT_PLATFORM_FEATURE_ACCESS);
   const [featuresFailed, setFeaturesFailed] = useState(false);
   const [updatingFeature, setUpdatingFeature] = useState<PlatformFeatureKey | null>(null);
+  const [memberName, setMemberName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [memberRole, setMemberRole] = useState("agent");
+  const [creatingMember, setCreatingMember] = useState(false);
 
   const loadDetail = useCallback(async () => {
     setLoading(true);
@@ -161,6 +168,41 @@ export default function PlatformAccountPage() {
       window.alert(error instanceof Error ? error.message : "Não foi possível atualizar a conta.");
     }
   }
+
+  async function createMember(event: React.FormEvent) {
+    event.preventDefault();
+    setCreatingMember(true);
+    try {
+      const response = await fetch(`/api/platform-admin/accounts/${encodeURIComponent(accountId)}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: memberName,
+          email: memberEmail,
+          password: memberPassword,
+          role: memberRole,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(body?.error ?? "Não foi possível criar o subusuário.");
+      setMemberName("");
+      setMemberEmail("");
+      setMemberPassword("");
+      setMemberRole("agent");
+      await loadDetail();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Não foi possível criar o subusuário.");
+    } finally {
+      setCreatingMember(false);
+    }
+  }
+
+  const roleLabel: Record<string, string> = {
+    owner: "Dono",
+    admin: "Administrador",
+    agent: "Atendente",
+    viewer: "Visualizador",
+  };
 
   return (
     <div>
@@ -274,19 +316,35 @@ export default function PlatformAccountPage() {
             </section>
 
             <section className="py-6">
-              <h2 className="mb-3 text-sm font-semibold">{t("membersHeading")}</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-                  <thead><tr className="border-b border-border text-xs text-muted-foreground"><th className="py-3 pr-4 font-medium">{t("owner")}</th><th className="py-3 pr-4 font-medium">{t("role")}</th><th className="py-3 font-medium">{t("joined")}</th></tr></thead>
-                  <tbody>{detail.members.map((member) => (
-                    <tr key={member.user_id} className="border-b border-border/70">
-                      <td className="py-3 pr-4"><p className="font-medium">{member.full_name || member.email || "—"}</p>{member.full_name && <p className="text-xs text-muted-foreground">{member.email}</p>}</td>
-                      <td className="py-3 pr-4">{member.role}</td>
-                      <td className="py-3 text-muted-foreground">{formatDate(member.joined_at)}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
+              <h2 className="mb-1 text-sm font-semibold">Subusuários</h2>
+              <p className="mb-4 text-xs text-[#646970]">Pessoas desta conta. O dono não pode ser criado de novo por aqui.</p>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {detail.members.map((member) => (
+                  <article key={member.user_id} className="flex items-center gap-3 rounded-2xl border border-[#e6ebf2] bg-white p-4">
+                    <UserAvatar name={member.full_name || member.email || "Usuário"} src={member.photo_url} size={48} />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{member.full_name || member.email || "—"}</p>
+                      <p className="truncate text-xs text-[#646970]">{member.email}</p>
+                      <span className="mt-1 inline-flex rounded-full bg-[#f4f7fb] px-2 py-0.5 text-xs">{roleLabel[member.role] ?? member.role}</span>
+                    </div>
+                  </article>
+                ))}
               </div>
+
+              <form onSubmit={(event) => void createMember(event)} className="mt-5 grid gap-3 rounded-2xl border border-[#e6ebf2] bg-[#f7f9fc] p-4 sm:grid-cols-2">
+                <h3 className="sm:col-span-2 text-sm font-semibold">Criar subusuário</h3>
+                <input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="Nome" className="h-10 rounded-xl border border-[#dcdcde] bg-white px-3 text-sm" />
+                <input value={memberEmail} onChange={(event) => setMemberEmail(event.target.value)} type="email" required placeholder="E-mail" className="h-10 rounded-xl border border-[#dcdcde] bg-white px-3 text-sm" />
+                <input value={memberPassword} onChange={(event) => setMemberPassword(event.target.value)} type="text" required minLength={12} placeholder="Senha temporária (mínimo 12)" className="h-10 rounded-xl border border-[#dcdcde] bg-white px-3 text-sm" />
+                <select value={memberRole} onChange={(event) => setMemberRole(event.target.value)} className="h-10 rounded-xl border border-[#dcdcde] bg-white px-3 text-sm" aria-label="Papel">
+                  <option value="admin">Administrador</option>
+                  <option value="agent">Atendente</option>
+                  <option value="viewer">Visualizador</option>
+                </select>
+                <div className="sm:col-span-2">
+                  <Button type="submit" disabled={creatingMember}>{creatingMember ? "Criando..." : "Criar subusuário"}</Button>
+                </div>
+              </form>
             </section>
           </>
         )}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requirePlatformAdmin } from '@/lib/auth/platform-admin'
 import { toErrorResponse } from '@/lib/auth/account'
 import { supabaseAdmin } from '@/lib/flows/admin-client'
+import { emailPhotoUrl } from '@/lib/admin/email-photo'
 
 const PER_PAGE = 50
 
@@ -17,6 +18,7 @@ interface AuthUserSummary {
 interface ProfileSummary {
   user_id: string
   full_name: string | null
+  avatar_url: string | null
   account_id: string | null
   account_role: string | null
   access_status: 'pending' | 'approved' | 'denied' | 'suspended'
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
 
     const { data: profiles, error: profilesError } = await admin
       .from('profiles')
-      .select('user_id, full_name, account_id, account_role, access_status')
+      .select('user_id, full_name, avatar_url, account_id, account_role, access_status')
       .in('user_id', userIds)
     if (profilesError) {
       console.error('[platform-admin/users] profile lookup failed:', profilesError.message)
@@ -90,6 +92,7 @@ export async function GET(request: Request) {
           id: user.id,
           email: user.email ?? null,
           full_name: profile?.full_name ?? null,
+          photo_url: emailPhotoUrl(user.email, profile?.avatar_url),
           account_id: profile?.account_id ?? null,
           account_name: profile?.account_id ? accountNameById.get(profile.account_id) ?? null : null,
           account_role: profile?.account_role ?? null,

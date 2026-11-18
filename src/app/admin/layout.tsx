@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Building2, ClipboardList, LayoutDashboard, Users } from "lucide-react";
 
 const TABS = [
-  { href: "/admin", label: "Painel", icon: LayoutDashboard },
+  { href: "/admin", label: "Resultados", icon: LayoutDashboard },
   { href: "/admin/users", label: "Usuários", icon: Users },
   { href: "/admin/requests", label: "Pedidos", icon: ClipboardList },
 ];
@@ -78,7 +78,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Building2 className="size-5 text-[#e10c8c]" />
           <div>
             <h1 className="text-2xl font-normal">Administração da plataforma</h1>
-            <p className="text-sm text-[#646970]">Contas, módulos e usuários do CRM.</p>
+            <p className="text-sm text-[#646970]">Resultados das contas, usuários e permissões.</p>
           </div>
         </header>
         {children}
