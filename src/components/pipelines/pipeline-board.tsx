@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -54,7 +54,6 @@ interface PipelineBoardProps {
 
 const INITIAL_VISIBLE_DEALS = 6;
 const DEALS_PER_REVEAL = 6;
-const STAGE_ENTRANCE_INTERVAL = 196;
 
 export function PipelineBoard({
   stages,
@@ -70,24 +69,12 @@ export function PipelineBoard({
   onEditSchedule,
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
-  const [visibleStageCount, setVisibleStageCount] = useState(1);
   const scheduledContacts = useScheduledContacts();
 
   const sortedStages = useMemo(
     () => [...stages].sort((a, b) => a.position - b.position),
     [stages],
   );
-
-  useEffect(() => {
-    const timers = sortedStages.slice(1).map((_, index) =>
-      window.setTimeout(
-        () => setVisibleStageCount(index + 2),
-        (index + 1) * STAGE_ENTRANCE_INTERVAL,
-      ),
-    );
-
-    return () => timers.forEach(window.clearTimeout);
-  }, [sortedStages]);
 
   const dealsByStage = useMemo(() => {
     const map = new Map<string, Deal[]>();
@@ -137,11 +124,10 @@ export function PipelineBoard({
       onDragCancel={handleDragCancel}
     >
       <div className="pipeline-scroll flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 lg:snap-none">
-        {sortedStages.map((stage, stageIndex) => (
+        {sortedStages.map((stage) => (
           <StageColumn
             key={stage.id}
             stage={stage}
-            isVisible={stageIndex < visibleStageCount}
             deals={dealsByStage.get(stage.id) ?? []}
             visibleCardFields={visibleCardFields}
             canEditStageColors={canEditStageColors}
@@ -214,7 +200,6 @@ export function PipelineBoard({
 
 function StageColumn({
   stage,
-  isVisible,
   deals,
   visibleCardFields,
   canEditStageColors,
@@ -227,7 +212,6 @@ function StageColumn({
   scheduledContacts,
 }: {
   stage: PipelineStage;
-  isVisible: boolean;
   deals: Deal[];
   visibleCardFields: PipelineCardField[];
   canEditStageColors: boolean;
@@ -247,14 +231,7 @@ function StageColumn({
   const hiddenCount = deals.length - visibleDeals.length;
 
   return (
-    <section
-      style={isVisible ? undefined : { visibility: "hidden" }}
-      className={`flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 shadow-[0_3px_10px_rgb(15_23_42_/_7%)] sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none ${
-        isVisible
-          ? "animate-in fade-in-0 slide-in-from-right-2 duration-[170ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
-          : ""
-      }`}
-    >
+    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
       <header
         className="-mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 rounded-t-xl border-b border-border px-3 py-3 sm:-mx-4 sm:-mt-4 sm:px-4"
         style={stage.color ? { backgroundColor: `${stage.color}14` } : undefined}
@@ -342,11 +319,10 @@ function StageColumn({
             {t("dropDealHere")}
           </div>
         ) : (
-          visibleDeals.map((deal, dealIndex) => (
+          visibleDeals.map((deal) => (
             <DraggableDealCard
               key={deal.id}
               deal={deal}
-              entranceDelay={`${Math.min(dealIndex * 55, 275)}ms`}
               visibleCardFields={visibleCardFields}
               onEdit={onEditDeal}
               onEditLabels={onEditLabels}
@@ -395,7 +371,6 @@ function StageColumn({
 
 function DraggableDealCard({
   deal,
-  entranceDelay,
   visibleCardFields,
   onEdit,
   onEditLabels,
@@ -403,7 +378,6 @@ function DraggableDealCard({
   hasScheduledMessage,
 }: {
   deal: Deal;
-  entranceDelay: string;
   visibleCardFields: PipelineCardField[];
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
@@ -423,7 +397,6 @@ function DraggableDealCard({
     >
       <DealCard
         deal={deal}
-        entranceDelay={entranceDelay}
         visibleFields={visibleCardFields}
         onEdit={onEdit}
         onEditLabels={onEditLabels}
