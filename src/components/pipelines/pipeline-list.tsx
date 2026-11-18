@@ -53,7 +53,7 @@ export function PipelineList({
         </p>
       ) : (
         <ul className="divide-y divide-border">
-          {deals.map((deal, index) => {
+          {deals.map((deal) => {
             const stage = stageById.get(deal.stage_id);
             const createdAt = new Date(deal.created_at);
             const dateLabel = Number.isNaN(createdAt.getTime())
@@ -67,11 +67,7 @@ export function PipelineList({
             const scheduledLabel = formatScheduledDate(deal.scheduled_date, locale, deal.scheduled_time);
 
             return (
-              <li
-                key={deal.id}
-                style={{ animationDelay: `${Math.min(index * 45, 360)}ms` }}
-                className="animate-in fade-in-0 slide-in-from-bottom-1 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
-              >
+              <li key={deal.id}>
                 <button
                   type="button"
                   onClick={() => onEditDeal(deal)}
@@ -79,8 +75,10 @@ export function PipelineList({
                 >
                   <span className="min-w-0">
                     {((deal.labels?.length ?? 0) > 0 || deal.contact?.has_ad_referral) && (
-                      <span className="mb-1 flex flex-wrap gap-1">
-                        {deal.contact?.has_ad_referral && <AdSourceBadge />}
+                      <span className="mb-1 flex flex-wrap gap-1 empty:hidden">
+                        {deal.contact?.has_ad_referral && (
+                          <AdSourceBadge contactId={deal.contact.id} />
+                        )}
                         {deal.labels?.map((label) => (
                           <span
                             key={label.id}

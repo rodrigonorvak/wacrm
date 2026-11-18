@@ -202,7 +202,7 @@ function LoginPageInner() {
             <Button
               type="submit"
               disabled={loading}
-              className="mt-1 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-[0_12px_28px_rgb(225_12_140_/_30%)] transition-all hover:scale-[1.015] hover:bg-primary-hover active:scale-[.985] disabled:opacity-50"
+              className="mt-1 h-14 w-full rounded-2xl bg-primary text-base font-semibold text-primary-foreground shadow-[0_12px_28px_rgb(225_12_140_/_30%)] transition-colors hover:bg-primary-hover disabled:opacity-50"
             >
               {loading ? t('signingIn') : <>{t('signIn')} <ArrowRight className="ml-1 size-5" aria-hidden="true" /></>}
             </Button>
@@ -219,7 +219,7 @@ function LoginPageInner() {
             variant="outline"
             disabled={loading}
             onClick={() => void handleGoogleLogin()}
-            className="h-11 w-full rounded-xl border-white/10 bg-white/[.06] text-sm text-white/80 transition-all hover:border-white/20 hover:bg-white/10 hover:text-white active:scale-[.985] disabled:opacity-50"
+            className="h-11 w-full rounded-xl border-white/10 bg-white/[.06] text-sm text-white/80 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white disabled:opacity-50"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" className="size-[1.1rem]">
               <path fill="#4285F4" d="M21.805 10.045h-9.78v4.01h5.625c-.243 1.29-.974 2.385-2.073 3.12v2.59h3.35c1.96-1.805 3.093-4.462 3.093-7.62 0-.72-.065-1.415-.215-2.1Z" />

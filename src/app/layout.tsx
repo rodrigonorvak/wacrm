@@ -55,6 +55,13 @@ const THEME_BOOT_SCRIPT = `
     var THEME_DEFAULT = ${JSON.stringify(DEFAULT_THEME)};
     var THEMES = ${JSON.stringify(THEME_IDS)};
     var savedTheme = localStorage.getItem(THEME_KEY);
+    // Violet was the old open-source template default. This CRM's brand
+    // is Malybo magenta (rose) — migrate once so login/buttons don't
+    // stay purple from a leftover localStorage value.
+    if (savedTheme === "violet") {
+      savedTheme = THEME_DEFAULT;
+      localStorage.setItem(THEME_KEY, THEME_DEFAULT);
+    }
     d.dataset.theme = THEMES.indexOf(savedTheme) !== -1 ? savedTheme : THEME_DEFAULT;
 
     d.dataset.mode = "light";

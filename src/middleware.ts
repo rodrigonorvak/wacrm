@@ -42,6 +42,34 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // Short-lived cache of the access_status check. Without this, every
+  // sidebar click hits `profiles` (+ sometimes `account_creation_requests`)
+  // on top of getUser(), which is what makes navigation feel sticky.
+  // Cookie is httpOnly-ish via server-only write; max-age keeps it fresh
+  // enough that a suspension still lands within ~5 minutes.
+  const ACCESS_COOKIE = 'wacrm.access_ok'
+  const accessCached =
+    !!user && request.cookies.get(ACCESS_COOKIE)?.value === user.id
+  const markAccessOk = (response: NextResponse) => {
+    if (!user) return response
+    response.cookies.set(ACCESS_COOKIE, user.id, {
+      path: '/',
+      maxAge: 60 * 5,
+      sameSite: 'lax',
+      httpOnly: true,
+    })
+    return response
+  }
+  const clearAccessOk = (response: NextResponse) => {
+    response.cookies.set(ACCESS_COOKIE, '', {
+      path: '/',
+      maxAge: 0,
+      sameSite: 'lax',
+      httpOnly: true,
+    })
+    return response
+  }
+
   // Members use the password set by the account owner; changing it is optional.
   const requiresPasswordChange = false
   const isPasswordChangePage = request.nextUrl.pathname === '/change-password'
@@ -78,6 +106,7 @@ export async function middleware(request: NextRequest) {
   ].some(path => request.nextUrl.pathname.startsWith(path))
   if (
     user &&
+    !accessCached &&
     !isApprovalPage &&
     !isPublicEmailUnsubscribeRoute &&
     !request.nextUrl.pathname.startsWith('/auth/')
@@ -98,7 +127,7 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = needsDetails ? '/signup/complete' : '/account-pending'
       url.search = ''
-      return withRefreshedCookies(NextResponse.redirect(url))
+      return clearAccessOk(withRefreshedCookies(NextResponse.redirect(url)))
     }
     if (!profile || profile.access_status !== 'approved') {
       const url = request.nextUrl.clone()
@@ -110,8 +139,11 @@ export async function middleware(request: NextRequest) {
           : profile?.access_status === 'denied'
             ? 'denied'
             : 'unavailable'}`
-      return withRefreshedCookies(NextResponse.redirect(url))
+      return clearAccessOk(withRefreshedCookies(NextResponse.redirect(url)))
     }
+    // Approved — stamp the short-lived cookie so the next few navigations
+    // skip this round-trip.
+    markAccessOk(supabaseResponse)
   }
 
   if (user && request.nextUrl.pathname === '/account-pending') {

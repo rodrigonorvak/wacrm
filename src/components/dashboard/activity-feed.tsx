@@ -57,8 +57,8 @@ export function ActivityFeed({ items, loading }: ActivityFeedProps) {
     i === 0 || totalLoaded > PAGE_SIZES[i - 1]
 
   return (
-    <section className="rounded-xl border border-border bg-card">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4">
+    <section className="dash-panel overflow-hidden">
+      <header className="dash-panel-header flex items-center justify-between px-5 py-4">
         <h2 className="text-sm font-semibold text-foreground">{t('title')}</h2>
         <Link
           href="/inbox"

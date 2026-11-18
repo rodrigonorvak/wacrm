@@ -49,8 +49,8 @@ export function ConversationsChart({ series, loading, range, onRangeChange }: Co
   }, [data])
 
   return (
-    <section className="flex h-full flex-col rounded-xl border border-border bg-card">
-      <header className="flex items-center justify-between border-b border-border px-5 py-4">
+    <section className="dash-panel flex h-full flex-col">
+      <header className="dash-panel-header flex items-center justify-between px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">{t('title')}</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">{t('description')}</p>
@@ -64,7 +64,7 @@ export function ConversationsChart({ series, loading, range, onRangeChange }: Co
               className={cn(
                 'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
                 range === r
-                  ? 'bg-secondary text-secondary-foreground'
+                  ? 'bg-card text-primary shadow-sm'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -90,7 +90,7 @@ export function ConversationsChart({ series, loading, range, onRangeChange }: Co
 
       <footer className="flex items-center gap-4 border-t border-border px-5 py-3 text-xs text-muted-foreground">
         <LegendDot color="#3b82f6" label={t('incoming')} />
-        <LegendDot color="#7c3aed" label={t('outgoing')} />
+        <LegendDot color="var(--primary)" label={t('outgoing')} />
       </footer>
     </section>
   )
@@ -133,6 +133,10 @@ function LineSvg({
 
   const incomingPath = data.map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i)},${yFor(p.incoming)}`).join(' ')
   const outgoingPath = data.map((p, i) => `${i === 0 ? 'M' : 'L'}${xFor(i)},${yFor(p.outgoing)}`).join(' ')
+  // Close a line path down to the x-axis so it can be filled as an area.
+  const baseY = PADDING.top + chartH
+  const areaPath = (line: string) =>
+    data.length > 0 ? `${line} L${xFor(data.length - 1)},${baseY} L${xFor(0)},${baseY} Z` : ''
 
   // Mouse-move: use the SVG's current screen-CTM to map clientX
   // back to viewBox coordinates. The previous rect-based math
@@ -243,12 +247,27 @@ function LineSvg({
           ) : null,
         )}
 
-        {/* Outgoing polyline (violet) */}
+        <defs>
+          <linearGradient id="conv-fill-outgoing" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
+            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="conv-fill-incoming" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.22} />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
+        {/* Soft area fills under each line */}
+        <path d={areaPath(outgoingPath)} fill="url(#conv-fill-outgoing)" />
+        <path d={areaPath(incomingPath)} fill="url(#conv-fill-incoming)" />
+
+        {/* Outgoing polyline (theme color) */}
         <path
           d={outgoingPath}
           fill="none"
-          stroke="#7c3aed"
-          strokeWidth={2}
+          stroke="var(--primary)"
+          strokeWidth={2.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -257,7 +276,7 @@ function LineSvg({
           d={incomingPath}
           fill="none"
           stroke="#3b82f6"
-          strokeWidth={2}
+          strokeWidth={2.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -274,7 +293,7 @@ function LineSvg({
               strokeDasharray="3 3"
             />
             <circle cx={hoverX} cy={yFor(data[hover.idx].incoming)} r={3.5} fill="#3b82f6" />
-            <circle cx={hoverX} cy={yFor(data[hover.idx].outgoing)} r={3.5} fill="#7c3aed" />
+            <circle cx={hoverX} cy={yFor(data[hover.idx].outgoing)} r={3.5} fill="var(--primary)" />
           </g>
         )}
       </svg>

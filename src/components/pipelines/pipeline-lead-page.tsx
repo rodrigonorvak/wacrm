@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCan } from "@/hooks/use-can";
 import type { ContactTag, Deal, DealLabel, MessageTemplate, PipelineStage } from "@/types";
+import { AdSourceBadge } from "@/components/inbox/ad-source-badge";
 import { DealLabelsDialog } from "@/components/pipelines/deal-labels-dialog";
 import { DealScheduleDialog } from "@/components/pipelines/deal-schedule-dialog";
 import { formatScheduledDate } from "@/lib/schedule-date";
@@ -781,10 +782,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   return (
     <div className="pipeline-lead-canvas -mx-4 -mt-4 min-h-full px-4 pt-4 pb-24 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 sm:pb-24">
     <div className="mx-auto w-full max-w-6xl space-y-5">
-      <header
-        style={{ animationDelay: "20ms" }}
-        className="flex animate-in fade-in-0 slide-in-from-bottom-1 flex-col gap-4 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none sm:flex-row sm:items-end sm:justify-between"
-      >
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link href={returnTo} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="size-4" /> Voltar
@@ -795,9 +793,10 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
               ID: {deal.id.slice(0, 8).toUpperCase()}
             </span>
           </div>
-          {(deal.labels?.length ?? 0) > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {deal.labels!.map((label) => (
+          {((deal.labels?.length ?? 0) > 0 || contact?.has_ad_referral) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 empty:hidden">
+              {contact?.has_ad_referral && <AdSourceBadge contactId={contact.id} />}
+              {(deal.labels ?? []).map((label) => (
                 <span
                   key={label.id}
                   className="inline-flex h-5 items-center rounded-full px-2.5 text-xs font-semibold text-white"
@@ -829,10 +828,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         </div>
       </header>
 
-      <div
-        style={{ animationDelay: "130ms" }}
-        className="grid animate-in fade-in-0 slide-in-from-bottom-1 items-start gap-4 duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none lg:grid-cols-[minmax(250px,0.85fr)_minmax(0,1.8fr)]"
-      >
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(250px,0.85fr)_minmax(0,1.8fr)]">
         <aside className="overflow-hidden rounded-lg border border-border bg-card">
           <div className="border-b border-border px-4 py-3 text-[11px] font-semibold uppercase text-muted-foreground">
             Informações do lead

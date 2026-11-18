@@ -80,7 +80,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         {/* Thinner horizontal padding on mobile so cards have room to breathe. */}
         <main
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-24 lg:pb-6",
+            "app-canvas min-h-0 flex-1 overflow-y-auto p-4 pb-20 sm:p-6 sm:pb-24 lg:pb-6",
             mobileConversationOpen && "max-lg:!overflow-hidden max-lg:!p-0 max-lg:!pb-0",
           )}
         >

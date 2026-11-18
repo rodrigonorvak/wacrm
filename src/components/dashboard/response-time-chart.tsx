@@ -47,8 +47,8 @@ export function ResponseTimeChart({
     })) ?? []
 
   return (
-    <section className="rounded-xl border border-border bg-card">
-      <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+    <section className="dash-panel">
+      <header className="dash-panel-header flex items-center justify-between gap-3 px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-foreground">
             {t('title')}

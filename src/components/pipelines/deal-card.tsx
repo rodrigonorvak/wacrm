@@ -17,7 +17,6 @@ export type DealCardField = "company" | "phone" | "email" | "assignee";
 
 interface DealCardProps {
   deal: Deal;
-  entranceDelay?: string;
   visibleFields?: DealCardField[];
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
@@ -28,7 +27,6 @@ interface DealCardProps {
 
 export function DealCard({
   deal,
-  entranceDelay,
   visibleFields = ["company"],
   onEdit,
   onEditLabels,
@@ -63,14 +61,7 @@ export function DealCard({
   const source = visibleLeadSource(deal.source);
 
   return (
-    <div
-      style={entranceDelay ? { animationDelay: entranceDelay } : undefined}
-      className={`group relative ${
-        !isOverlay && entranceDelay
-          ? "animate-in fade-in-0 slide-in-from-bottom-1 duration-400 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none"
-          : ""
-      }`}
-    >
+    <div className="group relative">
     {!isOverlay && onEditLabels && (
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -113,8 +104,10 @@ export function DealCard({
       }`}
     >
       {(labels.length > 0 || deal.contact?.has_ad_referral) && (
-        <div className="mb-1.5 flex flex-wrap gap-1 pr-7">
-          {deal.contact?.has_ad_referral && <AdSourceBadge />}
+        <div className="mb-1.5 flex flex-wrap gap-1 pr-7 empty:hidden">
+          {deal.contact?.has_ad_referral && (
+            <AdSourceBadge contactId={deal.contact.id} />
+          )}
           {labels.map((label) => (
             <span
               key={label.id}

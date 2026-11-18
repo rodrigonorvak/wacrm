@@ -523,7 +523,11 @@ function ConversationItem({
               )}
             />
           </div>
-          {contact?.has_ad_referral && <div className="mt-1"><AdSourceBadge /></div>}
+          {contact?.has_ad_referral && (
+            <div className="mt-1 empty:hidden">
+              <AdSourceBadge contactId={contact.id} />
+            </div>
+          )}
         </div>
       </div>
     </button>

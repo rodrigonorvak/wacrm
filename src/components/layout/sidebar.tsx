@@ -141,6 +141,9 @@ export function Sidebar({
   const unreadNotifications = useUnreadNotifications();
   const [collapsed, setCollapsed] = useState(false);
   const [campaignsOpen, setCampaignsOpen] = useState(false);
+  // Optimistic highlight while the next route compiles / middleware runs.
+  // Without this the sidebar feels frozen until the destination paints.
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
   const onCampaignsRoute = pathname.startsWith("/broadcasts");
   const emailActive = pathname.startsWith("/broadcasts/email");
   const settingsActive =
@@ -176,6 +179,7 @@ export function Sidebar({
   // Close the drawer when route changes — users opened it to navigate,
   // so once they pick a destination the drawer should get out of the way.
   useEffect(() => {
+    setPendingHref(null);
     onClose?.();
     // Only pathname drives this — onClose identity doesn't need to re-run it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,30 +230,46 @@ export function Sidebar({
           const badge =
             item.href === "/notifications" && unreadNotifications > 0;
           const supportLocked = isSupportSession && supportLockedPaths.has(item.href);
-          return (
-            <button
-              key={item.href}
-              type="button"
-              aria-label={supportLocked ? `${t(item.labelKey as string)} — dados protegidos` : t(item.labelKey as string)}
-              aria-disabled={supportLocked}
-              onClick={() => {
-                if (supportLocked) toast.info("Acesso bloqueado para proteger os dados do cliente");
-                else window.location.href = item.href;
-              }}
-              className={cn(
-                "relative flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
-                active
-                  ? "crm-mobile-tab-active bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
-                  : "text-white/75 active:bg-white/10",
-                supportLocked && "text-white/40",
-              )}
-            >
+          const itemClassName = cn(
+            "relative flex h-11 w-14 items-center justify-center rounded-2xl transition-colors",
+            active
+              ? "crm-mobile-tab-active bg-white text-[#e10c8c] shadow-[0_4px_14px_rgb(0_0_0_/_25%)]"
+              : "text-white/75 active:bg-white/10",
+            supportLocked && "text-white/40",
+          );
+          const itemBody = (
+            <>
               <item.icon className="h-5 w-5" />
               {supportLocked && <LockKeyhole className="absolute -right-0.5 bottom-0.5 size-3.5 rounded-full bg-[#1c2340] p-0.5" />}
               {badge && !supportLocked && (
                 <span className="absolute right-2 top-1.5 h-2 w-2 rounded-full bg-white ring-2 ring-[#e10c8c]" />
               )}
-            </button>
+            </>
+          );
+          if (supportLocked) {
+            return (
+              <button
+                key={item.href}
+                type="button"
+                aria-label={`${t(item.labelKey as string)} — dados protegidos`}
+                aria-disabled="true"
+                onClick={() => toast.info("Acesso bloqueado para proteger os dados do cliente")}
+                className={itemClassName}
+              >
+                {itemBody}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={t(item.labelKey as string)}
+              aria-current={active ? "page" : undefined}
+              className={itemClassName}
+            >
+              {itemBody}
+            </Link>
           );
         })}
         <Link
@@ -271,12 +291,12 @@ export function Sidebar({
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
           "crm-sidebar fixed inset-y-0 left-0 z-40 flex h-full flex-col text-white",
-          "transition-transform duration-200 ease-out will-change-transform",
+          "transition-transform duration-150 ease-out",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
-          // translate-none / will-change-auto: a transformed ancestor would break
-          // the fixed-attachment wallpaper used by the glass-theme active pill.
-          "lg:static lg:z-0 lg:translate-none lg:will-change-auto lg:transition-[width] lg:duration-300",
+          // translate-none: a transformed ancestor would break the
+          // fixed-attachment wallpaper used by the glass-theme active pill.
+          "lg:static lg:z-0 lg:translate-none lg:transition-[width] lg:duration-150",
           collapsed ? "lg:w-20" : "lg:w-60",
         )}
         aria-label="Primary"
@@ -316,9 +336,10 @@ export function Sidebar({
         <nav className={cn("flex-1 overflow-y-auto py-4", collapsed ? "lg:px-0" : "lg:px-0")}>
           <ul className="flex flex-col gap-1">
             {navItems.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+              const isActive = pendingHref
+                ? pendingHref === item.href
+                : pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
               const showUnreadDot =
                 item.href === "/inbox" && totalUnread > 0 && !isActive;
@@ -360,11 +381,8 @@ export function Sidebar({
                   {showUnreadDot && !collapsed && (
                     <span
                       aria-label={t("unreadConversations", { count: totalUnread })}
-                      className="relative flex h-2 w-2"
-                    >
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                    </span>
+                      className="inline-flex h-2 w-2 rounded-full bg-primary"
+                    />
                   )}
                   {showNotificationBadge && !collapsed && (
                     <span
@@ -456,7 +474,12 @@ export function Sidebar({
                       {navContent}
                     </button>
                   ) : (
-                    <Link href={item.href} className={linkClassName}>
+                    <Link
+                      href={item.href}
+                      prefetch
+                      onClick={() => setPendingHref(item.href)}
+                      className={linkClassName}
+                    >
                       {navContent}
                     </Link>
                   )}
@@ -469,7 +492,9 @@ export function Sidebar({
 
           <ul className="flex flex-col gap-1">
             {bottomNavItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
+              const isActive = pendingHref
+                ? pendingHref === item.href
+                : pathname.startsWith(item.href);
               const supportLocked = isSupportSession;
               return (
                 <li key={item.href}>
@@ -490,6 +515,8 @@ export function Sidebar({
                   ) : (
                     <Link
                       href={item.href}
+                      prefetch
+                      onClick={() => setPendingHref(item.href)}
                       className={cn(
                         "crm-sidebar-item flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-none lg:py-2",
                         collapsed ? "lg:mx-auto lg:w-14 lg:justify-center lg:px-0" : "",

@@ -44,7 +44,7 @@ export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
     id: "violet",
     name: "Violet",
-    tagline: "The default — confident, slightly playful.",
+    tagline: "Confident, slightly playful.",
     swatch: "oklch(0.526 0.247 293)",
   },
   {
@@ -68,7 +68,7 @@ export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
     id: "rose",
     name: "Rose",
-    tagline: "Bold and modern — D2C, creator-economy, lifestyle.",
+    tagline: "Malybo brand — magenta signature.",
     swatch: "#e10c8c",
   },
 ];

@@ -34,13 +34,20 @@ import { PipelineDonut } from '@/components/dashboard/pipeline-donut'
 import { ResponseTimeChart } from '@/components/dashboard/response-time-chart'
 import { ActivityFeed } from '@/components/dashboard/activity-feed'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 
 type RangeDays = 7 | 30 | 90
 
 export default function DashboardPage() {
   const t = useTranslations('Dashboard.page')
-  const { defaultCurrency } = useAuth()
+  const locale = useLocale()
+  const { defaultCurrency, profile } = useAuth()
+  const firstName = profile?.full_name?.trim().split(/\s+/)[0] ?? ''
+  const today = new Date().toLocaleDateString(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  })
   const [metrics, setMetrics] = useState<MetricsBundle | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
 
@@ -122,25 +129,30 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="dashboard-pilot -m-4 min-h-full space-y-5 p-4 sm:-m-6 sm:p-6">
-      {/* Header */}
-      <div className="mx-auto max-w-2xl pb-1 text-center">
-        <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t('description')}
-        </p>
+    <div className="dashboard-pilot -m-4 min-h-full space-y-5 p-4 sm:-m-6 sm:space-y-6 sm:p-6">
+      {/* Greeting + date */}
+      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            {firstName ? t('greeting', { name: firstName }) : t('greetingNoName')}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{t('greetingHint')}</p>
+        </div>
+        <p className="shrink-0 text-sm text-muted-foreground capitalize">{today}</p>
       </div>
 
-      {/* Metric cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {metricsLoading || !metrics ? (
-          Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} className="h-[7.5rem]" />
+          ))
         ) : (
           <>
             <MetricCard
               title={t('activeConversations')}
               value={metrics.activeConversations.current.toLocaleString()}
               icon={MessageSquare}
+              tone="primary"
               delta={{
                 sign: metrics.activeConversations.previous,
                 label: deltaLabel(
@@ -154,6 +166,7 @@ export default function DashboardPage() {
               title={t('newContactsToday')}
               value={metrics.newContactsToday.current.toLocaleString()}
               icon={UserPlus}
+              tone="blue"
               delta={{
                 sign:
                   metrics.newContactsToday.current - metrics.newContactsToday.previous,
@@ -168,12 +181,14 @@ export default function DashboardPage() {
               title={t('openDealsValue')}
               value={formatCurrency(metrics.openDealsValue, defaultCurrency)}
               icon={Banknote}
+              tone="emerald"
               subtitle={t('openDeals', { count: metrics.openDealsCount })}
             />
             <MetricCard
               title={t('messagesSentToday')}
               value={metrics.messagesSentToday.current.toLocaleString()}
               icon={Send}
+              tone="amber"
               delta={{
                 sign:
                   metrics.messagesSentToday.current - metrics.messagesSentToday.previous,
