@@ -166,9 +166,9 @@ export default function PlatformAdminPage() {
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-lg border border-border bg-card px-4 py-3">
-            <p className="text-xs text-muted-foreground">{stat.label}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">{loading ? "—" : stat.value}</p>
+          <div key={stat.label} className="rounded-md border border-[#dcdcde] bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs text-[#646970]">{stat.label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-[#1d2327]">{loading ? "—" : stat.value}</p>
           </div>
         ))}
       </section>
@@ -210,9 +210,9 @@ export default function PlatformAdminPage() {
         <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">{t("empty")}</div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-md border border-[#dcdcde] bg-white shadow-sm">
             <table className="w-full min-w-[960px] border-collapse text-left text-sm">
-              <thead className="bg-muted/40">
+              <thead className="bg-[#f6f7f7]">
                 <tr className="text-xs text-muted-foreground">
                   <th className="px-4 py-3 font-medium">Conta</th>
                   <th className="px-4 py-3 font-medium">Responsável</th>

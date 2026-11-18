@@ -102,10 +102,10 @@ export default function AccountRequestsPage() {
         ) : requests.length === 0 ? (
           <div className="flex min-h-64 items-center justify-center text-sm text-muted-foreground">Nenhum pedido encontrado.</div>
         ) : (
-          <div className="mt-6 overflow-x-auto">
+          <div className="mt-6 overflow-x-auto rounded-md border border-[#dcdcde] bg-white shadow-sm">
             <table className="w-full min-w-[1050px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
+              <thead className="bg-[#f6f7f7]">
+                <tr className="border-b border-[#dcdcde] text-xs text-[#646970]">
                   <th className="py-3 pr-4 font-medium">Solicitante</th>
                   <th className="py-3 pr-4 font-medium">Empresa</th>
                   <th className="py-3 pr-4 font-medium">Telefone</th>

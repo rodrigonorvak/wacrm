@@ -34,6 +34,7 @@ export default function PlatformUsersPage() {
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [query, setQuery] = useState("");
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -69,6 +70,12 @@ export default function PlatformUsersPage() {
   }, [loadUsers]);
 
   const unlinkedCount = users.filter((user) => !user.account_id).length;
+  const normalizedQuery = query.trim().toLowerCase();
+  const visibleUsers = users.filter((user) => {
+    if (!normalizedQuery) return true;
+    return [user.email, user.full_name, user.account_name, user.account_role]
+      .some((value) => value?.toLowerCase().includes(normalizedQuery));
+  });
 
   async function updateUser(user: PlatformUser, action: "suspend" | "reactivate" | "delete") {
     const labels = { suspend: "Suspender", reactivate: "Reativar", delete: "Excluir" };
@@ -106,7 +113,16 @@ export default function PlatformUsersPage() {
             <span>{t("refresh")}</span>
           </Button>
         </div>
-        <section className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-border py-5">
+        <label className="mb-4 block max-w-md">
+          <span className="sr-only">Buscar usuário</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar por nome, e-mail ou conta"
+            className="h-10 w-full rounded-md border border-[#8c8f94] bg-white px-3 text-sm"
+          />
+        </label>
+        <section className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3 rounded-md border border-[#dcdcde] bg-white px-4 py-4 shadow-sm">
           <div>
             <p className="text-xs text-muted-foreground">{t("usersPage")}</p>
             <p className="mt-1 text-2xl font-semibold tabular-nums">{loading ? "—" : users.length}</p>
@@ -130,10 +146,10 @@ export default function PlatformUsersPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-md border border-[#dcdcde] bg-white shadow-sm">
               <table className="w-full min-w-[980px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs text-muted-foreground">
+                <thead className="bg-[#f6f7f7]">
+                  <tr className="border-b border-[#dcdcde] text-xs text-[#646970]">
                     <th className="py-3 pr-4 font-medium">{t("email")}</th>
                     <th className="py-3 pr-4 font-medium">{t("account")}</th>
                     <th className="py-3 pr-4 font-medium">{t("members")}</th>
@@ -146,19 +162,20 @@ export default function PlatformUsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
+                  {visibleUsers.map((user) => (
                     <tr key={user.id} className="border-b border-border/70 align-top">
                       <td className="py-4 pr-4">
                         <p className="font-medium">{user.email ?? "—"}</p>
                         {user.full_name && <p className="mt-1 text-xs text-muted-foreground">{user.full_name}</p>}
                       </td>
-                      <td className="py-4 pr-4">
-                        {user.account_name ?? t("noProfile")}
-                        {user.account_id && <p className="mt-1 font-mono text-[11px] text-muted-foreground">{user.account_id}</p>}
-                      </td>
+                      <td className="py-4 pr-4">{user.account_name ?? t("noProfile")}</td>
                       <td className="py-4 pr-4">{user.account_role ?? "—"}</td>
                       <td className="py-4 pr-4 text-muted-foreground">{user.email_confirmed ? t("confirmed") : t("unconfirmed")}</td>
-                      <td className="py-4 pr-4">{t(user.access_status)}</td>
+                      <td className="py-4 pr-4">
+                        <span className={user.access_status === "suspended" ? "rounded-full bg-red-50 px-2 py-0.5 text-xs text-red-700" : "rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"}>
+                          {t(user.access_status)}
+                        </span>
+                      </td>
                       <td className="py-4 pr-4 capitalize">{user.profile_status}</td>
                       <td className="py-4 pr-4 text-muted-foreground">{formatDate(user.created_at)}</td>
                       <td className="py-4 text-muted-foreground">{formatDate(user.last_sign_in_at)}</td>
