@@ -36,6 +36,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  DATE_FILTER_LABELS,
+  DATE_FILTER_OPTIONS,
+  isDateFilter,
+  presetBounds,
+  type DateFilter,
+} from '@/lib/pipelines/date-filter';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -68,7 +75,6 @@ import {
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
-import { isCreatedToday } from '@/lib/pipelines/date-filter';
 import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
 // Pipeline creation is admin-class (settings-tier write under
@@ -100,28 +106,6 @@ const DEFAULT_ELEMENTOR_MAPPINGS = [
   { sourceId: 'company', fieldName: 'Empresa' },
   { sourceId: 'message', fieldName: 'Mensagem' },
 ];
-
-type DateFilter = 'today' | '7' | '14' | '30' | 'max' | 'custom';
-
-const DATE_FILTER_LABELS: Record<DateFilter, string> = {
-  today: 'Hoje',
-  '7': 'Últimos 7 dias',
-  '14': 'Últimos 14 dias',
-  '30': 'Últimos 30 dias',
-  max: 'Máximo',
-  custom: 'Personalizado',
-};
-
-function isDateFilter(value: string | null): value is DateFilter {
-  return (
-    value === 'today' ||
-    value === '7' ||
-    value === '14' ||
-    value === '30' ||
-    value === 'max' ||
-    value === 'custom'
-  );
-}
 
 function mappingTarget(fieldName: string): {
   targetType: 'contact' | 'deal' | 'contact_custom_field';
@@ -320,7 +304,10 @@ export default function PipelinesPage() {
       const rows = data ?? [];
       if (rows.length === 0) return [];
       const dealIds = rows.map((row) => row.id);
-      const [labelResult, customValueResult] = await Promise.all([
+      const contactIds = [
+        ...new Set(rows.map((row) => row.contact_id).filter(Boolean)),
+      ];
+      const [labelResult, customValueResult, noteResult] = await Promise.all([
         supabase
           .from('deal_label_links')
           .select('deal_id, label:deal_labels(*)')
@@ -331,6 +318,13 @@ export default function PipelinesPage() {
             'deal_id, field_id, value, field:pipeline_custom_fields(field_name, show_on_card)'
           )
           .in('deal_id', dealIds),
+        contactIds.length > 0
+          ? supabase
+              .from('contact_notes')
+              .select('contact_id, note_text, created_at')
+              .in('contact_id', contactIds)
+              .order('created_at', { ascending: false })
+          : Promise.resolve({ data: [], error: null }),
       ]);
       if (labelResult.error)
         console.error('Failed to load deal labels:', labelResult.error.message);
@@ -339,6 +333,8 @@ export default function PipelinesPage() {
           'Failed to load pipeline custom values:',
           customValueResult.error.message
         );
+      if (noteResult.error)
+        console.error('Failed to load contact notes:', noteResult.error.message);
 
       const labelsByDeal = new Map<string, DealLabel[]>();
       for (const row of labelResult.data ?? []) {
@@ -361,20 +357,10 @@ export default function PipelinesPage() {
         });
         customValuesByDeal.set(row.deal_id, current);
       }
-      const contactIds = [
-        ...new Set(rows.map((row) => row.contact_id).filter(Boolean)),
-      ];
       const lastNoteByContact = new Map<string, string>();
-      if (contactIds.length > 0) {
-        const { data: noteRows } = await supabase
-          .from('contact_notes')
-          .select('contact_id, note_text, created_at')
-          .in('contact_id', contactIds)
-          .order('created_at', { ascending: false });
-        for (const note of noteRows ?? []) {
-          if (!lastNoteByContact.has(note.contact_id))
-            lastNoteByContact.set(note.contact_id, note.note_text);
-        }
+      for (const note of noteResult.data ?? []) {
+        if (!lastNoteByContact.has(note.contact_id))
+          lastNoteByContact.set(note.contact_id, note.note_text);
       }
       return rows.map((row) => ({
         ...row,
@@ -854,22 +840,17 @@ export default function PipelinesPage() {
 
     const createdAt = new Date(deal.created_at);
     if (Number.isNaN(createdAt.getTime())) return false;
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
 
-    if (dateFilter === 'today') return isCreatedToday(deal.created_at);
-    if (dateFilter === '7' || dateFilter === '14' || dateFilter === '30') {
-      const start = new Date(dayStart);
-      start.setDate(start.getDate() - Number(dateFilter) + 1);
-      return createdAt >= start;
+    if (dateFilter !== 'custom') {
+      const bounds = presetBounds(dateFilter);
+      return bounds ? createdAt >= bounds.start && createdAt <= bounds.end : true;
     }
 
     const start = customStartDate
       ? new Date(`${customStartDate}T00:00:00`)
       : null;
-    const end = customEndDate
-      ? new Date(`${customEndDate}T23:59:59.999`)
-      : null;
+    const endKey = customEndDate || customStartDate;
+    const end = endKey ? new Date(`${endKey}T23:59:59.999`) : null;
     return (!start || createdAt >= start) && (!end || createdAt <= end);
   });
 
@@ -892,7 +873,7 @@ export default function PipelinesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-3 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-[#e6ebf2] bg-white p-3 shadow-[0_8px_24px_rgb(15_23_42_/_4%)] xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* Pipeline selector dropdown */}
           <DropdownMenu>
@@ -1576,23 +1557,32 @@ function PipelineDateFilter({
   const [draftEnd, setDraftEnd] = useState(endDate);
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
 
+  function showRange(filter: DateFilter, start: string, end: string) {
+    const bounds = presetBounds(filter);
+    if (bounds) {
+      setDraftStart(toDateKey(bounds.start));
+      setDraftEnd(toDateKey(bounds.end));
+      setVisibleMonth(new Date(bounds.start.getFullYear(), bounds.start.getMonth(), 1));
+      return;
+    }
+    setDraftStart(start);
+    setDraftEnd(end);
+    const selected = fromDateKey(start) ?? new Date();
+    setVisibleMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  }
+
   function openPicker(nextOpen: boolean) {
     if (nextOpen) {
       setDraftFilter(value);
-      setDraftStart(startDate);
-      setDraftEnd(endDate);
-      const selected = fromDateKey(startDate) ?? new Date();
-      setVisibleMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+      showRange(value, startDate, endDate);
     }
     setOpen(nextOpen);
   }
 
   function chooseShortcut(next: DateFilter) {
     setDraftFilter(next);
-    if (next !== 'custom') {
-      setDraftStart('');
-      setDraftEnd('');
-    }
+    if (next === 'custom') return;
+    showRange(next, '', '');
   }
 
   function chooseDay(day: Date) {
@@ -1618,7 +1608,9 @@ function PipelineDateFilter({
     1
   );
   const apply = () => {
-    onApply(draftFilter, draftStart, draftEnd);
+    const end =
+      draftFilter === 'custom' && draftStart && !draftEnd ? draftStart : draftEnd;
+    onApply(draftFilter, draftStart, end);
     setOpen(false);
   };
 
@@ -1649,11 +1641,8 @@ function PipelineDateFilter({
           className="border-border bg-popover text-popover-foreground w-[min(94vw,680px)] overflow-hidden p-0"
         >
           <div className="flex max-h-[min(80vh,560px)] flex-col sm:flex-row">
-            <div className="border-border w-full shrink-0 border-b p-3 sm:w-44 sm:border-r sm:border-b-0">
-              <p className="text-muted-foreground mb-2 text-xs font-semibold">
-                Usados recentemente
-              </p>
-              {(['today', '7', 'max'] as DateFilter[]).map((shortcut) => (
+            <div className="border-border w-full shrink-0 overflow-y-auto border-b p-3 sm:w-48 sm:border-r sm:border-b-0">
+              {DATE_FILTER_OPTIONS.map((shortcut) => (
                 <button
                   key={shortcut}
                   type="button"
@@ -1661,21 +1650,7 @@ function PipelineDateFilter({
                   className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                 >
                   <span
-                    className={`size-5 rounded-full border ${draftFilter === shortcut ? 'border-primary bg-primary/15' : 'border-border'}`}
-                  />
-                  {DATE_FILTER_LABELS[shortcut]}
-                </button>
-              ))}
-              <div className="border-border my-2 border-t" />
-              {(['today', '7', '14', '30'] as DateFilter[]).map((shortcut) => (
-                <button
-                  key={`recent-${shortcut}`}
-                  type="button"
-                  onClick={() => chooseShortcut(shortcut)}
-                  className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
-                >
-                  <span
-                    className={`size-5 rounded-full border ${draftFilter === shortcut ? 'border-primary bg-primary/15' : 'border-border'}`}
+                    className={`size-5 shrink-0 rounded-full border ${draftFilter === shortcut ? 'border-primary bg-primary/15' : 'border-border'}`}
                   />
                   {DATE_FILTER_LABELS[shortcut]}
                 </button>

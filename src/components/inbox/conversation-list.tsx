@@ -240,7 +240,7 @@ export function ConversationList({
             value={search}
             onChange={handleSearchChange}
             placeholder={t("searchPlaceholder")}
-            className="border-border bg-muted pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
+            className="rounded-full border-border bg-[#f4f7fb] pl-9 text-sm text-foreground placeholder-muted-foreground focus:border-primary/50"
           />
         </div>
 

@@ -123,15 +123,14 @@ function SettingsPageInner() {
   };
 
   return (
-    <div className="settings-workspace     -m-4 min-h-[calc(100dvh-3.5rem)] bg-background sm:-m-6">
-          <div className="grid min-h-[calc(100dvh-3.5rem)] lg:grid-cols-[216px_minmax(0,1fr)]">
-        <aside className="min-w-0 border-b border-border/70 bg-[#f3f4f6] shadow-[0_1px_3px_rgb(15_23_42_/_4%)] lg:border-r lg:border-b-0 lg:shadow-[1px_0_3px_rgb(15_23_42_/_5%)]">
-          <div className="p-2.5 sm:p-3 lg:sticky lg:top-0 lg:p-3">
+    <div className="settings-workspace grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="min-w-0 rounded-2xl bg-white p-3 shadow-[0_8px_24px_rgb(15_23_42_/_4%)]">
+          <div className="lg:sticky lg:top-0">
             <SettingsRail active={section} onSelect={go} hints={hints} isSuperAdmin={isSuperAdmin} />
           </div>
         </aside>
 
-        <div className="min-h-[420px] min-w-0 bg-background px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-7">
+        <div className="min-h-[420px] min-w-0 rounded-2xl bg-white px-4 py-5 shadow-[0_8px_24px_rgb(15_23_42_/_4%)] sm:px-6 sm:py-6">
           {section === 'overview' && (
             <div className="mb-6 border-b border-border pb-4">
               <h1 className="text-lg font-semibold text-foreground">
@@ -142,7 +141,6 @@ function SettingsPageInner() {
           )}
           {panel[section]}
         </div>
-      </div>
     </div>
   );
 }

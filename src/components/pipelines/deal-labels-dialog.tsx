@@ -124,7 +124,7 @@ export function DealLabelsDialog({
     setShowAll(false);
     setEditor(null);
     setAdChecked(Boolean(adReferral?.checked));
-    setAdVisible(Boolean(adReferral?.contactId && adReferral.checked));
+    setAdVisible(Boolean(adReferral?.contactId));
     void loadLabels();
     // Snapshot the ad flag when the dialog opens. Updating it afterwards
     // must not hide the row mid-click.

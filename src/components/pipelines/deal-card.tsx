@@ -99,8 +99,8 @@ export function DealCard({
         e.stopPropagation();
         onEdit(deal);
       }}
-      className={`w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2.5 text-left shadow-[0_2px_8px_rgb(15_23_42_/_7%)] transition-colors ${
-        isOverlay ? "shadow-lg" : "hover:border-primary/40 hover:bg-muted/30"
+      className={`w-full cursor-pointer rounded-2xl border border-[#e8eef5] bg-white px-3.5 py-3 text-left shadow-[0_6px_16px_rgb(15_23_42_/_5%)] transition-colors ${
+        isOverlay ? "shadow-lg" : "hover:border-primary/30"
       }`}
     >
       {(labels.length > 0 || deal.contact?.has_ad_referral) && (

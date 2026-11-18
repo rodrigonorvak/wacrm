@@ -142,12 +142,7 @@ export function PipelineBoard({
         ))}
       </div>
 
-      <DragOverlay
-        dropAnimation={{
-          duration: 200,
-          easing: "cubic-bezier(0.2, 0, 0, 1)",
-        }}
-      >
+      <DragOverlay dropAnimation={null}>
         {activeDeal ? (
           <div className="opacity-90">
             <DealCard
@@ -163,7 +158,7 @@ export function PipelineBoard({
 
       <style jsx>{`
         .pipeline-scroll {
-          scroll-behavior: smooth;
+          scroll-behavior: auto;
         }
         @media (hover: none), (pointer: coarse) {
           .pipeline-scroll::-webkit-scrollbar {
@@ -231,7 +226,7 @@ function StageColumn({
   const hiddenCount = deals.length - visibleDeals.length;
 
   return (
-    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-xl border border-border bg-muted/70 p-3 sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
+    <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-2xl bg-white/70 p-3 sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
       <header
         className="-mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 rounded-t-xl border-b border-border px-3 py-3 sm:-mx-4 sm:-mt-4 sm:px-4"
         style={stage.color ? { backgroundColor: `${stage.color}14` } : undefined}

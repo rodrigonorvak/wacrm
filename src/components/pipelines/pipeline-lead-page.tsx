@@ -50,7 +50,6 @@ import {
   Send,
   StickyNote,
   Trash2,
-  UserRound,
   Pencil,
 } from "lucide-react";
 
@@ -780,8 +779,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const pendingServiceSteps = serviceSteps.filter((step) => !step.completed_at).length;
 
   return (
-    <div className="pipeline-lead-canvas -mx-4 -mt-4 min-h-full px-4 pt-4 pb-24 sm:-mx-6 sm:-mt-6 sm:px-6 sm:pt-6 sm:pb-24">
-    <div className="mx-auto w-full max-w-6xl space-y-5">
+    <div className="mx-auto w-full max-w-6xl space-y-5 pb-16">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link href={returnTo} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -811,7 +809,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
             <CalendarDays className="size-4" /> Criado em {formatDate(deal.created_at)}
           </p>
           {deal.scheduled_date && (
-            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded bg-blue-600 px-2 py-0.5 text-sm font-semibold text-white">
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-white">
               <CalendarClock className="size-4" /> Agendado para{" "}
               {formatScheduledDate(deal.scheduled_date, "pt-BR", deal.scheduled_time)}
             </p>
@@ -822,58 +820,54 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
             <Pencil className="size-4" />
             Editar lead
           </Button>
-          <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm">
+          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm">
             {deal.stage?.name || "Sem etapa"}
           </span>
         </div>
       </header>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(250px,0.85fr)_minmax(0,1.8fr)]">
-        <aside className="overflow-hidden rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3 text-[11px] font-semibold uppercase text-muted-foreground">
-            Informações do lead
-          </div>
-          <div className="p-4">
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <UserRound className="size-5" />
+        <aside className="overflow-hidden rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgb(15_23_42_/_4%)] sm:p-5">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
+                {(displayName.trim().charAt(0) || "?").toUpperCase()}
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
+                <p className="truncate text-base font-semibold text-foreground">{displayName}</p>
+                <p className="truncate text-sm text-muted-foreground">
                   {deal.assignee?.full_name || "Sem responsável"}
                 </p>
-                <p className="text-xs text-muted-foreground">Responsável atual</p>
               </div>
             </div>
 
-            <dl className="mt-4 space-y-4">
+            <div className="mt-5 space-y-3">
+              <p className="text-sm font-semibold text-foreground">Informações do lead</p>
               {deal.source && (
                 <div>
-                  <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
-                    Origem
-                  </dt>
-                  <dd className="mt-1 text-sm text-foreground">{deal.source}</dd>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Origem</p>
+                  <div className="rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm text-foreground">{deal.source}</div>
                 </div>
               )}
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  {deal.pipeline?.pipeline_type === "standard" ? "Telefone informado manualmente" : "Telefone principal"}
-                </dt>
-                <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                  <Phone className="size-4 text-emerald-600" /> {contact?.phone || "-"}
-                </dd>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  {deal.pipeline?.pipeline_type === "standard" ? "Telefone informado manualmente" : "Telefone"}
+                </p>
+                <div className="flex items-center gap-2 rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm text-foreground">
+                  <Phone className="size-4 text-muted-foreground" /> {contact?.phone || "-"}
+                </div>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">Empresa</dt>
-                <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Empresa</p>
+                <div className="flex items-center gap-2 rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm text-foreground">
                   <Building2 className="size-4 text-muted-foreground" /> {contact?.company || "-"}
-                </dd>
+                </div>
               </div>
               <div>
-                <dt className="text-[10px] font-semibold uppercase text-muted-foreground">E-mail</dt>
-                <dd className="mt-1 flex items-center gap-2 break-all text-sm text-foreground">
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">E-mail</p>
+                <div className="flex items-center gap-2 rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm break-all text-foreground">
                   <Mail className="size-4 shrink-0 text-muted-foreground" /> {contact?.email || "-"}
-                </dd>
+                </div>
               </div>
               {customRows.map((item, index) => {
                 const fieldName = item.custom_field?.field_name ?? "Campo personalizado";
@@ -881,11 +875,11 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                 const FieldIcon = isLocation ? MapPin : StickyNote;
                 return (
                   <div key={`${fieldName}-${index}`}>
-                    <dt className="text-[10px] font-semibold uppercase text-muted-foreground">{fieldName}</dt>
-                    <dd className="mt-1 flex items-start gap-2 text-sm text-foreground">
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">{fieldName}</p>
+                    <div className="flex items-start gap-2 rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm text-foreground">
                       <FieldIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       <span className="break-words">{item.value}</span>
-                    </dd>
+                    </div>
                   </div>
                 );
               })}
@@ -893,19 +887,19 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                 .filter((item) => item.value?.trim() && item.field?.field_name)
                 .map((item) => (
                   <div key={item.field_id}>
-                    <dt className="text-[10px] font-semibold uppercase text-muted-foreground">{item.field?.field_name}</dt>
-                    <dd className="mt-1 flex items-start gap-2 text-sm text-foreground">
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">{item.field?.field_name}</p>
+                    <div className="flex items-start gap-2 rounded-xl border border-[#e6ebf2] bg-[#f7f9fc] px-3 py-2.5 text-sm text-foreground">
                       <StickyNote className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                       <span className="break-words">{item.value}</span>
-                    </dd>
+                    </div>
                   </div>
                 ))}
-            </dl>
+            </div>
           </div>
         </aside>
 
-        <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card">
-          <div className="flex gap-1 overflow-x-auto border-b border-border px-2 sm:px-3" role="tablist" aria-label="Detalhes do lead">
+        <section className="min-w-0 overflow-hidden rounded-2xl bg-white shadow-[0_8px_24px_rgb(15_23_42_/_4%)]">
+          <div className="flex gap-1 overflow-x-auto px-3 pt-3 sm:px-4" role="tablist" aria-label="Detalhes do lead">
             {([
               ["whatsapp", "WhatsApp", MessageCircle],
               ["notes", "Notas Internas", StickyNote],
@@ -917,14 +911,14 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                 role="tab"
                 aria-selected={tab === value}
                 onClick={() => setTab(value)}
-                className={`inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-xs font-semibold transition-colors ${tab === value ? "border-emerald-600 text-emerald-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-semibold ${tab === value ? "bg-primary text-white" : "bg-[#f4f7fb] text-muted-foreground hover:text-foreground"}`}
               >
                 <Icon className="size-4" /> {label}
               </button>
             ))}
           </div>
 
-          <div key={tab} role="tabpanel" className="min-h-[380px] animate-in fade-in-0 duration-200 ease-out motion-reduce:animate-none">
+          <div key={tab} role="tabpanel" className="min-h-[380px]">
             {contentLoading ? (
               <div className="p-6 text-sm text-muted-foreground">Carregando...</div>
             ) : tab === "whatsapp" ? (
@@ -1034,7 +1028,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                     {index < historyItems.length - 1 && (
                       <span aria-hidden="true" className="absolute bottom-[-12px] left-[7px] top-3 w-px bg-border" />
                     )}
-                    <span aria-hidden="true" className={`absolute left-0 top-3 size-4 rounded-full border-4 border-background ${item.kind === "email" ? "bg-blue-500" : "bg-muted-foreground/40"}`} />
+                    <span aria-hidden="true" className={`absolute left-0 top-3 size-4 rounded-full border-4 border-white ${item.kind === "email" ? "bg-primary" : "bg-muted-foreground/40"}`} />
                     <article className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
                       {item.kind === "stage" ? (
                         <>
@@ -1358,7 +1352,6 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           )
         }
       />
-    </div>
     </div>
   );
 }

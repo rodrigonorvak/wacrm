@@ -93,7 +93,7 @@ export function DealScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent className="rounded-2xl sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{title ?? t("title")}</DialogTitle>
         </DialogHeader>
@@ -123,7 +123,7 @@ export function DealScheduleDialog({
             </Button>
             <Button
               type="button"
-              className="bg-blue-600 text-white hover:bg-blue-700"
+              className="bg-primary text-white hover:bg-primary-hover"
               disabled={!canEdit || saving || !selected || (requireTime && !time)}
               onClick={() => void save(selected)}
             >

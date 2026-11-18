@@ -85,11 +85,11 @@ export function SettingsRail({
                   onClick={() => onSelect(s)}
                   aria-current={isActive ? 'page' : undefined}
                   className={cn(
-                    'relative flex min-h-9 shrink-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-medium whitespace-nowrap transition-colors duration-150',
+                    'relative flex min-h-10 shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium whitespace-nowrap',
                     'lg:w-full lg:py-2',
                     isActive
-                      ? 'bg-primary/10 text-primary shadow-[0_1px_3px_rgb(15_23_42_/_7%)]'
-                      : 'text-[#4b5563] hover:bg-white/65 hover:text-foreground',
+                      ? 'bg-primary/10 text-primary before:absolute before:top-2 before:bottom-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary'
+                      : 'text-[#4b5563] hover:bg-[#f4f7fb] hover:text-foreground',
                   )}
                 >
                   <Icon className={cn('size-4 shrink-0', isActive ? 'text-primary' : 'text-[#727780]')} />

@@ -403,7 +403,7 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
           accountId={accountId}
           selected={selectedDeal.labels}
           canEdit={canEdit}
-          adReferral={hasAdReferral ? { contactId, checked: true } : null}
+          adReferral={contactId ? { contactId, checked: hasAdReferral } : null}
           onAdReferralChange={setHasAdReferral}
           onChange={(dealId, labels) => {
             setDeals((current) => current.map((deal) => deal.id === dealId ? { ...deal, labels } : deal));

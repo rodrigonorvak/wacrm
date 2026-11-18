@@ -322,9 +322,9 @@ export function MembersTab() {
         })()}
 
       {/* Roster */}
-      <Card>
+      <Card className="bg-transparent shadow-none ring-0">
         <CardContent className="p-0">
-          <ul className="divide-y divide-border">
+          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {members.map((member) => {
               const roleMeta = ROLE_META[member.role];
               const RoleIcon = roleMeta.icon;
@@ -347,13 +347,13 @@ export function MembersTab() {
                   // 128px width doesn't force the name into a 50-pixel
                   // truncation. Desktop (sm+): everything inline as
                   // before.
-                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+                  className="flex flex-col items-center gap-3 rounded-2xl bg-white p-5 text-center shadow-[0_8px_24px_rgb(15_23_42_/_4%)]"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                  <div className="flex min-w-0 flex-col items-center gap-3">
                     <Tooltip>
                       <TooltipTrigger
                         render={
-                          <Avatar className="size-9 shrink-0">
+                          <Avatar className="size-16 shrink-0">
                             {member.avatar_url ? (
                               <AvatarImage
                                 src={member.avatar_url}
@@ -380,8 +380,8 @@ export function MembersTab() {
                       <TooltipContent>{presenceText}</TooltipContent>
                     </Tooltip>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center justify-center gap-2">
                         <span className="truncate text-sm font-medium text-foreground">
                           {member.full_name || t('unnamed')}
                         </span>
@@ -396,12 +396,13 @@ export function MembersTab() {
                           {member.email}
                         </p>
                       )}
+                      <p className="mt-1 text-xs text-muted-foreground">{presenceText}</p>
                     </div>
                   </div>
 
                   {/* Joined date stays desktop-only. The mobile row's
                       vertical density makes the joined date noise. */}
-                  <div className="hidden sm:block text-right text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {t('joined', { date: fmtDate(member.joined_at) })}
                   </div>
 
@@ -409,7 +410,7 @@ export function MembersTab() {
                       below the identity block; on desktop it sits
                       inline. Items align to the start on mobile so the
                       role dropdown lines up under the avatar. */}
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
                     {/* Role display / editor. Inline Select is admin+
                         only AND not allowed on the owner row (owner
                         changes go through transfer, which lands later). */}
@@ -440,7 +441,7 @@ export function MembersTab() {
                       </Select>
                     ) : (
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${roleMeta.className}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${roleMeta.className}`}
                       >
                         <RoleIcon className="size-3.5" />
                         {tRoles(member.role)}

@@ -57,22 +57,18 @@ export function Header({ onOpenSidebar }: HeaderProps) {
     "U";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-card px-4 lg:px-6">
+    <header className="flex h-16 shrink-0 items-center justify-between gap-3 bg-transparent px-4 lg:px-8">
       <div className="flex min-w-0 items-center gap-2.5">
         {/* Hamburger — mobile only. 44×44 hit target per Apple HIG. */}
         <button
           type="button"
           onClick={onOpenSidebar}
           aria-label={t("openMenu")}
-          className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white hover:text-foreground lg:hidden"
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span
-          aria-hidden
-          className="hidden h-4 w-1 rounded-full bg-primary sm:block"
-        />
-        <h1 className="truncate text-base font-semibold tracking-tight text-foreground sm:text-lg">
+        <h1 className="truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           {t(titleKey as string)}
         </h1>
       </div>

@@ -129,7 +129,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="dashboard-pilot -m-4 min-h-full space-y-5 p-4 sm:-m-6 sm:space-y-6 sm:p-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Greeting + date */}
       <div className="flex flex-col gap-0.5 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">

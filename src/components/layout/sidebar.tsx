@@ -211,7 +211,7 @@ export function Sidebar({
         aria-label={t("closeMenu")}
         onClick={onClose}
         className={cn(
-          "fixed inset-0 z-30 bg-background/70 backdrop-blur-sm transition-opacity lg:hidden",
+          "fixed inset-0 z-30 bg-background/70 lg:hidden",
           open
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0",
@@ -291,12 +291,12 @@ export function Sidebar({
         className={cn(
           // Mobile: fixed drawer that slides in from the left.
           "crm-sidebar fixed inset-y-0 left-0 z-40 flex h-full flex-col text-white",
-          "transition-transform duration-150 ease-out",
+          "transition-none",
           open ? "translate-x-0" : "-translate-x-full",
           // Desktop: static, always visible — reset all the mobile framing.
           // translate-none: a transformed ancestor would break the
           // fixed-attachment wallpaper used by the glass-theme active pill.
-          "lg:static lg:z-0 lg:translate-none lg:transition-[width] lg:duration-150",
+          "lg:static lg:z-0 lg:translate-none lg:transition-none",
           collapsed ? "lg:w-20" : "lg:w-60",
         )}
         aria-label="Primary"

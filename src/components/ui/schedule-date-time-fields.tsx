@@ -65,12 +65,12 @@ export function ScheduleDateTimeFields({
             onClick={() => onDateChange(key)}
             aria-label={new Date(month.getFullYear(), month.getMonth(), Number(key.slice(8))).toLocaleDateString(locale, { dateStyle: "full" })}
             aria-pressed={key === date}
-            className={`mx-auto flex size-8 items-center justify-center rounded-full text-sm transition-colors ${
+            className={`mx-auto flex size-9 items-center justify-center rounded-xl text-sm ${
               key === date
-                ? "bg-blue-600 font-semibold text-white"
+                ? "bg-primary font-semibold text-white"
                 : key === todayKey
-                  ? "font-semibold text-blue-600 ring-1 ring-blue-600/40 hover:bg-muted"
-                  : "text-foreground hover:bg-muted"
+                  ? "font-semibold text-primary ring-1 ring-primary/40 hover:bg-[#f4f7fb]"
+                  : "text-foreground hover:bg-[#f4f7fb]"
             }`}
           >
             {Number(key.slice(8))}
@@ -88,7 +88,7 @@ export function ScheduleDateTimeFields({
             value={time}
             disabled={disabled}
             onChange={(event) => onTimeChange(event.target.value)}
-            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+            className="h-9 rounded-full border border-[#e6ebf2] bg-[#f7f9fc] px-3 text-sm"
           />
           {time && (
             <Button type="button" variant="ghost" size="sm" onClick={() => onTimeChange("")}>
