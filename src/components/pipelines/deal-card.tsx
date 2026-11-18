@@ -104,10 +104,8 @@ export function DealCard({
       }`}
     >
       {(labels.length > 0 || deal.contact?.has_ad_referral) && (
-        <div className="mb-1.5 flex flex-wrap gap-1 pr-7 empty:hidden">
-          {deal.contact?.has_ad_referral && (
-            <AdSourceBadge contactId={deal.contact.id} />
-          )}
+        <div className="mb-1.5 flex flex-wrap gap-1 pr-7">
+          {deal.contact?.has_ad_referral && <AdSourceBadge />}
           {labels.map((label) => (
             <span
               key={label.id}

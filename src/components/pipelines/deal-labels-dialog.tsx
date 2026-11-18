@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, Loader2, Pencil, Target, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,9 @@ interface DealLabelsDialogProps {
   selected: DealLabel[];
   canEdit?: boolean;
   onChange: (dealId: string, labels: DealLabel[]) => void;
+  /** Present when this lead was marked as coming from an ad. */
+  adReferral?: { contactId: string; checked: boolean } | null;
+  onAdReferralChange?: (checked: boolean) => void;
 }
 
 type EditorState = {
@@ -70,8 +74,13 @@ export function DealLabelsDialog({
   selected,
   canEdit = true,
   onChange,
+  adReferral = null,
+  onAdReferralChange,
 }: DealLabelsDialogProps) {
+  const tAd = useTranslations("AdSource");
   const supabase = useMemo(() => createClient(), []);
+  const [adChecked, setAdChecked] = useState(false);
+  const [adVisible, setAdVisible] = useState(false);
   const [labels, setLabels] = useState<DealLabel[]>([]);
   const [stages, setStages] = useState<StageOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -114,7 +123,12 @@ export function DealLabelsDialog({
     setQuery("");
     setShowAll(false);
     setEditor(null);
+    setAdChecked(Boolean(adReferral?.checked));
+    setAdVisible(Boolean(adReferral?.contactId && adReferral.checked));
     void loadLabels();
+    // Snapshot the ad flag when the dialog opens. Updating it afterwards
+    // must not hide the row mid-click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, loadLabels]);
 
   const selectedIds = new Set(selected.map((label) => label.id));
@@ -137,6 +151,25 @@ export function DealLabelsDialog({
       return;
     }
     onChange(dealId, isSelected ? selected.filter((item) => item.id !== label.id) : [...selected, label]);
+  }
+
+  async function toggleAdReferral() {
+    if (!adReferral?.contactId || !canEdit || busy) return;
+    const next = !adChecked;
+    setBusy(true);
+    const { data, error } = await supabase
+      .from("contacts")
+      .update({ has_ad_referral: next })
+      .eq("id", adReferral.contactId)
+      .select("id")
+      .maybeSingle();
+    setBusy(false);
+    if (error || !data) {
+      toast.error("Não foi possível atualizar a etiqueta");
+      return;
+    }
+    setAdChecked(next);
+    onAdReferralChange?.(next);
   }
 
   async function saveEditor() {
@@ -365,6 +398,26 @@ export function DealLabelsDialog({
             />
             <div className="space-y-1">
               <p className="text-xs font-semibold text-muted-foreground">Etiquetas</p>
+              {adVisible && tAd("advertisement").toLowerCase().includes(normalizedQuery) && (
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={adChecked}
+                  disabled={!canEdit || busy}
+                  onClick={() => void toggleAdReferral()}
+                  className="flex w-full items-center gap-2 disabled:opacity-60"
+                >
+                  <span
+                    className={`flex size-4 shrink-0 items-center justify-center rounded-[4px] border ${adChecked ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}
+                  >
+                    {adChecked && <Check className="size-3" />}
+                  </span>
+                  <span className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-md bg-slate-500 px-3 text-left text-sm font-semibold text-white">
+                    <Target className="size-3.5 shrink-0" />
+                    <span className="truncate">{tAd("advertisement")}</span>
+                  </span>
+                </button>
+              )}
               {loading ? (
                 <div className="flex justify-center py-4">
                   <Loader2 className="size-4 animate-spin text-muted-foreground" />

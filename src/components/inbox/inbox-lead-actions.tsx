@@ -67,6 +67,7 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
   const [paidAmount, setPaidAmount] = useState("");
   const [savingStage, setSavingStage] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [hasAdReferral, setHasAdReferral] = useState(false);
   const scheduleSaved = useRef(false);
 
   useEffect(() => {
@@ -76,12 +77,16 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
 
     void (async () => {
       try {
-        const { data, error } = await supabase
-          .from("deals")
-          .select("id, title, pipeline_id, stage_id, value, scheduled_date, scheduled_time, stage:pipeline_stages(*), deal_label_links(label:deal_labels(*))")
-          .eq("account_id", accountId)
-          .eq("contact_id", contactId)
-          .order("created_at", { ascending: false });
+        const [{ data, error }, contactResult] = await Promise.all([
+          supabase
+            .from("deals")
+            .select("id, title, pipeline_id, stage_id, value, scheduled_date, scheduled_time, stage:pipeline_stages(*), deal_label_links(label:deal_labels(*))")
+            .eq("account_id", accountId)
+            .eq("contact_id", contactId)
+            .order("created_at", { ascending: false }),
+          supabase.from("contacts").select("has_ad_referral").eq("id", contactId).maybeSingle(),
+        ]);
+        if (!cancelled) setHasAdReferral(Boolean(contactResult.data?.has_ad_referral));
         if (cancelled) return;
         if (error) {
           console.error("[inbox-lead-actions] failed to load contact deals:", error.message);
@@ -398,6 +403,8 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
           accountId={accountId}
           selected={selectedDeal.labels}
           canEdit={canEdit}
+          adReferral={hasAdReferral ? { contactId, checked: true } : null}
+          onAdReferralChange={setHasAdReferral}
           onChange={(dealId, labels) => {
             setDeals((current) => current.map((deal) => deal.id === dealId ? { ...deal, labels } : deal));
           }}

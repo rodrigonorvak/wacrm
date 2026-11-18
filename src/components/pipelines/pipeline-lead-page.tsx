@@ -795,7 +795,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           </div>
           {((deal.labels?.length ?? 0) > 0 || contact?.has_ad_referral) && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5 empty:hidden">
-              {contact?.has_ad_referral && <AdSourceBadge contactId={contact.id} />}
+              {contact?.has_ad_referral && <AdSourceBadge />}
               {(deal.labels ?? []).map((label) => (
                 <span
                   key={label.id}
@@ -1326,6 +1326,14 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         accountId={accountId}
         selected={deal.labels ?? []}
         canEdit={canManageLead}
+        adReferral={contact?.id ? { contactId: contact.id, checked: Boolean(contact.has_ad_referral) } : null}
+        onAdReferralChange={(checked) =>
+          setDeal((current) =>
+            current?.contact
+              ? { ...current, contact: { ...current.contact, has_ad_referral: checked } }
+              : current
+          )
+        }
         onChange={(_, labels) => setDeal((current) => (current ? { ...current, labels } : current))}
       />
       <DealScheduleDialog

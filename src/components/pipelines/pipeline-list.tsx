@@ -75,10 +75,8 @@ export function PipelineList({
                 >
                   <span className="min-w-0">
                     {((deal.labels?.length ?? 0) > 0 || deal.contact?.has_ad_referral) && (
-                      <span className="mb-1 flex flex-wrap gap-1 empty:hidden">
-                        {deal.contact?.has_ad_referral && (
-                          <AdSourceBadge contactId={deal.contact.id} />
-                        )}
+                      <span className="mb-1 flex flex-wrap gap-1">
+                        {deal.contact?.has_ad_referral && <AdSourceBadge />}
                         {deal.labels?.map((label) => (
                           <span
                             key={label.id}

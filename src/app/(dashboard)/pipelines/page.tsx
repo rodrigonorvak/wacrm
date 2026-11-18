@@ -892,7 +892,7 @@ export default function PipelinesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="animate-in fade-in-0 slide-in-from-top-1 border-border bg-card flex flex-col gap-3 rounded-xl border p-3 shadow-[0_4px_14px_rgb(15_23_42_/_8%)] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none xl:flex-row xl:items-center xl:justify-between">
+      <div className="border-border bg-card flex flex-col gap-3 rounded-xl border p-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {/* Pipeline selector dropdown */}
           <DropdownMenu>
@@ -1138,6 +1138,23 @@ export default function PipelinesPage() {
         accountId={accountId}
         selected={deals.find((deal) => deal.id === labelsDealId)?.labels ?? []}
         canEdit={canCreateDeals}
+        adReferral={(() => {
+          const contact = deals.find((deal) => deal.id === labelsDealId)?.contact
+          return contact?.id
+            ? { contactId: contact.id, checked: Boolean(contact.has_ad_referral) }
+            : null
+        })()}
+        onAdReferralChange={(checked) => {
+          const contactId = deals.find((deal) => deal.id === labelsDealId)?.contact?.id
+          if (!contactId) return
+          setDeals((prev) =>
+            prev.map((deal) =>
+              deal.contact?.id === contactId
+                ? { ...deal, contact: { ...deal.contact, has_ad_referral: checked } }
+                : deal
+            )
+          )
+        }}
         onChange={(dealId, labels) =>
           setDeals((prev) =>
             prev.map((deal) =>
