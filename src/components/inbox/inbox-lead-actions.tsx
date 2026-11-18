@@ -223,9 +223,9 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
 
   return (
     <>
-      <div className="absolute bottom-24 right-4 z-40 flex flex-col items-end gap-2">
+      <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start gap-2">
         {expanded && (
-          <nav aria-label={t("actionsTitle")} className="flex flex-col items-end gap-2">
+          <nav aria-label={t("actionsTitle")} className="flex flex-col items-start gap-2">
             <button
               type="button"
               onClick={() => {

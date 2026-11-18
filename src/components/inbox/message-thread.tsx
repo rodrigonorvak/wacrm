@@ -909,12 +909,6 @@ export function MessageThread({
     // root shrink lets the bubbles' break-words / max-w caps apply.
     // Issue #257.
     <div className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col", CHAT_BG_CLASSES)}>
-      <InboxLeadActions
-        key={contact.id}
-        contactId={contact.id}
-        contactName={contact.name}
-        onDealUpdated={onDealUpdated}
-      />
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-3 sm:px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           {/* Back-to-list button — mobile only. Hidden on lg+ where the
@@ -1098,8 +1092,9 @@ export function MessageThread({
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+      {/* Messages Area. The lead actions float here, above the composer, so they do not cover Send. */}
+      <div className="relative min-h-0 flex-1">
+      <div ref={scrollRef} className="h-full overflow-y-auto px-4 py-4 pb-16">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -1173,6 +1168,13 @@ export function MessageThread({
             ))}
           </div>
         )}
+      </div>
+      <InboxLeadActions
+        key={contact.id}
+        contactId={contact.id}
+        contactName={contact.name}
+        onDealUpdated={onDealUpdated}
+      />
       </div>
 
       {/* AI auto-reply banner — take over an active bot, or resume it
