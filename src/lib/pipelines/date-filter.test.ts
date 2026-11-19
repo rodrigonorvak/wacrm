@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCreatedToday, presetBounds } from "./date-filter";
+import { compareBoardDeals, dealMatchesDateBounds, isCreatedToday, presetBounds } from "./date-filter";
 
 describe("pipeline today filter", () => {
   it("includes only the current local calendar day", () => {
@@ -26,5 +26,29 @@ describe("pipeline today filter", () => {
     expect(lastWeek?.end.getDate()).toBe(15);
 
     expect(presetBounds("max", now)).toBeNull();
+  });
+
+  it("keeps a lead who just replied visible in today and at the top", () => {
+    const now = new Date(2026, 10, 19, 18, 30);
+    const bounds = presetBounds("today", now);
+    const replied = {
+      created_at: new Date(2026, 10, 18, 9).toISOString(),
+      updated_at: new Date(2026, 10, 19, 18, 20).toISOString(),
+      needs_attention: true,
+    };
+    const older = {
+      created_at: new Date(2026, 10, 19, 8).toISOString(),
+      updated_at: new Date(2026, 10, 19, 8).toISOString(),
+      needs_attention: false,
+    };
+    const quietYesterday = {
+      created_at: new Date(2026, 10, 18, 9).toISOString(),
+      updated_at: new Date(2026, 10, 18, 12).toISOString(),
+      needs_attention: false,
+    };
+
+    expect(dealMatchesDateBounds(replied, bounds!.start, bounds!.end)).toBe(true);
+    expect(dealMatchesDateBounds(quietYesterday, bounds!.start, bounds!.end)).toBe(false);
+    expect(compareBoardDeals(older, replied)).toBeGreaterThan(0);
   });
 });

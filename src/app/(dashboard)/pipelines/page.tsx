@@ -39,6 +39,8 @@ import {
 import {
   DATE_FILTER_LABELS,
   DATE_FILTER_OPTIONS,
+  compareBoardDeals,
+  dealMatchesDateBounds,
   isDateFilter,
   presetBounds,
   type DateFilter,
@@ -870,25 +872,26 @@ export default function PipelinesPage() {
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
-  const filteredDeals = deals.filter((deal) => {
-    if (stageFilter !== 'all' && deal.stage_id !== stageFilter) return false;
-    if (dateFilter === 'max') return true;
+  const filteredDeals = deals
+    .filter((deal) => {
+      if (stageFilter !== 'all' && deal.stage_id !== stageFilter) return false;
+      if (dateFilter === 'max') return true;
 
-    const createdAt = new Date(deal.created_at);
-    if (Number.isNaN(createdAt.getTime())) return false;
+      if (dateFilter !== 'custom') {
+        const bounds = presetBounds(dateFilter);
+        return bounds
+          ? dealMatchesDateBounds(deal, bounds.start, bounds.end)
+          : true;
+      }
 
-    if (dateFilter !== 'custom') {
-      const bounds = presetBounds(dateFilter);
-      return bounds ? createdAt >= bounds.start && createdAt <= bounds.end : true;
-    }
-
-    const start = customStartDate
-      ? new Date(`${customStartDate}T00:00:00`)
-      : null;
-    const endKey = customEndDate || customStartDate;
-    const end = endKey ? new Date(`${endKey}T23:59:59.999`) : null;
-    return (!start || createdAt >= start) && (!end || createdAt <= end);
-  });
+      const start = customStartDate
+        ? new Date(`${customStartDate}T00:00:00`)
+        : null;
+      const endKey = customEndDate || customStartDate;
+      const end = endKey ? new Date(`${endKey}T23:59:59.999`) : null;
+      return dealMatchesDateBounds(deal, start, end);
+    })
+    .sort(compareBoardDeals);
 
   const filteredStages =
     stageFilter === 'all'

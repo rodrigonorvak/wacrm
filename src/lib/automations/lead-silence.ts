@@ -286,6 +286,7 @@ export async function onCustomerReplied(
       .update({
         needs_attention: true,
         attention_label: cfg.attention_label,
+        updated_at: new Date().toISOString(),
       })
       .eq('account_id', accountId)
       .eq('contact_id', contactId)

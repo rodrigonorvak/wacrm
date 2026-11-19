@@ -100,6 +100,42 @@ export function presetBounds(
   return null;
 }
 
+export interface BoardDealTiming {
+  created_at: string
+  updated_at?: string | null
+  needs_attention?: boolean | null
+}
+
+function inBounds(value: string | null | undefined, start: Date | null, end: Date | null): boolean {
+  if (!value) return false
+  const at = new Date(value)
+  if (Number.isNaN(at.getTime())) return false
+  return (!start || at >= start) && (!end || at <= end)
+}
+
+/**
+ * A lead that just replied in "Parou de responder" counts as activity now,
+ * even when the card was created on an earlier day.
+ */
+export function dealMatchesDateBounds(
+  deal: BoardDealTiming,
+  start: Date | null,
+  end: Date | null,
+): boolean {
+  if (inBounds(deal.created_at, start, end)) return true
+  return Boolean(deal.needs_attention) && inBounds(deal.updated_at, start, end)
+}
+
+/** Replies float to the top. Everyone else stays in creation order, newest first. */
+export function compareBoardDeals(a: BoardDealTiming, b: BoardDealTiming): number {
+  const aHot = Boolean(a.needs_attention)
+  const bHot = Boolean(b.needs_attention)
+  if (aHot !== bHot) return aHot ? -1 : 1
+  const aTime = new Date((aHot ? a.updated_at : a.created_at) || a.created_at).getTime()
+  const bTime = new Date((bHot ? b.updated_at : b.created_at) || b.created_at).getTime()
+  return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
+}
+
 export function isCreatedToday(createdAt: string, now: Date = new Date()): boolean {
   const created = new Date(createdAt);
   if (Number.isNaN(created.getTime())) return false;
