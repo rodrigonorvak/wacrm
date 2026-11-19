@@ -78,6 +78,12 @@ type DealStageHistoryRow = {
   changed_at: string;
 };
 type DealStageHistoryEntry = DealStageHistoryRow & { actor_name: string | null };
+type AttentionDismissalRow = {
+  id: string;
+  dismissed_by: string | null;
+  dismissed_at: string;
+};
+type AttentionDismissal = AttentionDismissalRow & { actor_name: string | null };
 type EmailHistoryEntry = {
   id: string;
   campaign_name: string;
@@ -155,6 +161,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const [stagesLoadedFor, setStagesLoadedFor] = useState("");
   const [stageHistory, setStageHistory] = useState<DealStageHistoryEntry[]>([]);
   const [emailHistory, setEmailHistory] = useState<EmailHistoryEntry[]>([]);
+  const [attentionDismissals, setAttentionDismissals] = useState<AttentionDismissal[]>([]);
   const [historyLoadedKey, setHistoryLoadedKey] = useState("");
   const [historyError, setHistoryError] = useState(false);
   const [historyRetry, setHistoryRetry] = useState(0);
@@ -394,6 +401,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           setHistoryError(true);
           setStageHistory([]);
           setEmailHistory([]);
+          setAttentionDismissals([]);
           setHistoryLoadedKey(historyRequestKey);
           return;
         }
@@ -402,7 +410,21 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         }
         const emailResult = (await emailResponse.json()) as { emails: EmailHistoryEntry[] };
         const rows = (historyResult.data as unknown as DealStageHistoryRow[] | null) ?? [];
-        const actorIds = [...new Set(rows.flatMap((row) => row.changed_by ? [row.changed_by] : []))];
+        const dismissalResult = await supabase
+          .from("deal_attention_dismissals")
+          .select("id, dismissed_by, dismissed_at")
+          .eq("deal_id", deal.id)
+          .order("dismissed_at", { ascending: true });
+        if (dismissalResult.error) {
+          console.error("Failed to load attention dismissals:", dismissalResult.error.message);
+        }
+        const dismissalRows = dismissalResult.error
+          ? []
+          : ((dismissalResult.data as unknown as AttentionDismissalRow[] | null) ?? []);
+        const actorIds = [...new Set([
+          ...rows.flatMap((row) => row.changed_by ? [row.changed_by] : []),
+          ...dismissalRows.flatMap((row) => row.dismissed_by ? [row.dismissed_by] : []),
+        ])];
         let actorNames = new Map<string, string>();
         if (actorIds.length > 0) {
           const { data: profiles, error: profilesError } = await supabase
@@ -421,6 +443,10 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           actor_name: row.changed_by ? actorNames.get(row.changed_by) ?? null : null,
         })));
         setEmailHistory(emailResult.emails);
+        setAttentionDismissals(dismissalRows.map((row) => ({
+          ...row,
+          actor_name: row.dismissed_by ? actorNames.get(row.dismissed_by) ?? null : null,
+        })));
         setHistoryError(false);
         setHistoryLoadedKey(historyRequestKey);
       } catch (error) {
@@ -429,6 +455,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         setHistoryError(true);
         setStageHistory([]);
         setEmailHistory([]);
+        setAttentionDismissals([]);
         setHistoryLoadedKey(historyRequestKey);
       }
     })();
@@ -1007,7 +1034,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                   Tentar novamente
                 </Button>
               </div>
-            ) : stageHistory.length === 0 && emailHistory.length === 0 ? (
+            ) : stageHistory.length === 0 && emailHistory.length === 0 && attentionDismissals.length === 0 ? (
               <div className="flex min-h-[380px] flex-col items-center justify-center gap-3 p-6 text-center">
                 <History className="size-7 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">Nenhum histórico registrado.</p>
@@ -1027,6 +1054,12 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                     date: entry.sent_at,
                     entry,
                   })),
+                  ...attentionDismissals.map((entry) => ({
+                    kind: "attention" as const,
+                    id: entry.id,
+                    date: entry.dismissed_at,
+                    entry,
+                  })),
                 ]
                   .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                   .map((item, index, historyItems) => (
@@ -1034,9 +1067,18 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                     {index < historyItems.length - 1 && (
                       <span aria-hidden="true" className="absolute bottom-[-12px] left-[7px] top-3 w-px bg-border" />
                     )}
-                    <span aria-hidden="true" className={`absolute left-0 top-3 size-4 rounded-full border-4 border-white ${item.kind === "email" ? "bg-primary" : "bg-muted-foreground/40"}`} />
+                    <span aria-hidden="true" className={`absolute left-0 top-3 size-4 rounded-full border-4 border-white ${item.kind === "email" ? "bg-primary" : item.kind === "attention" ? "bg-orange-500" : "bg-muted-foreground/40"}`} />
                     <article className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
-                      {item.kind === "stage" ? (
+                      {item.kind === "attention" ? (
+                        <>
+                          <p className="text-foreground">Retirou o aviso de resposta</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {item.entry.actor_name || (item.entry.dismissed_by ? "Equipe" : "Sistema")}
+                            <span aria-hidden="true"> · </span>
+                            <time dateTime={item.entry.dismissed_at}>{formatHistoryDateTime(item.entry.dismissed_at)}</time>
+                          </p>
+                        </>
+                      ) : item.kind === "stage" ? (
                         <>
                           <p className="text-foreground">
                             {item.entry.from_stage_name

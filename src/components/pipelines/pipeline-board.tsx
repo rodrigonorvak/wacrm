@@ -50,6 +50,7 @@ interface PipelineBoardProps {
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  onDismissAttention?: (deal: Deal) => void;
 }
 
 const INITIAL_VISIBLE_DEALS = 6;
@@ -67,6 +68,7 @@ export function PipelineBoard({
   onEditDeal,
   onEditLabels,
   onEditSchedule,
+  onDismissAttention,
 }: PipelineBoardProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const scheduledContacts = useScheduledContacts();
@@ -137,6 +139,7 @@ export function PipelineBoard({
             onEditDeal={onEditDeal}
             onEditLabels={onEditLabels}
             onEditSchedule={onEditSchedule}
+            onDismissAttention={onDismissAttention}
             scheduledContacts={scheduledContacts}
           />
         ))}
@@ -204,6 +207,7 @@ function StageColumn({
   onEditDeal,
   onEditLabels,
   onEditSchedule,
+  onDismissAttention,
   scheduledContacts,
 }: {
   stage: PipelineStage;
@@ -216,6 +220,7 @@ function StageColumn({
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  onDismissAttention?: (deal: Deal) => void;
   scheduledContacts: Set<string>;
 }) {
   const t = useTranslations("Pipelines.board");
@@ -322,6 +327,7 @@ function StageColumn({
               onEdit={onEditDeal}
               onEditLabels={onEditLabels}
               onEditSchedule={onEditSchedule}
+              onDismissAttention={onDismissAttention}
               hasScheduledMessage={!!deal.contact_id && scheduledContacts.has(deal.contact_id)}
             />
           ))
@@ -370,6 +376,7 @@ function DraggableDealCard({
   onEdit,
   onEditLabels,
   onEditSchedule,
+  onDismissAttention,
   hasScheduledMessage,
 }: {
   deal: Deal;
@@ -377,6 +384,7 @@ function DraggableDealCard({
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  onDismissAttention?: (deal: Deal) => void;
   hasScheduledMessage: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -396,6 +404,7 @@ function DraggableDealCard({
         onEdit={onEdit}
         onEditLabels={onEditLabels}
         onEditSchedule={onEditSchedule}
+        onDismissAttention={onDismissAttention}
         hasScheduledMessage={hasScheduledMessage}
       />
     </div>

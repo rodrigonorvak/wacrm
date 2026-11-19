@@ -674,6 +674,26 @@ export default function PipelinesPage() {
     [stages, pipelines, selectedPipelineId]
   );
 
+  const dismissAttention = useCallback(
+    async (deal: Deal) => {
+      setDeals((prev) =>
+        prev.map((item) =>
+          item.id === deal.id
+            ? { ...item, needs_attention: false, attention_label: null }
+            : item
+        )
+      );
+      const response = await fetch(`/api/deals/${deal.id}/dismiss-attention`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        toast.error('Não foi possível retirar o aviso de resposta.');
+        refreshDeals();
+      }
+    },
+    [refreshDeals]
+  );
+
   const handleEditDeal = useCallback(
     (deal: Deal) => {
       const params = new URLSearchParams({
@@ -1137,6 +1157,7 @@ export default function PipelinesPage() {
                   ? (deal) => setScheduleDealId(deal.id)
                   : undefined
               }
+              onDismissAttention={canCreateDeals ? dismissAttention : undefined}
             />
           ) : (
             <PipelineList

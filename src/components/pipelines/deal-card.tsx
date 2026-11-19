@@ -1,7 +1,7 @@
 "use client";
 
 import type { Deal } from "@/types";
-import { CalendarClock, CalendarDays, Clock, ExternalLink, MessageCircle, Pencil, StickyNote, Tag } from "lucide-react";
+import { BellOff, CalendarClock, CalendarDays, Clock, ExternalLink, MessageCircle, Pencil, StickyNote, Tag } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { formatScheduledDate } from "@/lib/schedule-date";
 import { attentionCaption } from "@/lib/automations/lead-silence";
@@ -22,6 +22,7 @@ interface DealCardProps {
   onEdit: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
   onEditSchedule?: (deal: Deal) => void;
+  onDismissAttention?: (deal: Deal) => void;
   isOverlay?: boolean;
   hasScheduledMessage?: boolean;
 }
@@ -32,6 +33,7 @@ export function DealCard({
   onEdit,
   onEditLabels,
   onEditSchedule,
+  onDismissAttention,
   isOverlay,
   hasScheduledMessage = false,
 }: DealCardProps) {
@@ -73,7 +75,7 @@ export function DealCard({
         >
           <Pencil className="size-3" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuItem onClick={() => onEdit(deal)} className="cursor-pointer">
             <ExternalLink className="size-4" />
             Abrir card
@@ -82,6 +84,12 @@ export function DealCard({
             <Tag className="size-4" />
             Editar etiquetas
           </DropdownMenuItem>
+          {deal.needs_attention && onDismissAttention && (
+            <DropdownMenuItem onClick={() => onDismissAttention(deal)} className="cursor-pointer">
+              <BellOff className="size-4" />
+              Retirar aviso de resposta
+            </DropdownMenuItem>
+          )}
           {onEditSchedule && (
             <DropdownMenuItem onClick={() => onEditSchedule(deal)} className="cursor-pointer">
               <CalendarClock className="size-4" />
