@@ -190,7 +190,11 @@ export interface Conversation {
 // Notifications (migration 027)
 // ============================================================
 
-export type NotificationType = 'conversation_assigned' | 'deal_reminder';
+export type NotificationType =
+  | 'conversation_assigned'
+  | 'deal_reminder'
+  | 'lead_awaiting'
+  | 'platform_message';
 
 export interface Notification {
   id: string;

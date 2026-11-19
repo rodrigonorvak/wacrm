@@ -11,6 +11,7 @@ import {
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { AccountAccessAlert } from "@/components/layout/account-access-alert";
+import { NotificationRise } from "@/components/layout/notification-rise";
 import { PresenceHeartbeat } from "@/components/presence/presence-heartbeat";
 import {
   FeatureAccessProvider,
@@ -68,6 +69,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       {/* Reports this tab's online/away presence once we know a user is
           signed in. Headless — renders nothing. */}
       {!supportSession && <PresenceHeartbeat />}
+      <NotificationRise />
       <Sidebar
         open={sidebarOpen}
         onClose={closeSidebar}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@/types";
-import { AlarmClock, Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
+import { AlarmClock, Bell, CheckCheck, Loader2, Megaphone, MessageCircle, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,8 @@ import { toast } from "sonner";
 const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
   conversation_assigned: UserPlus,
   deal_reminder: AlarmClock,
+  lead_awaiting: MessageCircle,
+  platform_message: Megaphone,
 };
 
 export default function NotificationsPage() {
@@ -173,7 +175,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Notificações</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Conversas atribuídas e lembretes dos seus leads aparecem aqui.
+            Avisos da equipe, leads aguardando resposta e mensagens da administração aparecem aqui.
           </p>
         </div>
         <Button

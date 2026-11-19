@@ -523,6 +523,21 @@ html[data-visual="glass"] .crm-mobile-tab-active {
   animation: deal-awaiting-glow 2.6s ease-in-out infinite;
 }
 
+@keyframes notice-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.notice-rise {
+  animation: notice-rise 0.45s ease-out both;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

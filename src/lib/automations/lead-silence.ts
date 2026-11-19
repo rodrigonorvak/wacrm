@@ -223,6 +223,22 @@ export async function onAgentReplied(
   accountId: string,
   contactId: string,
 ): Promise<void> {
+  const { data: deals } = await db
+    .from('deals')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('contact_id', contactId)
+  const dealIds = (deals ?? []).map((deal) => deal.id as string)
+  if (dealIds.length > 0) {
+    await db
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('type', 'lead_awaiting')
+      .in('deal_id', dealIds)
+      .is('read_at', null)
+  }
+
   await db
     .from('deals')
     .update({ needs_attention: false, attention_label: null })
@@ -256,13 +272,68 @@ export async function onCustomerReplied(
 
   const configs = await activeConfigs(db, accountId)
   for (const cfg of configs) {
-    await db
+    const { data: flagged } = await db
       .from('deals')
       .update({ needs_attention: true, attention_label: cfg.attention_label })
       .eq('account_id', accountId)
       .eq('contact_id', contactId)
       .eq('pipeline_id', cfg.pipeline_id)
       .eq('stage_id', cfg.destination_stage_id)
+      .select('id, title, pipeline_id, assigned_to')
+    if (flagged?.length) {
+      await notifyLeadAwaiting(db, accountId, flagged as AwaitingDeal[], cfg.attention_label)
+    }
+  }
+}
+
+interface AwaitingDeal {
+  id: string
+  title: string
+  pipeline_id: string
+  assigned_to: string | null
+}
+
+async function notifyLeadAwaiting(
+  db: SupabaseClient,
+  accountId: string,
+  deals: AwaitingDeal[],
+  label: string,
+): Promise<void> {
+  const { data: members, error } = await db
+    .from('profiles')
+    .select('user_id, account_role')
+    .eq('account_id', accountId)
+  if (error) {
+    console.error('[lead-silence] recipients failed:', error.message)
+    return
+  }
+  const team = (members ?? []).filter((member) =>
+    ['owner', 'admin', 'agent'].includes(member.account_role as string),
+  )
+  for (const deal of deals) {
+    const assignee = team.find((member) => member.user_id === deal.assigned_to)
+    const recipients = assignee ? [assignee] : team
+    for (const recipient of recipients) {
+      const { data: existing } = await db
+        .from('notifications')
+        .select('id')
+        .eq('user_id', recipient.user_id)
+        .eq('deal_id', deal.id)
+        .eq('type', 'lead_awaiting')
+        .is('read_at', null)
+        .maybeSingle()
+      if (existing) continue
+      const { error: insertError } = await db.from('notifications').insert({
+        account_id: accountId,
+        user_id: recipient.user_id,
+        type: 'lead_awaiting',
+        deal_id: deal.id,
+        pipeline_id: deal.pipeline_id,
+        title: label || DEFAULT_ATTENTION_LABEL,
+        body: deal.title,
+      })
+      if (insertError) console.error('[lead-silence] notify failed:', insertError.message)
+    }
   }
 }
 
