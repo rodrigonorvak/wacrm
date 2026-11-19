@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attentionCaption,
   isNewLeadStage,
   isStoppedReplyStage,
   silenceCutoffIso,
@@ -18,6 +19,12 @@ describe('lead silence stages', () => {
     expect(isStoppedReplyStage('Não respondeu')).toBe(true)
     expect(isStoppedReplyStage('Stopped replying')).toBe(true)
     expect(isStoppedReplyStage('Novo lead')).toBe(false)
+  })
+
+  it('shows Respondeu! in place of the old waiting label', () => {
+    expect(attentionCaption('Aguardando resposta')).toBe('Respondeu!')
+    expect(attentionCaption('')).toBe('Respondeu!')
+    expect(attentionCaption('Ligar agora')).toBe('Ligar agora')
   })
 
   it('counts the wait back from now without changing the clock unit', () => {

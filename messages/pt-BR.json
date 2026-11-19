@@ -1157,7 +1157,7 @@
       "createdAt": "Criado em",
       "empty": "Nenhum lead corresponde aos filtros.",
       "firstRespondedBy": "Atendimento iniciado por {name}",
-      "awaitingReply": "Aguardando resposta"
+      "awaitingReply": "Respondeu!"
     },
     "page": {
       "addDeal": "Adicionar lead",

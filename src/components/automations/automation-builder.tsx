@@ -72,6 +72,7 @@ import {
   type ParentScope,
   type StepPath,
 } from "@/lib/automations/builder-tree"
+import { attentionCaption, DEFAULT_ATTENTION_LABEL } from "@/lib/automations/lead-silence"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -1021,7 +1022,7 @@ function SilenceConfig({
       source_stage_id: "",
       destination_stage_id: "",
       silence_minutes: hours * 60,
-      attention_label: (config.attention_label as string) || "Aguardando resposta",
+      attention_label: (config.attention_label as string) || DEFAULT_ATTENTION_LABEL,
     })
   }
 
@@ -1076,7 +1077,7 @@ function SilenceConfig({
       </FieldBlock>
       <FieldBlock label={t("silence.label")}>
         <Input
-          value={(config.attention_label as string) ?? "Aguardando resposta"}
+          value={attentionCaption((config.attention_label as string) || "")}
           onChange={(e) => onChange({ ...config, attention_label: e.target.value })}
           className="bg-muted text-foreground"
         />

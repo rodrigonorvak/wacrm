@@ -2,7 +2,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const LEAD_SILENCE_TRIGGER = 'lead_silence'
 export const DEFAULT_SILENCE_MINUTES = 120
-export const DEFAULT_ATTENTION_LABEL = 'Aguardando resposta'
+export const LEGACY_ATTENTION_LABEL = 'Aguardando resposta'
+export const DEFAULT_ATTENTION_LABEL = 'Respondeu!'
+
+export function attentionCaption(
+  label: string | null | undefined,
+  fallback = DEFAULT_ATTENTION_LABEL,
+): string {
+  const text = label?.trim() ?? ''
+  if (!text || text === LEGACY_ATTENTION_LABEL) return fallback
+  return text
+}
 
 export interface LeadSilenceConfig {
   builtin: true
@@ -59,10 +69,9 @@ function asConfig(value: unknown): LeadSilenceConfig {
   return {
     builtin: true,
     silence_minutes: Number.isFinite(minutes) && minutes > 0 ? minutes : DEFAULT_SILENCE_MINUTES,
-    attention_label:
-      typeof raw.attention_label === 'string' && raw.attention_label.trim()
-        ? raw.attention_label.trim()
-        : DEFAULT_ATTENTION_LABEL,
+    attention_label: attentionCaption(
+      typeof raw.attention_label === 'string' ? raw.attention_label : null,
+    ),
     pipeline_id: typeof raw.pipeline_id === 'string' ? raw.pipeline_id : '',
     source_stage_id: typeof raw.source_stage_id === 'string' ? raw.source_stage_id : '',
     destination_stage_id:
@@ -274,7 +283,10 @@ export async function onCustomerReplied(
   for (const cfg of configs) {
     const { data: flagged } = await db
       .from('deals')
-      .update({ needs_attention: true, attention_label: cfg.attention_label })
+      .update({
+        needs_attention: true,
+        attention_label: cfg.attention_label,
+      })
       .eq('account_id', accountId)
       .eq('contact_id', contactId)
       .eq('pipeline_id', cfg.pipeline_id)
@@ -337,7 +349,28 @@ async function notifyLeadAwaiting(
   }
 }
 
+async function renameLegacyAttentionLabel(db: SupabaseClient, accountId: string): Promise<void> {
+  const { data } = await db
+    .from('automations')
+    .select('id, trigger_config')
+    .eq('account_id', accountId)
+    .eq('trigger_type', LEAD_SILENCE_TRIGGER)
+  for (const row of data ?? []) {
+    const config = (row.trigger_config ?? {}) as Record<string, unknown>
+    if (config.attention_label !== LEGACY_ATTENTION_LABEL) continue
+    const { error } = await db
+      .from('automations')
+      .update({
+        trigger_config: { ...config, attention_label: DEFAULT_ATTENTION_LABEL },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', row.id)
+    if (error) console.error('[lead-silence] label rename failed:', error.message)
+  }
+}
+
 export async function sweepLeadSilence(db: SupabaseClient, accountId: string): Promise<number> {
+  await renameLegacyAttentionLabel(db, accountId)
   const configs = await activeConfigs(db, accountId)
   let moved = 0
   const now = new Date()

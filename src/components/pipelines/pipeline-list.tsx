@@ -1,6 +1,7 @@
 "use client";
 
 import { AdSourceBadge } from "@/components/inbox/ad-source-badge";
+import { attentionCaption } from "@/lib/automations/lead-silence";
 import { visibleLeadSource } from "@/lib/integrations/source-display";
 
 import { CalendarClock, CalendarDays } from "lucide-react";
@@ -80,7 +81,7 @@ export function PipelineList({
                       <span className="mb-1 flex flex-wrap gap-1">
                         {deal.needs_attention && (
                           <span className="inline-flex h-4 max-w-full items-center rounded-full border border-orange-300/80 bg-orange-500/10 px-2 text-[10px] font-semibold leading-none text-orange-700">
-                            <span className="truncate">{deal.attention_label?.trim() || t("awaitingReply")}</span>
+                            <span className="truncate">{attentionCaption(deal.attention_label, t("awaitingReply"))}</span>
                           </span>
                         )}
                         {deal.contact?.has_ad_referral && <AdSourceBadge />}
