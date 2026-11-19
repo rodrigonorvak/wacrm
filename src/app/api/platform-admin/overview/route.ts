@@ -89,7 +89,7 @@ export async function GET(request: Request) {
     }
 
     const [contacts, deals, appointments, messages, broadcasts, emails] = await Promise.all([
-      loadRows(admin, "contacts", "account_id", accountIds, "created_at", from, to),
+      loadRows(admin, "contacts", "account_id, has_ad_referral", accountIds, "created_at", from, to),
       loadRows(admin, "deals", "account_id, value, stage:pipeline_stages(name)", accountIds, "created_at", from, to),
       loadRows(admin, "deals", "account_id", accountIds, "scheduled_date", dayKey(from), dayKey(to), true),
       loadRows(admin, "scheduled_whatsapp_messages", "account_id", accountIds, "scheduled_at", from, to),
@@ -107,7 +107,10 @@ export async function GET(request: Request) {
     ].filter((item): item is string => Boolean(item));
 
     const activity: ActivityInput = {
-      contacts: contacts.rows.map((row) => ({ account_id: String(row.account_id) })),
+      contacts: contacts.rows.map((row) => ({
+        account_id: String(row.account_id),
+        ad: row.has_ad_referral === true,
+      })),
       deals: deals.rows.map((row) => ({
         account_id: String(row.account_id),
         value: Number(row.value) || 0,

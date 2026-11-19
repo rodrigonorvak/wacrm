@@ -225,6 +225,8 @@
       "greetingHint": "오늘의 CRM 요약입니다.",
       "activeConversations": "진행 중인 대화",
       "newContactsToday": "오늘의 신규 연락처",
+      "adLeadsToday": "광고 리드",
+      "organicLeadsToday": "자연 유입 리드",
       "openDealsValue": "진행 중인 딜 금액",
       "messagesSentToday": "오늘 보낸 메시지",
       "newTodayVsYesterday": "어제 대비 신규",

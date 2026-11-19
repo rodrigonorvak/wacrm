@@ -225,6 +225,8 @@
       "greetingHint": "Here's your CRM summary for today.",
       "activeConversations": "Active Conversations",
       "newContactsToday": "New Contacts Today",
+      "adLeadsToday": "Ad leads",
+      "organicLeadsToday": "Organic leads",
       "openDealsValue": "Open Deals Value",
       "messagesSentToday": "Messages Sent Today",
       "newTodayVsYesterday": "new today vs yesterday",

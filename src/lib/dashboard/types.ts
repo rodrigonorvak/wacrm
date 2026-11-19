@@ -10,6 +10,8 @@ export interface MetricDelta {
 export interface MetricsBundle {
   activeConversations: MetricDelta
   newContactsToday: MetricDelta
+  adLeadsToday: MetricDelta
+  organicLeadsToday: MetricDelta
   openDealsValue: number
   openDealsCount: number
   messagesSentToday: MetricDelta

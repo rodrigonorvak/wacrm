@@ -815,6 +815,8 @@
       "greetingHint": "Aqui está o resumo do seu CRM hoje.",
       "activeConversations": "Conversas ativas",
       "newContactsToday": "Novos contatos hoje",
+      "adLeadsToday": "Leads de anúncio",
+      "organicLeadsToday": "Leads orgânicos",
       "openDealsValue": "Valor dos negócios abertos",
       "messagesSentToday": "Mensagens enviadas hoje",
       "newTodayVsYesterday": "novos hoje em relação a ontem",

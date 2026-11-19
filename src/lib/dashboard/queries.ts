@@ -39,6 +39,10 @@ export async function loadMetrics(db: DB): Promise<MetricsBundle> {
     newConvYesterday,
     newContactsToday,
     newContactsYesterday,
+    adLeadsToday,
+    adLeadsYesterday,
+    organicLeadsToday,
+    organicLeadsYesterday,
     openDeals,
     messagesToday,
     messagesYesterday,
@@ -59,6 +63,28 @@ export async function loadMetrics(db: DB): Promise<MetricsBundle> {
     db
       .from('contacts')
       .select('id', { count: 'exact', head: true })
+      .gte('created_at', yesterdayStart)
+      .lt('created_at', todayStart),
+    db
+      .from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .eq('has_ad_referral', true)
+      .gte('created_at', todayStart),
+    db
+      .from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .eq('has_ad_referral', true)
+      .gte('created_at', yesterdayStart)
+      .lt('created_at', todayStart),
+    db
+      .from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .or('has_ad_referral.eq.false,has_ad_referral.is.null')
+      .gte('created_at', todayStart),
+    db
+      .from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .or('has_ad_referral.eq.false,has_ad_referral.is.null')
       .gte('created_at', yesterdayStart)
       .lt('created_at', todayStart),
     db.from('deals').select('value, status').eq('status', 'open'),
@@ -89,6 +115,14 @@ export async function loadMetrics(db: DB): Promise<MetricsBundle> {
     newContactsToday: {
       current: newContactsToday.count ?? 0,
       previous: newContactsYesterday.count ?? 0,
+    },
+    adLeadsToday: {
+      current: adLeadsToday.count ?? 0,
+      previous: adLeadsYesterday.count ?? 0,
+    },
+    organicLeadsToday: {
+      current: organicLeadsToday.count ?? 0,
+      previous: organicLeadsYesterday.count ?? 0,
     },
     openDealsValue,
     openDealsCount: openDealsRows.length,

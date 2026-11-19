@@ -4,7 +4,11 @@ import { summarizeAccountActivity } from "./account-activity";
 describe("summarizeAccountActivity", () => {
   it("counts only the requested account and groups deal value by stage", () => {
     const summary = summarizeAccountActivity("a1", {
-      contacts: [{ account_id: "a1" }, { account_id: "a1" }, { account_id: "a2" }],
+      contacts: [
+        { account_id: "a1", ad: true },
+        { account_id: "a1" },
+        { account_id: "a2", ad: true },
+      ],
       deals: [
         { account_id: "a1", value: 100, stage: "Novo" },
         { account_id: "a1", value: 250.5, stage: "Ganho" },
@@ -20,6 +24,8 @@ describe("summarizeAccountActivity", () => {
 
     expect(summary).toEqual({
       leads: 2,
+      leads_ad: 1,
+      leads_organic: 1,
       appointments: 1,
       broadcasts: 12,
       emails: 1,

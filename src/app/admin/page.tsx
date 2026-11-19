@@ -27,6 +27,8 @@ interface OverviewAccount {
   members: Array<{ full_name: string | null; email: string | null; photo_url: string | null }>;
   activity: {
     leads: number;
+    leads_ad: number;
+    leads_organic: number;
     appointments: number;
     broadcasts: number;
     emails: number;
@@ -166,8 +168,9 @@ export default function PlatformOverviewPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                <Metric label="Leads" value={String(account.activity.leads)} />
+              <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <Metric label="Leads de anúncio" value={String(account.activity.leads_ad)} />
+                <Metric label="Leads orgânicos" value={String(account.activity.leads_organic)} />
                 <Metric label="Valor dos negócios" value={money.format(account.activity.deal_value)} />
                 <Metric label="Agendamentos" value={String(account.activity.appointments)} />
                 <Metric label="Disparos" value={String(account.activity.broadcasts)} />

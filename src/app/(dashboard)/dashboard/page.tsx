@@ -9,6 +9,8 @@ import {
   UserPlus,
   Banknote,
   Send,
+  Megaphone,
+  Leaf,
 } from 'lucide-react'
 
 import {
@@ -141,9 +143,9 @@ export default function DashboardPage() {
         <p className="shrink-0 text-sm text-muted-foreground capitalize">{today}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {metricsLoading || !metrics ? (
-          Array.from({ length: 4 }).map((_, i) => (
+          Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} className="h-[7.5rem]" />
           ))
         ) : (
@@ -172,6 +174,34 @@ export default function DashboardPage() {
                   metrics.newContactsToday.current - metrics.newContactsToday.previous,
                 label: deltaLabel(
                   metrics.newContactsToday.current - metrics.newContactsToday.previous,
+                  t('vsYesterday'),
+                  t('noChange', { suffix: t('vsYesterday') })
+                ),
+              }}
+            />
+            <MetricCard
+              title={t('adLeadsToday')}
+              value={metrics.adLeadsToday.current.toLocaleString()}
+              icon={Megaphone}
+              tone="primary"
+              delta={{
+                sign: metrics.adLeadsToday.current - metrics.adLeadsToday.previous,
+                label: deltaLabel(
+                  metrics.adLeadsToday.current - metrics.adLeadsToday.previous,
+                  t('vsYesterday'),
+                  t('noChange', { suffix: t('vsYesterday') })
+                ),
+              }}
+            />
+            <MetricCard
+              title={t('organicLeadsToday')}
+              value={metrics.organicLeadsToday.current.toLocaleString()}
+              icon={Leaf}
+              tone="emerald"
+              delta={{
+                sign: metrics.organicLeadsToday.current - metrics.organicLeadsToday.previous,
+                label: deltaLabel(
+                  metrics.organicLeadsToday.current - metrics.organicLeadsToday.previous,
                   t('vsYesterday'),
                   t('noChange', { suffix: t('vsYesterday') })
                 ),

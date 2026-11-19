@@ -1,5 +1,7 @@
 export interface ActivityContact {
   account_id: string;
+  /** True when the contact carries the Anúncio label. */
+  ad?: boolean;
 }
 
 export interface ActivityDeal {
@@ -15,6 +17,8 @@ export interface ActivityBroadcast {
 
 export interface AccountActivity {
   leads: number;
+  leads_ad: number;
+  leads_organic: number;
   appointments: number;
   broadcasts: number;
   emails: number;
@@ -40,8 +44,13 @@ export function summarizeAccountActivity(accountId: string, input: ActivityInput
     stages.set(deal.stage, current);
   }
 
+  const contacts = input.contacts.filter((row) => row.account_id === accountId);
+  const leadsAd = contacts.filter((row) => row.ad).length;
+
   return {
-    leads: input.contacts.filter((row) => row.account_id === accountId).length,
+    leads: contacts.length,
+    leads_ad: leadsAd,
+    leads_organic: contacts.length - leadsAd,
     appointments: input.appointments.filter((row) => row.account_id === accountId).length,
     broadcasts: input.broadcasts
       .filter((row) => row.account_id === accountId)
