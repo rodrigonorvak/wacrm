@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -95,10 +96,10 @@ export function NotificationRise() {
     router.push("/notifications");
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0 || typeof document === "undefined") return null;
 
-  return (
-    <div className="pointer-events-none fixed bottom-24 right-4 z-50 flex w-[min(20rem,calc(100vw-2rem))] flex-col-reverse gap-2 lg:bottom-6">
+  return createPortal(
+    <div className="pointer-events-none fixed bottom-20 left-3 z-[80] flex w-[min(18rem,calc(100vw-1.5rem))] flex-col-reverse gap-2 lg:bottom-4 lg:w-56">
       {items.map((notice, index) => (
         <article
           key={notice.id}
@@ -125,6 +126,7 @@ export function NotificationRise() {
           </div>
         </article>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
