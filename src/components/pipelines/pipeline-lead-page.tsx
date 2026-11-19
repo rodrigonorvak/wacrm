@@ -137,6 +137,7 @@ function toDateTimeInputValue(date: Date): string {
 
 export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
   const tScheduleDialog = useTranslations("Pipelines.scheduleDialog");
+  const tList = useTranslations("Pipelines.list");
   const router = useRouter();
   const supabase = createClient();
   const { accountId, user } = useAuth();
@@ -808,6 +809,11 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
           <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="size-4" /> Criado em {formatDate(deal.created_at)}
           </p>
+          {deal.first_responder?.full_name && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {tList("firstRespondedBy", { name: deal.first_responder.full_name })}
+            </p>
+          )}
           {deal.scheduled_date && (
             <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-sm font-semibold text-white">
               <CalendarClock className="size-4" /> Agendado para{" "}

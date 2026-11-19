@@ -37,4 +37,19 @@ describe("pipeline ad indicator", () => {
   it("preserves other sources", () => {
     expect(render(false, "Site")).toContain("Site");
   });
+
+  it("keeps the first attendant off the closed card", () => {
+    const deal = {
+      id: "deal", title: "Contato", created_at: "2026-01-01T12:00:00Z",
+      contact: { id: "contact" },
+      first_responder: { full_name: "Patricia" },
+    } as Deal;
+    const html = renderToStaticMarkup(
+      <NextIntlClientProvider locale="pt-BR" messages={messages}>
+        <DealCard deal={deal} onEdit={() => {}} />
+      </NextIntlClientProvider>,
+    );
+    expect(html).not.toContain("Patricia");
+    expect(html).not.toContain("Respondido por");
+  });
 });

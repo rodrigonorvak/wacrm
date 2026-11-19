@@ -145,11 +145,6 @@ export function DealCard({
           {detail}
         </p>
       ))}
-      {deal.first_responder?.full_name && (
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {t("firstRespondedBy", { name: deal.first_responder.full_name })}
-        </p>
-      )}
       {customDetails.map((detail) => (
         <p key={detail} className="mt-1 truncate text-xs text-muted-foreground">
           {detail}
