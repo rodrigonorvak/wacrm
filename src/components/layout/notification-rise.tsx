@@ -99,30 +99,30 @@ export function NotificationRise() {
   if (items.length === 0 || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed bottom-20 left-3 z-[80] flex w-[min(18rem,calc(100vw-1.5rem))] flex-col-reverse gap-2 lg:bottom-4 lg:w-56">
+    <div className="pointer-events-none fixed bottom-20 left-3 z-[80] flex w-[min(18rem,calc(100vw-1.5rem))] flex-col-reverse gap-2 lg:bottom-24 lg:w-56">
       {items.map((notice, index) => (
         <article
           key={notice.id}
-          className={`notice-rise pointer-events-auto rounded-2xl border bg-white p-3 shadow-[0_12px_32px_rgb(15_23_42_/_16%)] ${
-            notice.type === "lead_awaiting" ? "border-orange-200" : "border-[#e8eef5]"
-          }`}
+          className="notice-rise pointer-events-auto"
           style={{ animationDelay: `${index * 70}ms` }}
         >
-          <div className="flex items-start gap-2">
-            <button type="button" onClick={() => open(notice)} className="min-w-0 flex-1 text-left">
-              <p className="truncate text-sm font-semibold text-foreground">{notice.title}</p>
-              {notice.body ? (
-                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notice.body}</p>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              aria-label="Fechar aviso"
-              onClick={() => void markRead(notice.id)}
-              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <X className="size-3.5" />
-            </button>
+          <div className="notice-pulse rounded-2xl border bg-white p-3">
+            <div className="flex items-start gap-2">
+              <button type="button" onClick={() => open(notice)} className="min-w-0 flex-1 text-left">
+                <p className="truncate text-sm font-semibold text-foreground">{notice.title}</p>
+                {notice.body ? (
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{notice.body}</p>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                aria-label="Fechar aviso"
+                onClick={() => void markRead(notice.id)}
+                className="shrink-0 rounded-md p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
         </article>
       ))}

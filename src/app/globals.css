@@ -534,8 +534,23 @@ html[data-visual="glass"] .crm-mobile-tab-active {
   }
 }
 
+@keyframes notice-pulse {
+  0%, 100% {
+    border-color: rgb(74 222 128 / 45%);
+    box-shadow: 0 0 6px rgb(34 197 94 / 22%), 0 0 14px rgb(34 197 94 / 10%);
+  }
+  50% {
+    border-color: rgb(74 222 128 / 80%);
+    box-shadow: 0 0 10px rgb(34 197 94 / 40%), 0 0 22px rgb(34 197 94 / 18%);
+  }
+}
+
 .notice-rise {
   animation: notice-rise 0.45s ease-out both;
+}
+
+.notice-pulse {
+  animation: notice-pulse 2.6s ease-in-out infinite;
 }
 
 @layer base {
