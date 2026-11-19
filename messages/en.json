@@ -765,7 +765,8 @@
       "stage": "Stage",
       "createdAt": "Created",
       "empty": "No deals match these filters.",
-      "firstRespondedBy": "Started by {name}"
+      "firstRespondedBy": "Started by {name}",
+      "awaitingReply": "Awaiting reply"
     },
     "page": {
       "selectPipeline": "Select Pipeline",
@@ -788,9 +789,11 @@
       "defaultPipelineName": "Sales Pipeline",
       "defaultStages": {
         "newLead": "New Lead",
+        "stoppedReplying": "Stopped replying",
         "qualified": "Qualified",
         "proposalSent": "Proposal Sent",
         "negotiation": "Negotiation",
+        "appointment": "Appointment",
         "won": "Won"
       },
       "cancel": "Cancel",
@@ -1489,7 +1492,8 @@
         "deal_stage_entered": "Deal entered stage",
         "conversation_assigned": "Conversation Assigned",
         "tag_added": "Tag Added",
-        "time_based": "Time-Based"
+        "time_based": "Time-Based",
+        "lead_silence": "Stopped replying"
       },
       "activate": "Activate",
       "deactivate": "Deactivate",
@@ -1591,7 +1595,20 @@
         "time_based": {
           "label": "Time-Based",
           "hint": "On a recurring schedule"
+        },
+        "lead_silence": {
+          "label": "Lead stopped replying",
+          "hint": "After the team replies, move the lead if they stay silent. The card glows when they write again."
         }
+      },
+      "silence": {
+        "pipeline": "Pipeline",
+        "source": "Source column (new lead)",
+        "destination": "Destination column (stopped replying)",
+        "selectStage": "Choose a column",
+        "wait": "Hours without a reply",
+        "label": "Temporary label",
+        "consequence": "If the lead replies after reaching the destination column, the card glows orange and shows the label until the team replies. Manual moves still work."
       },
       "trigger": "Trigger",
       "triggerType": "Trigger type",

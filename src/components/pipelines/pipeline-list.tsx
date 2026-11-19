@@ -71,11 +71,18 @@ export function PipelineList({
                 <button
                   type="button"
                   onClick={() => onEditDeal(deal)}
-                  className="grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_150px] sm:items-center sm:gap-3"
+                  className={`grid w-full grid-cols-1 gap-2 px-4 py-3 text-left transition-colors hover:bg-muted/50 sm:grid-cols-[minmax(0,1fr)_minmax(140px,0.45fr)_150px] sm:items-center sm:gap-3 ${
+                    deal.needs_attention ? "deal-awaiting-glow" : ""
+                  }`}
                 >
                   <span className="min-w-0">
-                    {((deal.labels?.length ?? 0) > 0 || deal.contact?.has_ad_referral) && (
+                    {((deal.labels?.length ?? 0) > 0 || deal.contact?.has_ad_referral || deal.needs_attention) && (
                       <span className="mb-1 flex flex-wrap gap-1">
+                        {deal.needs_attention && (
+                          <span className="inline-flex h-4 max-w-full items-center rounded-full border border-orange-300/80 bg-orange-500/10 px-2 text-[10px] font-semibold leading-none text-orange-700">
+                            <span className="truncate">{deal.attention_label?.trim() || t("awaitingReply")}</span>
+                          </span>
+                        )}
                         {deal.contact?.has_ad_referral && <AdSourceBadge />}
                         {deal.labels?.map((label) => (
                           <span

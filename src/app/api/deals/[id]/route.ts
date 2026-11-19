@@ -61,6 +61,12 @@ export async function PATCH(
   for (const field of EDITABLE_FIELDS) {
     if (field in body) update[field] = body[field];
   }
+  if (
+    typeof update.stage_id === 'string' &&
+    update.stage_id !== deal.stage_id
+  ) {
+    update.silence_started_at = null
+  }
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'No editable fields provided' }, { status: 400 });
   }

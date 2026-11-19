@@ -9,6 +9,7 @@ import {
   validateStepsForActivation,
   validateTriggerForActivation,
 } from '@/lib/automations/validate'
+import { ensureLeadSilenceAutomation, LEAD_SILENCE_TRIGGER } from '@/lib/automations/lead-silence'
 
 export async function GET() {
   const supabase = await createClient()
@@ -24,6 +25,7 @@ export async function GET() {
     return toErrorResponse(error)
   }
   if (supportSession) {
+    await ensureLeadSilenceAutomation(supabaseAdmin(), { accountId: supportSession.accountId })
     const { data, error } = await supabaseAdmin()
       .from('automations')
       .select('*')
@@ -35,6 +37,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Could not load automations' }, { status: 500 })
     }
     return NextResponse.json({ automations: data ?? [] }, { headers: { 'Cache-Control': 'no-store' } })
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('account_id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+  if (profile?.account_id) {
+    await ensureLeadSilenceAutomation(supabaseAdmin(), { accountId: profile.account_id })
   }
 
   const { data, error } = await supabase
@@ -127,9 +138,11 @@ export async function POST(request: Request) {
   if (is_active) {
     const issues = [
       ...validateTriggerForActivation(effectiveTriggerType, effectiveTriggerConfig ?? {}),
-      ...validateStepsForActivation(
-        (effectiveSteps ?? []) as unknown as { step_type: string; step_config: Record<string, unknown> }[],
-      ),
+      ...(effectiveTriggerType === LEAD_SILENCE_TRIGGER
+        ? []
+        : validateStepsForActivation(
+            (effectiveSteps ?? []) as unknown as { step_type: string; step_config: Record<string, unknown> }[],
+          )),
     ]
     if (issues.length > 0) {
       return NextResponse.json(

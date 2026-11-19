@@ -84,19 +84,22 @@ import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
 // Spec-defined seed — name and color per the product spec.
 const SPEC_DEFAULT_STAGES = [
-  { nameKey: 'defaultStages.newLead', color: '#3b82f6', position: 0 }, // blue
-  { nameKey: 'defaultStages.qualified', color: '#eab308', position: 1 }, // yellow
-  { nameKey: 'defaultStages.proposalSent', color: '#f97316', position: 2 }, // orange
-  { nameKey: 'defaultStages.negotiation', color: '#8b5cf6', position: 3 }, // purple
-  { nameKey: 'defaultStages.won', color: '#22c55e', position: 4 }, // green
+  { nameKey: 'defaultStages.newLead', color: '#3b82f6', position: 0 },
+  { nameKey: 'defaultStages.stoppedReplying', color: '#f97316', position: 1 },
+  { nameKey: 'defaultStages.qualified', color: '#eab308', position: 2 },
+  { nameKey: 'defaultStages.proposalSent', color: '#fb923c', position: 3 },
+  { nameKey: 'defaultStages.negotiation', color: '#8b5cf6', position: 4 },
+  { nameKey: 'defaultStages.appointment', color: '#06b6d4', position: 5 },
+  { nameKey: 'defaultStages.won', color: '#22c55e', position: 6 },
 ] as const;
 
 const INTEGRATED_DEFAULT_STAGES = [
   { name: 'Novo Lead', color: '#3b82f6', position: 0, stage_type: 'lead' },
-  { name: 'Prospecção iniciada', color: '#eab308', position: 1 },
-  { name: 'Reunião', color: '#f97316', position: 2, stage_type: 'schedule' },
-  { name: 'Contrato a ser assinado', color: '#8b5cf6', position: 3 },
-  { name: 'Contrato pago', color: '#22c55e', position: 4, stage_type: 'purchase' },
+  { name: 'Parou de responder', color: '#f97316', position: 1 },
+  { name: 'Prospecção iniciada', color: '#eab308', position: 2 },
+  { name: 'Reunião', color: '#fb923c', position: 3, stage_type: 'schedule' },
+  { name: 'Contrato a ser assinado', color: '#8b5cf6', position: 4 },
+  { name: 'Contrato pago', color: '#22c55e', position: 5, stage_type: 'purchase' },
 ];
 
 const DEFAULT_ELEMENTOR_MAPPINGS = [
@@ -408,6 +411,11 @@ export default function PipelinesPage() {
         position: s.position,
       }));
       await supabase.from('pipeline_stages').insert(stagesPayload);
+      await fetch('/api/automations/lead-silence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipeline_id: pipeline.id }),
+      }).catch(() => undefined);
 
       return pipeline as Pipeline;
     }, [supabase, accountId, t]);
@@ -544,6 +552,27 @@ export default function PipelinesPage() {
     if (!selectedPipelineId) return;
     setDeals(await loadDeals(selectedPipelineId));
   }, [loadDeals, selectedPipelineId]);
+
+  useEffect(() => {
+    if (!selectedPipelineId) return;
+    let cancelled = false;
+    const tick = async (refreshAnyway: boolean) => {
+      const response = await fetch('/api/automations/lead-silence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sweep: true }),
+      }).catch(() => null);
+      if (cancelled || !response?.ok) return;
+      const body = (await response.json().catch(() => null)) as { moved?: number } | null;
+      if (refreshAnyway || (body?.moved ?? 0) > 0) await refreshDeals();
+    };
+    void tick(false);
+    const timer = window.setInterval(() => void tick(true), 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [selectedPipelineId, refreshDeals]);
 
   const saveDealStage = useCallback(
     async (
@@ -739,6 +768,13 @@ export default function PipelinesPage() {
     const { error: stagesError } = await supabase
       .from('pipeline_stages')
       .insert(stagesPayload);
+    if (!stagesError) {
+      await fetch('/api/automations/lead-silence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pipeline_id: pipeline.id }),
+      }).catch(() => undefined);
+    }
     if (stagesError) {
       console.error(
         'Failed to create integrated pipeline stages:',

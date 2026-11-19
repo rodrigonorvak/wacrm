@@ -12,6 +12,7 @@ import {
   matchesPlatformVerifyToken,
 } from '@/lib/whatsapp/platform-app'
 import { runAutomationsForTrigger } from '@/lib/automations/engine'
+import { onCustomerReplied } from '@/lib/automations/lead-silence'
 import { dispatchInboundToFlows } from '@/lib/flows/engine'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
@@ -802,6 +803,12 @@ async function processMessage(
       message.id
     )
     return
+  }
+
+  try {
+    await onCustomerReplied(supabaseAdmin(), accountId, contactRecord.id)
+  } catch (error) {
+    console.error('[lead-silence] customer reply failed:', error)
   }
 
   // Update conversation. The unread bump is done DB-side (migration 037's

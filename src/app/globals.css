@@ -509,6 +509,20 @@ html[data-visual="glass"] .crm-mobile-tab-active {
   backdrop-filter: blur(12px);
 }
 
+@keyframes deal-awaiting-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgb(249 115 22 / 28%), 0 0 8px rgb(249 115 22 / 18%);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgb(249 115 22 / 62%), 0 0 16px rgb(249 115 22 / 42%);
+  }
+}
+
+.deal-awaiting-glow {
+  border-color: rgb(251 146 60 / 70%);
+  animation: deal-awaiting-glow 2.6s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -217,6 +217,32 @@ export function validateTriggerForActivation(
     if (!nonEmpty(cfg.stage_id)) {
       issues.push({ path: 'trigger.stage_id', message: 'stage is required' })
     }
+  } else if (triggerType === 'lead_silence') {
+    if (!nonEmpty(cfg.pipeline_id)) {
+      issues.push({ path: 'trigger.pipeline_id', message: 'pipeline is required' })
+    }
+    if (!nonEmpty(cfg.source_stage_id)) {
+      issues.push({ path: 'trigger.source_stage_id', message: 'source stage is required' })
+    }
+    if (!nonEmpty(cfg.destination_stage_id)) {
+      issues.push({ path: 'trigger.destination_stage_id', message: 'destination stage is required' })
+    }
+    if (
+      nonEmpty(cfg.source_stage_id) &&
+      cfg.source_stage_id === cfg.destination_stage_id
+    ) {
+      issues.push({
+        path: 'trigger.destination_stage_id',
+        message: 'destination stage must be different from the source stage',
+      })
+    }
+    const minutes = Number(cfg.silence_minutes)
+    if (!Number.isFinite(minutes) || minutes < 1 || minutes > 10080) {
+      issues.push({
+        path: 'trigger.silence_minutes',
+        message: 'wait must be between 1 minute and 7 days',
+      })
+    }
   }
 
   return issues

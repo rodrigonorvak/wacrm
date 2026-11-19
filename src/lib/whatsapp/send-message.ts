@@ -36,6 +36,7 @@ import {
 } from '@/lib/whatsapp/interactive';
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { onAgentReplied } from '@/lib/automations/lead-silence';
 import {
   sanitizePhoneForMeta,
   isValidE164,
@@ -522,6 +523,14 @@ export async function sendMessageToConversation(
       updated_at: new Date().toISOString(),
     })
     .eq('id', conversationId);
+
+  if (!automated) {
+    try {
+      await onAgentReplied(db, accountId, contact.id);
+    } catch (error) {
+      console.error('[lead-silence] agent reply failed:', error);
+    }
+  }
 
   // Pause any active Flow run for this contact — the agent stepping in
   // is the strongest "yield, human is here" signal. Best-effort.

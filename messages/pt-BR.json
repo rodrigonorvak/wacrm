@@ -1154,7 +1154,8 @@
       "stage": "Etapa",
       "createdAt": "Criado em",
       "empty": "Nenhum lead corresponde aos filtros.",
-      "firstRespondedBy": "Atendimento iniciado por {name}"
+      "firstRespondedBy": "Atendimento iniciado por {name}",
+      "awaitingReply": "Aguardando resposta"
     },
     "page": {
       "addDeal": "Adicionar lead",
@@ -1172,9 +1173,11 @@
       "confirmPaidMove": "Salvar valor e mover lead",
       "defaultStages": {
         "newLead": "Novo lead",
+        "stoppedReplying": "Parou de responder",
         "qualified": "Qualificado",
         "proposalSent": "Proposta enviada",
         "negotiation": "Em negociação",
+        "appointment": "Agendamento",
         "won": "Ganho"
       }
     },
@@ -1645,7 +1648,8 @@
         "deal_stage_entered": "Negócio entrou na etapa",
         "conversation_assigned": "Conversa atribuída",
         "tag_added": "Etiqueta adicionada",
-        "time_based": "Agendamento"
+        "time_based": "Agendamento",
+        "lead_silence": "Parou de responder"
       },
       "activate": "Ativar",
       "deactivate": "Desativar",
@@ -1728,7 +1732,20 @@
         "time_based": {
           "label": "Agendamento por horário",
           "hint": "Executa em uma programação recorrente"
+        },
+        "lead_silence": {
+          "label": "Lead parou de responder",
+          "hint": "Depois que o atendimento responde, move o lead se ele ficar sem responder. Ao responder de novo, o card acende."
         }
+      },
+      "silence": {
+        "pipeline": "Funil",
+        "source": "Coluna de origem (novo lead)",
+        "destination": "Coluna de destino (parou de responder)",
+        "selectStage": "Escolha a coluna",
+        "wait": "Horas sem resposta",
+        "label": "Etiqueta temporária",
+        "consequence": "Se o lead responder depois de ir para a coluna de destino, o card acende com uma luz laranja e mostra a etiqueta até o atendimento responder. A movimentação manual continua valendo."
       },
       "keywords": "Palavras-chave",
       "keywordsHint": "Separe por vírgulas (ex.: olá, ajuda, comprar)",

@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/automations/admin-client'
 import { resumePendingExecution } from '@/lib/automations/engine'
 import type { AutomationContext } from '@/lib/automations/engine'
 import { dispatchScheduledMessages } from '@/lib/whatsapp/scheduled-dispatch'
+import { sweepAllLeadSilence } from '@/lib/automations/lead-silence'
 
 /**
  * Drain due `automation_pending_executions` rows. Meant to be hit
@@ -83,9 +84,16 @@ export async function GET(request: Request) {
     processed++
   }
 
+  let silenceMoved = 0
+  try {
+    silenceMoved = await sweepAllLeadSilence(admin)
+  } catch (error) {
+    console.error('[lead-silence] cron failed:', error)
+  }
+
   try {
     const scheduledMessagesProcessed = await dispatchScheduledMessages(admin)
-    return NextResponse.json({ processed, reminders_processed: reminderCount, scheduled_messages_processed: scheduledMessagesProcessed })
+    return NextResponse.json({ processed, reminders_processed: reminderCount, scheduled_messages_processed: scheduledMessagesProcessed, silence_moved: silenceMoved })
   } catch (error) {
     console.error('[scheduled-whatsapp] cron failed:', error)
     return NextResponse.json({ error: 'scheduled message processing failed', processed, reminders_processed: reminderCount }, { status: 500 })

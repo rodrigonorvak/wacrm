@@ -476,6 +476,11 @@ export interface Deal {
   assigned_to?: string;
   first_response_by?: string | null;
   first_response_at?: string | null;
+  /** Set when the team replied and the lead has not answered yet. */
+  silence_started_at?: string | null;
+  /** Lead wrote again after landing in the stopped-reply column. */
+  needs_attention?: boolean;
+  attention_label?: string | null;
   title: string;
   value: number;
   currency?: string;
@@ -606,7 +611,9 @@ export type AutomationTriggerType =
   | 'time_based'
   /** Customer tapped a reply button / list row whose id matches; lets
    *  multi-step menus be chained across automations. */
-  | 'interactive_reply';
+  | 'interactive_reply'
+  /** After the team replies, move the deal if the lead stays silent. */
+  | 'lead_silence';
 
 export type AutomationStepType =
   | 'send_message'

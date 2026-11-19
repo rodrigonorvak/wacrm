@@ -12,6 +12,7 @@ import {
   validateStepsForActivation,
   validateTriggerForActivation,
 } from '@/lib/automations/validate'
+import { LEAD_SILENCE_TRIGGER } from '@/lib/automations/lead-silence'
 
 export async function GET(
   _request: Request,
@@ -146,7 +147,9 @@ export async function PATCH(
       : await loadStepsTree(id)
     const issues = [
       ...validateTriggerForActivation(mergedTriggerType, mergedTriggerConfig),
-      ...validateStepsForActivation(mergedSteps),
+      ...(mergedTriggerType === LEAD_SILENCE_TRIGGER
+        ? []
+        : validateStepsForActivation(mergedSteps)),
     ]
     if (issues.length > 0) {
       return NextResponse.json(

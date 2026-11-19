@@ -765,7 +765,8 @@
       "stage": "단계",
       "createdAt": "생성일",
       "empty": "필터에 맞는 딜이 없습니다.",
-      "firstRespondedBy": "{name}님이 상담을 시작했습니다"
+      "firstRespondedBy": "{name}님이 상담을 시작했습니다",
+      "awaitingReply": "답변 대기"
     },
     "page": {
       "selectPipeline": "파이프라인 선택",
@@ -788,9 +789,11 @@
       "defaultPipelineName": "영업 파이프라인",
       "defaultStages": {
         "newLead": "신규 리드",
+        "stoppedReplying": "응답 중단",
         "qualified": "적격 리드",
         "proposalSent": "제안서 발송",
         "negotiation": "협상",
+        "appointment": "예약",
         "won": "성사"
       },
       "cancel": "취소",
@@ -1489,7 +1492,8 @@
         "deal_stage_entered": "딜이 단계에 진입",
         "conversation_assigned": "대화 배정",
         "tag_added": "태그 추가",
-        "time_based": "시간 기반"
+        "time_based": "시간 기반",
+        "lead_silence": "응답 중단"
       },
       "activate": "활성화",
       "deactivate": "비활성화",
@@ -1591,7 +1595,20 @@
         "time_based": {
           "label": "시간 기반",
           "hint": "반복 일정에 따라"
+        },
+        "lead_silence": {
+          "label": "리드가 응답을 멈춤",
+          "hint": "상담원이 답한 뒤 리드가 침묵하면 카드를 옮깁니다. 다시 쓰면 카드가 빛납니다."
         }
+      },
+      "silence": {
+        "pipeline": "파이프라인",
+        "source": "출발 열 (신규 리드)",
+        "destination": "도착 열 (응답 중단)",
+        "selectStage": "열 선택",
+        "wait": "응답 없는 시간",
+        "label": "임시 라벨",
+        "consequence": "도착 열에 있는 리드가 다시 쓰면 카드가 주황빛으로 빛나고, 상담원이 답할 때까지 라벨이 보입니다. 수동 이동도 그대로 됩니다."
       },
       "trigger": "트리거",
       "triggerType": "트리거 유형",

@@ -157,6 +157,7 @@ const TRIGGER_OPTIONS: { value: AutomationTriggerType }[] = [
   { value: "conversation_assigned" },
   { value: "tag_added" },
   { value: "time_based" },
+  { value: "lead_silence" },
 ]
 
 function cid(): string {
@@ -853,7 +854,12 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
               onConfigChange={(c) => patchTop("trigger_config", c)}
               t={t}
             />
-            <StepList
+            {state.trigger_type === "lead_silence" ? (
+              <p className="mt-4 max-w-md text-center text-xs text-muted-foreground">
+                {t("silence.consequence")}
+              </p>
+            ) : null}
+            {state.trigger_type === "lead_silence" ? null : <StepList
               steps={state.steps}
               basePath={[]}
               scope={{ kind: "root" }}
@@ -863,7 +869,7 @@ export function AutomationBuilder({ initial }: { initial: BuilderInitial }) {
               addStepAt={addStepAt}
               deleteStepAt={deleteStepAt}
               moveStepAt={moveStepAt}
-            />
+            />}
           </ResourcesProvider>
         </div>
       </div>
@@ -892,7 +898,7 @@ function TriggerCard({
   return (
     // Card width: full on mobile, fixed 320px on sm+. The canvas wrapper
     // (max-w-2xl + px-4) keeps this tidy on tablet/desktop.
-    <div className="z-10 w-full max-w-[320px] sm:w-80">
+    <div className={cn("z-10 w-full max-w-[320px] sm:w-80", type === "lead_silence" && "max-w-md sm:w-[28rem]")}>
       <div className="rounded-lg border border-border border-l-4 border-l-blue-500 bg-card shadow-lg">
         <button
           type="button"
@@ -981,9 +987,100 @@ function TriggerCard({
                 </p>
               </div>
             )}
+            {type === "lead_silence" && (
+              <SilenceConfig config={config} onChange={onConfigChange} t={t} />
+            )}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function SilenceConfig({
+  config,
+  onChange,
+  t,
+}: {
+  config: Record<string, unknown>
+  onChange: (c: Record<string, unknown>) => void
+  t: ReturnType<typeof useTranslations>
+}) {
+  const { pipelines, stages } = useResources()
+  const pipelineId = (config.pipeline_id as string) ?? ""
+  const sourceId = (config.source_stage_id as string) ?? ""
+  const destinationId = (config.destination_stage_id as string) ?? ""
+  const hours = Math.max(1, Math.round(Number(config.silence_minutes ?? 120) / 60))
+  const stageOptions = stages.filter((stage) => stage.pipeline_id === pipelineId)
+
+  function setPipeline(nextPipelineId: string) {
+    onChange({
+      ...config,
+      builtin: true,
+      pipeline_id: nextPipelineId,
+      source_stage_id: "",
+      destination_stage_id: "",
+      silence_minutes: hours * 60,
+      attention_label: (config.attention_label as string) || "Aguardando resposta",
+    })
+  }
+
+  return (
+    <div className="space-y-2">
+      <FieldBlock label={t("silence.pipeline")}>
+        <select value={pipelineId} onChange={(e) => setPipeline(e.target.value)} className={SELECT_CLASS}>
+          <option value="">{t("pipelines.selectPipeline")}</option>
+          {pipelines.map((pipeline) => (
+            <option key={pipeline.id} value={pipeline.id}>{pipeline.name}</option>
+          ))}
+        </select>
+      </FieldBlock>
+      <FieldBlock label={t("silence.source")}>
+        <select
+          value={sourceId}
+          onChange={(e) => onChange({ ...config, source_stage_id: e.target.value })}
+          className={SELECT_CLASS}
+        >
+          <option value="">{t("silence.selectStage")}</option>
+          {stageOptions.map((stage) => (
+            <option key={stage.id} value={stage.id}>{stage.name}</option>
+          ))}
+        </select>
+      </FieldBlock>
+      <FieldBlock label={t("silence.destination")}>
+        <select
+          value={destinationId}
+          onChange={(e) => onChange({ ...config, destination_stage_id: e.target.value })}
+          className={SELECT_CLASS}
+        >
+          <option value="">{t("silence.selectStage")}</option>
+          {stageOptions.map((stage) => (
+            <option key={stage.id} value={stage.id}>{stage.name}</option>
+          ))}
+        </select>
+      </FieldBlock>
+      <FieldBlock label={t("silence.wait")}>
+        <Input
+          type="number"
+          min={1}
+          max={168}
+          value={hours}
+          onChange={(e) =>
+            onChange({
+              ...config,
+              silence_minutes: Math.min(168, Math.max(1, Number(e.target.value) || 1)) * 60,
+            })
+          }
+          className="bg-muted text-foreground"
+        />
+      </FieldBlock>
+      <FieldBlock label={t("silence.label")}>
+        <Input
+          value={(config.attention_label as string) ?? "Aguardando resposta"}
+          onChange={(e) => onChange({ ...config, attention_label: e.target.value })}
+          className="bg-muted text-foreground"
+        />
+      </FieldBlock>
     </div>
   )
 }
