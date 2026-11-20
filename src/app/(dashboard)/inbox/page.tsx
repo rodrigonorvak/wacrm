@@ -46,6 +46,7 @@ function InboxPageInner() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] =
     useState<Conversation | null>(null);
+  const openedAttentionFor = useRef<string | null>(null);
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [leadDataRefreshToken, setLeadDataRefreshToken] = useState(0);
@@ -176,6 +177,15 @@ function InboxPageInner() {
       }
     }
   }, []);
+
+  // Opening the thread itself clears a pulsing reply. The pipeline card
+  // and the lead-page preview never call this.
+  useEffect(() => {
+    const conversationId = activeConversation?.id
+    if (!conversationId || openedAttentionFor.current === conversationId) return
+    openedAttentionFor.current = conversationId
+    void fetch(`/api/conversations/${conversationId}/opened`, { method: "POST" }).catch(() => undefined)
+  }, [activeConversation?.id])
 
   // Check WhatsApp connection status on mount
   useEffect(() => {

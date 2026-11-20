@@ -82,6 +82,7 @@ type AttentionDismissalRow = {
   id: string;
   dismissed_by: string | null;
   dismissed_at: string;
+  kind?: "dismissed" | "lead_replied" | "inbox_opened" | null;
 };
 type AttentionDismissal = AttentionDismissalRow & { actor_name: string | null };
 type EmailHistoryEntry = {
@@ -412,7 +413,7 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
         const rows = (historyResult.data as unknown as DealStageHistoryRow[] | null) ?? [];
         const dismissalResult = await supabase
           .from("deal_attention_dismissals")
-          .select("id, dismissed_by, dismissed_at")
+          .select("id, dismissed_by, dismissed_at, kind")
           .eq("deal_id", deal.id)
           .order("dismissed_at", { ascending: true });
         if (dismissalResult.error) {
@@ -1071,9 +1072,17 @@ export function PipelineLeadPage({ dealId, returnTo }: PipelineLeadPageProps) {
                     <article className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
                       {item.kind === "attention" ? (
                         <>
-                          <p className="text-foreground">Retirou o aviso de resposta</p>
+                          <p className="text-foreground">
+                            {item.entry.kind === "lead_replied"
+                              ? "O lead respondeu"
+                              : item.entry.kind === "inbox_opened"
+                                ? "Abriu a conversa na caixa de entrada"
+                                : "Retirou o aviso de resposta"}
+                          </p>
                           <p className="mt-1 text-xs text-muted-foreground">
-                            {item.entry.actor_name || (item.entry.dismissed_by ? "Equipe" : "Sistema")}
+                            {item.entry.kind === "lead_replied"
+                              ? "Lead"
+                              : item.entry.actor_name || (item.entry.dismissed_by ? "Equipe" : "Sistema")}
                             <span aria-hidden="true"> · </span>
                             <time dateTime={item.entry.dismissed_at}>{formatHistoryDateTime(item.entry.dismissed_at)}</time>
                           </p>

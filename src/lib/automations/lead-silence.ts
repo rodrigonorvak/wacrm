@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { supabaseAdmin } from '@/lib/automations/admin-client'
 
 export const LEAD_SILENCE_TRIGGER = 'lead_silence'
 export const DEFAULT_SILENCE_MINUTES = 120
@@ -231,6 +232,7 @@ export async function onAgentReplied(
   db: SupabaseClient,
   accountId: string,
   contactId: string,
+  actorUserId?: string | null,
 ): Promise<void> {
   const { data: deals } = await db
     .from('deals')
@@ -257,13 +259,25 @@ export async function onAgentReplied(
   const configs = await activeConfigs(db, accountId)
   const now = new Date().toISOString()
   for (const cfg of configs) {
-    await db
+    const clock = await db
       .from('deals')
-      .update({ silence_started_at: now })
+      .update({
+        silence_started_at: now,
+        ...(actorUserId ? { silence_started_by: actorUserId } : {}),
+      })
       .eq('account_id', accountId)
       .eq('contact_id', contactId)
       .eq('pipeline_id', cfg.pipeline_id)
       .eq('stage_id', cfg.source_stage_id)
+    if (clock.error && actorUserId && /silence_started_by/i.test(clock.error.message)) {
+      await db
+        .from('deals')
+        .update({ silence_started_at: now })
+        .eq('account_id', accountId)
+        .eq('contact_id', contactId)
+        .eq('pipeline_id', cfg.pipeline_id)
+        .eq('stage_id', cfg.source_stage_id)
+    }
   }
 }
 
@@ -273,11 +287,18 @@ export async function onCustomerReplied(
   accountId: string,
   contactId: string,
 ): Promise<void> {
-  await db
+  const cleared = await db
     .from('deals')
-    .update({ silence_started_at: null })
+    .update({ silence_started_at: null, silence_started_by: null })
     .eq('account_id', accountId)
     .eq('contact_id', contactId)
+  if (cleared.error && /silence_started_by/i.test(cleared.error.message)) {
+    await db
+      .from('deals')
+      .update({ silence_started_at: null })
+      .eq('account_id', accountId)
+      .eq('contact_id', contactId)
+  }
 
   const configs = await activeConfigs(db, accountId)
   for (const cfg of configs) {
@@ -294,7 +315,17 @@ export async function onCustomerReplied(
       .eq('stage_id', cfg.destination_stage_id)
       .select('id, title, pipeline_id, assigned_to')
     if (flagged?.length) {
-      await notifyLeadAwaiting(db, accountId, flagged as AwaitingDeal[], cfg.attention_label)
+      const deals = flagged as AwaitingDeal[]
+      await notifyLeadAwaiting(db, accountId, deals, cfg.attention_label)
+      const { error: eventError } = await db.from('deal_attention_dismissals').insert(
+        deals.map((deal) => ({
+          account_id: accountId,
+          deal_id: deal.id,
+          kind: 'lead_replied',
+          dismissed_by: null,
+        })),
+      )
+      if (eventError) console.error('[lead-silence] reply history failed:', eventError.message)
     }
   }
 }
@@ -370,25 +401,88 @@ async function renameLegacyAttentionLabel(db: SupabaseClient, accountId: string)
   }
 }
 
+async function attributeSilenceMoves(
+  dealIds: string[],
+  actors: Map<string, string | null>,
+  destinationStageId: string,
+): Promise<void> {
+  const admin = supabaseAdmin()
+  for (const dealId of dealIds) {
+    const actor = actors.get(dealId)
+    if (!actor) continue
+    const { data: history, error } = await admin
+      .from('deal_stage_history')
+      .select('id')
+      .eq('deal_id', dealId)
+      .eq('to_stage_id', destinationStageId)
+      .order('changed_at', { ascending: false })
+      .limit(1)
+    if (error) {
+      console.error('[lead-silence] history lookup failed:', error.message)
+      continue
+    }
+    const historyId = history?.[0]?.id as string | undefined
+    if (!historyId) continue
+    const { error: updateError } = await admin
+      .from('deal_stage_history')
+      .update({ changed_by: actor })
+      .eq('id', historyId)
+    if (updateError) console.error('[lead-silence] history actor failed:', updateError.message)
+  }
+}
+
 export async function sweepLeadSilence(db: SupabaseClient, accountId: string): Promise<number> {
   await renameLegacyAttentionLabel(db, accountId)
   const configs = await activeConfigs(db, accountId)
   let moved = 0
   const now = new Date()
   for (const cfg of configs) {
-    const { data, error } = await db
+    const { data: due, error: dueError } = await db
       .from('deals')
-      .update({ stage_id: cfg.destination_stage_id, silence_started_at: null })
+      .select('id, silence_started_by')
       .eq('account_id', accountId)
       .eq('pipeline_id', cfg.pipeline_id)
       .eq('stage_id', cfg.source_stage_id)
       .lte('silence_started_at', silenceCutoffIso(now, cfg.silence_minutes))
+    if (dueError) {
+      if (/silence_started_by/i.test(dueError.message)) {
+        const { data, error } = await db
+          .from('deals')
+          .update({ stage_id: cfg.destination_stage_id, silence_started_at: null })
+          .eq('account_id', accountId)
+          .eq('pipeline_id', cfg.pipeline_id)
+          .eq('stage_id', cfg.source_stage_id)
+          .lte('silence_started_at', silenceCutoffIso(now, cfg.silence_minutes))
+          .select('id')
+        if (error) console.error('[lead-silence] sweep failed:', error.message)
+        else moved += data?.length ?? 0
+      } else {
+        console.error('[lead-silence] sweep list failed:', dueError.message)
+      }
+      continue
+    }
+    const waiting = (due ?? []) as { id: string; silence_started_by: string | null }[]
+    if (waiting.length === 0) continue
+    const actors = new Map(waiting.map((deal) => [deal.id, deal.silence_started_by]))
+    const { data, error } = await db
+      .from('deals')
+      .update({
+        stage_id: cfg.destination_stage_id,
+        silence_started_at: null,
+        silence_started_by: null,
+      })
+      .in('id', waiting.map((deal) => deal.id))
       .select('id')
     if (error) {
       console.error('[lead-silence] sweep failed:', error.message)
       continue
     }
     moved += data?.length ?? 0
+    await attributeSilenceMoves(
+      (data ?? []).map((deal) => deal.id as string),
+      actors,
+      cfg.destination_stage_id,
+    )
   }
   return moved
 }

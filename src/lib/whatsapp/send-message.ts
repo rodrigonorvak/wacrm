@@ -526,7 +526,7 @@ export async function sendMessageToConversation(
 
   if (!automated) {
     try {
-      await onAgentReplied(db, accountId, contact.id);
+      await onAgentReplied(db, accountId, contact.id, crmAgentUserId);
     } catch (error) {
       console.error('[lead-silence] agent reply failed:', error);
     }

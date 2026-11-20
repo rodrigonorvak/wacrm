@@ -114,16 +114,16 @@ function inBounds(value: string | null | undefined, start: Date | null, end: Dat
 }
 
 /**
- * A lead that just replied in "Parou de responder" counts as activity now,
- * even when the card was created on an earlier day.
+ * A pulsing reply stays on the board in every date filter, including Hoje
+ * on the following days, until someone opens the inbox conversation.
  */
 export function dealMatchesDateBounds(
   deal: BoardDealTiming,
   start: Date | null,
   end: Date | null,
 ): boolean {
-  if (inBounds(deal.created_at, start, end)) return true
-  return Boolean(deal.needs_attention) && inBounds(deal.updated_at, start, end)
+  if (deal.needs_attention) return true
+  return inBounds(deal.created_at, start, end)
 }
 
 /** Replies float to the top. Everyone else stays in creation order, newest first. */

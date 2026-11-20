@@ -47,7 +47,14 @@ describe("pipeline today filter", () => {
       needs_attention: false,
     };
 
+    const stillPulsing = {
+      created_at: new Date(2026, 10, 18, 9).toISOString(),
+      updated_at: new Date(2026, 10, 18, 18).toISOString(),
+      needs_attention: true,
+    };
+
     expect(dealMatchesDateBounds(replied, bounds!.start, bounds!.end)).toBe(true);
+    expect(dealMatchesDateBounds(stillPulsing, bounds!.start, bounds!.end)).toBe(true);
     expect(dealMatchesDateBounds(quietYesterday, bounds!.start, bounds!.end)).toBe(false);
     expect(compareBoardDeals(older, replied)).toBeGreaterThan(0);
   });
