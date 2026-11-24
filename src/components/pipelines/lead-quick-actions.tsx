@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ScheduledMessageDialog } from "@/components/inbox/scheduled-message-dialog";
 import type { LucideIcon } from "lucide-react";
 import {
   AlarmClock,
+  BookOpenText,
   CalendarClock,
   ClipboardList,
   MessageCircle,
@@ -19,6 +21,15 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LeadQuickActionsProps {
   canManageLead: boolean;
@@ -66,16 +77,27 @@ export function LeadQuickActions({
   onDeleteLead,
 }: LeadQuickActionsProps) {
   const tScheduled = useTranslations("ScheduledMessages");
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const [scheduledMessageOpen, setScheduledMessageOpen] = useState(false);
+  const [scriptDialogOpen, setScriptDialogOpen] = useState(false);
   const cleanPhone = phone ? phoneDigits(phone) : "";
   const whatsappHref = conversationId
     ? `/inbox?c=${conversationId}`
     : cleanPhone
       ? `https://wa.me/${cleanPhone}`
       : undefined;
+  const scriptsInboxHref = conversationId
+    ? `/inbox?c=${conversationId}&scripts=1`
+    : undefined;
 
   const actions: QuickAction[] = [
+    {
+      label: "SCRIPT",
+      icon: BookOpenText,
+      color: "text-primary",
+      onClick: () => setScriptDialogOpen(true),
+    },
     { label: "Adicionar Nota", icon: MessageCircle, color: "text-blue-600", onClick: onAddNote, disabled: !canManageLead },
     { label: "Agendar Alerta", icon: AlarmClock, color: "text-orange-600", onClick: onScheduleAlert, disabled: !canManageLead },
     { label: tScheduled("title"), icon: CalendarClock, color: "text-blue-600", onClick: () => setScheduledMessageOpen(true), disabled: !contactId },
@@ -117,11 +139,10 @@ export function LeadQuickActions({
           aria-label="Ações do lead"
           className="flex max-h-[calc(100dvh-6rem)] flex-col items-end gap-2 overflow-y-auto p-1"
         >
-          {actions.map((action, index) => {
+          {actions.map((action) => {
             const Icon = action.icon;
-            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring animate-in fade-in-0 slide-in-from-bottom-1 duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:animate-none ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
+            const className = `inline-flex min-h-10 max-w-[min(21rem,calc(100vw-5rem))] items-center gap-2.5 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${action.disabled ? "pointer-events-none opacity-45" : ""}`;
             const content = <><span className="truncate">{action.label}</span><Icon className={`size-4 shrink-0 ${action.color}`} /></>;
-            const animationDelay = `${(actions.length - index - 1) * 35}ms`;
 
             if (action.href && !action.disabled) {
               if (action.external) {
@@ -132,7 +153,6 @@ export function LeadQuickActions({
                     title={action.label}
                     onClick={() => setExpanded(false)}
                     className={className}
-                    style={{ animationDelay }}
                     {...(action.href.startsWith("https://") ? { target: "_blank", rel: "noreferrer" } : {})}
                   >
                     {content}
@@ -146,7 +166,6 @@ export function LeadQuickActions({
                   title={action.label}
                   onClick={() => setExpanded(false)}
                   className={className}
-                  style={{ animationDelay }}
                 >
                   {content}
                 </Link>
@@ -161,7 +180,6 @@ export function LeadQuickActions({
                 disabled={action.disabled}
                 onClick={() => closeAndRun(action)}
                 className={className}
-                style={{ animationDelay }}
               >
                 {content}
               </button>
@@ -191,6 +209,34 @@ export function LeadQuickActions({
         showTrigger={false}
       />
     )}
+    <Dialog open={scriptDialogOpen} onOpenChange={setScriptDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>SCRIPT</DialogTitle>
+          <DialogDescription>
+            {scriptsInboxHref
+              ? "Abra a conversa na caixa de entrada para escolher o script e usar as mensagens no campo de envio."
+              : "Este lead ainda não tem conversa no WhatsApp. Quando houver, você poderá abrir o script pela caixa de entrada."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => setScriptDialogOpen(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            disabled={!scriptsInboxHref}
+            onClick={() => {
+              if (!scriptsInboxHref) return;
+              setScriptDialogOpen(false);
+              router.push(scriptsInboxHref);
+            }}
+          >
+            Abrir Conversa
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </>
   );
 }

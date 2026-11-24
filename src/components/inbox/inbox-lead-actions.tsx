@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CalendarClock, CircleCheck, Plus, Tag, X } from "lucide-react";
+import { BookOpenText, CalendarClock, CircleCheck, Plus, Tag, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
@@ -40,6 +40,7 @@ interface InboxLeadActionsProps {
   contactId: string;
   contactName?: string | null;
   onDealUpdated?: () => void;
+  onOpenScripts?: () => void;
 }
 
 type Action = "labels" | "stage";
@@ -47,7 +48,7 @@ type DealRow = Omit<InboxDeal, "labels"> & {
   deal_label_links?: { label: DealLabel | null }[];
 };
 
-export function InboxLeadActions({ contactId, contactName, onDealUpdated }: InboxLeadActionsProps) {
+export function InboxLeadActions({ contactId, contactName, onDealUpdated, onOpenScripts }: InboxLeadActionsProps) {
   const t = useTranslations("Inbox.leadActions");
   const tScheduled = useTranslations("ScheduledMessages");
   const { accountId } = useAuth();
@@ -226,6 +227,19 @@ export function InboxLeadActions({ contactId, contactName, onDealUpdated }: Inbo
       <div className="absolute bottom-3 left-3 z-20 flex flex-col items-start gap-2">
         {expanded && (
           <nav aria-label={t("actionsTitle")} className="flex flex-col items-start gap-2">
+            {onOpenScripts && (
+              <button
+                type="button"
+                onClick={() => {
+                  setExpanded(false);
+                  onOpenScripts();
+                }}
+                className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-background px-3.5 text-sm font-semibold text-foreground shadow-md hover:bg-muted"
+              >
+                <span>SCRIPT</span>
+                <BookOpenText className="size-4 text-primary" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

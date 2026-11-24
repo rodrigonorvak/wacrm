@@ -118,6 +118,9 @@ interface MessageComposerProps {
   onOpenTemplates: () => void;
   replyTo?: ReplyDraft | null;
   onClearReply?: () => void;
+  /** Fills the textarea once (script "Usar", AI draft, etc.). */
+  presetText?: string | null;
+  onPresetApplied?: () => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -140,6 +143,8 @@ export function MessageComposer({
   onOpenTemplates,
   replyTo,
   onClearReply,
+  presetText,
+  onPresetApplied,
 }: MessageComposerProps) {
   const t = useTranslations("Inbox.composer");
 
@@ -219,6 +224,21 @@ export function MessageComposer({
     // Max 4 lines (~96px)
     el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
   }, []);
+
+  useEffect(() => {
+    const next = presetText?.trim();
+    if (!next) return;
+    setText(next);
+    requestAnimationFrame(() => {
+      adjustHeight();
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
+    onPresetApplied?.();
+  }, [presetText, adjustHeight, onPresetApplied]);
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim();

@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Building2, ClipboardList, LayoutDashboard, Users } from "lucide-react";
+import { Bell, BookOpenText, Building2, ClipboardList, LayoutDashboard, Users } from "lucide-react";
 
 const TABS = [
   { href: "/admin", label: "Resultados", icon: LayoutDashboard },
   { href: "/admin/users", label: "Usuários", icon: Users },
+  { href: "/admin/scripts", label: "Scripts", icon: BookOpenText },
   { href: "/admin/notifications", label: "Avisos", icon: Bell },
   { href: "/admin/requests", label: "Pedidos", icon: ClipboardList },
 ];

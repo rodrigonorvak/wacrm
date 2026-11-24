@@ -13,8 +13,9 @@ import { useRealtime } from "@/hooks/use-realtime";
 import { ConversationList } from "@/components/inbox/conversation-list";
 import { MessageThread } from "@/components/inbox/message-thread";
 import { ContactSidebar } from "@/components/inbox/contact-sidebar";
+import { ScriptPanel } from "@/components/inbox/script-panel";
 import { toast } from "sonner";
-import { WifiOff } from "lucide-react";
+import { BookOpenText, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Remembers the agent's show/hide choice for the desktop contact panel
@@ -42,6 +43,7 @@ function InboxPageInner() {
    * automatically instead of showing the empty center panel.
    */
   const deepLinkConvId = searchParams.get("c");
+  const openScriptsFromQuery = searchParams.get("scripts") === "1";
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] =
@@ -50,6 +52,8 @@ function InboxPageInner() {
   const [activeContact, setActiveContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [leadDataRefreshToken, setLeadDataRefreshToken] = useState(0);
+  const [scriptsOpen, setScriptsOpen] = useState(openScriptsFromQuery);
+  const [composerPresetText, setComposerPresetText] = useState<string | null>(null);
   const [whatsappConnected, setWhatsappConnected] = useState<boolean | null>(
     null
   );
@@ -646,22 +650,75 @@ function InboxPageInner() {
             onBack={handleCloseConversation}
             resyncToken={resyncToken}
             onRefresh={handleManualRefresh}
-            contactPanelOpen={contactPanelOpen}
+            contactPanelOpen={contactPanelOpen || scriptsOpen}
             onToggleContactPanel={handleToggleContactPanel}
             onDealUpdated={handleDealUpdated}
+            onOpenScripts={() => {
+              setScriptsOpen(true);
+              setContactPanelOpen(true);
+            }}
+            composerPresetText={composerPresetText}
+            onComposerPresetApplied={() => setComposerPresetText(null)}
           />
         </div>
 
-        {/* Right panel: Contact sidebar — desktop only, and only when the
-            agent hasn't collapsed it via the thread-header toggle (#258).
-            On mobile it's always hidden (the `lg:block` below), so the
-            toggle — which is itself desktop-only — never affects it. */}
-        {contactPanelOpen && (
+        {/* Right panel: scripts overlay the contact sidebar when open. */}
+        {(contactPanelOpen || scriptsOpen) && (
           <div className="hidden lg:block">
-            <ContactSidebar contact={activeContact} refreshToken={leadDataRefreshToken} />
+            {scriptsOpen ? (
+              <ScriptPanel
+                contactName={activeContact?.name}
+                onClose={() => setScriptsOpen(false)}
+                onUseLine={(text) => {
+                  if (!activeConversation) {
+                    toast.message("Abra uma conversa para enviar esta mensagem.");
+                    return;
+                  }
+                  setComposerPresetText(text);
+                }}
+                autoOpen={openScriptsFromQuery}
+              />
+            ) : (
+              <ContactSidebar contact={activeContact} refreshToken={leadDataRefreshToken} />
+            )}
           </div>
         )}
       </div>
+
+      {/* Preview scripts even when this account has no WhatsApp thread yet. */}
+      {!scriptsOpen && (
+        <button
+          type="button"
+          onClick={() => {
+            setScriptsOpen(true);
+            setContactPanelOpen(true);
+          }}
+          className="fixed bottom-6 left-6 z-30 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-lg hover:bg-primary/90"
+        >
+          <BookOpenText className="size-4" />
+          SCRIPT
+        </button>
+      )}
+
+      {scriptsOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden">
+          <div className="absolute inset-y-0 right-0 w-full max-w-md shadow-xl">
+            <ScriptPanel
+              contactName={activeContact?.name}
+              onClose={() => setScriptsOpen(false)}
+              onUseLine={(text) => {
+                if (!activeConversation) {
+                  toast.message("Abra uma conversa para enviar esta mensagem.");
+                  return;
+                }
+                setComposerPresetText(text);
+                setScriptsOpen(false);
+              }}
+              autoOpen={openScriptsFromQuery}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
