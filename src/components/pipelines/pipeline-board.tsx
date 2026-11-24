@@ -40,7 +40,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "next-intl";
 import { useScheduledContacts } from "@/hooks/use-scheduled-contacts";
-import { isFollowUpDueToday } from "@/lib/pipelines/follow-up";
+import { isFollowUpDueToday, isScheduledDateToday } from "@/lib/pipelines/follow-up";
 import { compareBoardDeals } from "@/lib/pipelines/date-filter";
 
 interface PipelineBoardProps {
@@ -105,6 +105,8 @@ export function PipelineBoard({
             updated_at: a.updated_at,
             needs_attention: a.needs_attention,
             scheduled_date: a.scheduled_date,
+            scheduled_time: a.scheduled_time,
+            scheduled_due: isScheduledDateToday(a.scheduled_date),
             follow_up_due: isFollowUpDueToday(stage.stage_type, a.scheduled_date),
           },
           {
@@ -112,6 +114,8 @@ export function PipelineBoard({
             updated_at: b.updated_at,
             needs_attention: b.needs_attention,
             scheduled_date: b.scheduled_date,
+            scheduled_time: b.scheduled_time,
+            scheduled_due: isScheduledDateToday(b.scheduled_date),
             follow_up_due: isFollowUpDueToday(stage.stage_type, b.scheduled_date),
           },
         ),
@@ -187,6 +191,7 @@ export function PipelineBoard({
               onEdit={() => {}}
               isOverlay
               hasScheduledMessage={!!activeDeal.contact_id && scheduledContacts.has(activeDeal.contact_id)}
+              scheduledDue={isScheduledDateToday(activeDeal.scheduled_date)}
               followUpDue={isFollowUpDueToday(
                 sortedStages.find((stage) => stage.id === activeDeal.stage_id)?.stage_type,
                 activeDeal.scheduled_date,
@@ -409,6 +414,7 @@ function StageColumn({
               onEditSchedule={onEditSchedule}
               onDismissAttention={onDismissAttention}
               hasScheduledMessage={!!deal.contact_id && scheduledContacts.has(deal.contact_id)}
+              scheduledDue={isScheduledDateToday(deal.scheduled_date)}
               followUpDue={isFollowUpDueToday(stage.stage_type, deal.scheduled_date)}
             />
           ))
@@ -459,6 +465,7 @@ function DraggableDealCard({
   onEditSchedule,
   onDismissAttention,
   hasScheduledMessage,
+  scheduledDue,
   followUpDue,
 }: {
   deal: Deal;
@@ -468,6 +475,7 @@ function DraggableDealCard({
   onEditSchedule?: (deal: Deal) => void;
   onDismissAttention?: (deal: Deal) => void;
   hasScheduledMessage: boolean;
+  scheduledDue: boolean;
   followUpDue: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -489,6 +497,7 @@ function DraggableDealCard({
         onEditSchedule={onEditSchedule}
         onDismissAttention={onDismissAttention}
         hasScheduledMessage={hasScheduledMessage}
+        scheduledDue={scheduledDue}
         followUpDue={followUpDue}
       />
     </div>

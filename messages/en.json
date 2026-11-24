@@ -769,7 +769,10 @@
       "createdAt": "Created",
       "empty": "No deals match these filters.",
       "firstRespondedBy": "Started by {name}",
-      "awaitingReply": "Awaiting reply"
+      "awaitingReply": "Awaiting reply",
+      "followUpToday": "Follow up today",
+      "scheduledToday": "Scheduled today",
+      "scheduledTodayAt": "Scheduled {time}"
     },
     "page": {
       "selectPipeline": "Select Pipeline",
@@ -2334,7 +2337,8 @@
       "step4_3": "Paste the <strong class=\"text-foreground\">Webhook Callback URL</strong> from above",
       "step4_4": "Enter the same <strong class=\"text-foreground\">Verify Token</strong> you set here",
       "step4_5": "Subscribe to \"messages\" webhook field",
-      "metaDocs": "Meta WhatsApp API Documentation"
+      "metaDocs": "Meta WhatsApp API Documentation",
+      "paymentMethod": "Payment method (Meta)"
     },
     "sections": {
       "overview": "Overview",

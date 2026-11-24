@@ -43,6 +43,7 @@ import {
   dealMatchesDateBounds,
   isDateFilter,
   presetBounds,
+  scheduledDateInBounds,
   type DateFilter,
 } from '@/lib/pipelines/date-filter';
 import { Input } from '@/components/ui/input';
@@ -76,7 +77,7 @@ import {
 } from '@/lib/pipelines/card-fields';
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
-import { isFollowUpDueToday } from '@/lib/pipelines/follow-up';
+import { isFollowUpDueToday, isScheduledDateToday } from '@/lib/pipelines/follow-up';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
 import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
@@ -945,32 +946,44 @@ export default function PipelinesPage() {
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
   const stageById = new Map(stages.map((stage) => [stage.id, stage]));
-  const boardDeals = deals.map((deal) => ({
-    ...deal,
-    follow_up_due: isFollowUpDueToday(
-      stageById.get(deal.stage_id)?.stage_type,
-      deal.scheduled_date,
-    ),
-  }));
+  const activeBounds =
+    dateFilter === 'max'
+      ? null
+      : dateFilter !== 'custom'
+        ? presetBounds(dateFilter)
+        : {
+            start: customStartDate ? new Date(`${customStartDate}T00:00:00`) : null,
+            end: (() => {
+              const endKey = customEndDate || customStartDate;
+              return endKey ? new Date(`${endKey}T23:59:59.999`) : null;
+            })(),
+          };
+
+  const boardDeals = deals.map((deal) => {
+    const scheduledDue =
+      activeBounds == null
+        ? isScheduledDateToday(deal.scheduled_date)
+        : scheduledDateInBounds(
+            deal.scheduled_date,
+            activeBounds.start,
+            activeBounds.end,
+          );
+    return {
+      ...deal,
+      scheduled_due: scheduledDue,
+      follow_up_due: isFollowUpDueToday(
+        stageById.get(deal.stage_id)?.stage_type,
+        deal.scheduled_date,
+      ),
+    };
+  });
 
   const filteredDeals = boardDeals
     .filter((deal) => {
       if (stageFilter !== 'all' && deal.stage_id !== stageFilter) return false;
       if (dateFilter === 'max') return true;
-
-      if (dateFilter !== 'custom') {
-        const bounds = presetBounds(dateFilter);
-        return bounds
-          ? dealMatchesDateBounds(deal, bounds.start, bounds.end)
-          : true;
-      }
-
-      const start = customStartDate
-        ? new Date(`${customStartDate}T00:00:00`)
-        : null;
-      const endKey = customEndDate || customStartDate;
-      const end = endKey ? new Date(`${endKey}T23:59:59.999`) : null;
-      return dealMatchesDateBounds(deal, start, end);
+      if (!activeBounds) return true;
+      return dealMatchesDateBounds(deal, activeBounds.start, activeBounds.end);
     })
     .sort(compareBoardDeals);
 

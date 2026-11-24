@@ -706,7 +706,8 @@
       "step4_3": "Cole acima a <strong class=\"text-foreground\">URL de retorno do Webhook</strong>",
       "step4_4": "Informe o mesmo <strong class=\"text-foreground\">Token de verificação</strong> configurado aqui",
       "step4_5": "Inscreva-se no campo de Webhook \"messages\"",
-      "metaDocs": "Documentação da API do WhatsApp da Meta"
+      "metaDocs": "Documentação da API do WhatsApp da Meta",
+      "paymentMethod": "Forma de pagamento (Meta)"
     },
     "groups": {
       "account": "Conta",
@@ -1158,7 +1159,10 @@
       "createdAt": "Criado em",
       "empty": "Nenhum lead corresponde aos filtros.",
       "firstRespondedBy": "Atendimento iniciado por {name}",
-      "awaitingReply": "Respondeu!"
+      "awaitingReply": "Respondeu!",
+      "followUpToday": "Follow up hoje",
+      "scheduledToday": "Agendado hoje",
+      "scheduledTodayAt": "Agendado {time}"
     },
     "page": {
       "addDeal": "Adicionar lead",

@@ -58,4 +58,38 @@ describe("pipeline today filter", () => {
     expect(dealMatchesDateBounds(quietYesterday, bounds!.start, bounds!.end)).toBe(false);
     expect(compareBoardDeals(older, replied)).toBeGreaterThan(0);
   });
+
+  it("shows a lead scheduled for today even when created earlier, ordered by time", () => {
+    const now = new Date(2026, 10, 24, 10);
+    const bounds = presetBounds("today", now)!;
+    const morning = {
+      created_at: new Date(2026, 10, 20, 9).toISOString(),
+      scheduled_date: "2026-11-24",
+      scheduled_time: "09:00",
+      scheduled_due: true,
+      needs_attention: false,
+    };
+    const afternoon = {
+      created_at: new Date(2026, 10, 20, 9).toISOString(),
+      scheduled_date: "2026-11-24",
+      scheduled_time: "15:30",
+      scheduled_due: true,
+      needs_attention: false,
+    };
+    const createdToday = {
+      created_at: new Date(2026, 10, 24, 8).toISOString(),
+      needs_attention: false,
+    };
+    const scheduledOtherDay = {
+      created_at: new Date(2026, 10, 20, 9).toISOString(),
+      scheduled_date: "2026-11-20",
+      scheduled_time: "10:00",
+      needs_attention: false,
+    };
+
+    expect(dealMatchesDateBounds(morning, bounds.start, bounds.end)).toBe(true);
+    expect(dealMatchesDateBounds(scheduledOtherDay, bounds.start, bounds.end)).toBe(false);
+    expect(compareBoardDeals(createdToday, morning)).toBeGreaterThan(0);
+    expect(compareBoardDeals(afternoon, morning)).toBeGreaterThan(0);
+  });
 });

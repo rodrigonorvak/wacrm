@@ -101,53 +101,99 @@ export function presetBounds(
 }
 
 export interface BoardDealTiming {
-  created_at: string
-  updated_at?: string | null
-  needs_attention?: boolean | null
-  /** Follow-up card due today — stays visible and floats to the top. */
-  follow_up_due?: boolean | null
-  scheduled_date?: string | null
+  created_at: string;
+  updated_at?: string | null;
+  needs_attention?: boolean | null;
+  /**
+   * Deal whose `scheduled_date` falls in the active filter window
+   * (or today on the board) — stays visible and floats above quieter cards.
+   */
+  scheduled_due?: boolean | null;
+  /** @deprecated use scheduled_due — kept for older call sites / tests */
+  follow_up_due?: boolean | null;
+  scheduled_date?: string | null;
+  /** HH:MM or HH:MM:SS — earlier appointments float first among scheduled_due. */
+  scheduled_time?: string | null;
 }
 
 function inBounds(value: string | null | undefined, start: Date | null, end: Date | null): boolean {
-  if (!value) return false
-  const at = new Date(value)
-  if (Number.isNaN(at.getTime())) return false
-  return (!start || at >= start) && (!end || at <= end)
+  if (!value) return false;
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return false;
+  return (!start || at >= start) && (!end || at <= end);
+}
+
+/** Local calendar day of `YYYY-MM-DD` against inclusive filter bounds. */
+export function scheduledDateInBounds(
+  scheduledDate: string | null | undefined,
+  start: Date | null,
+  end: Date | null,
+): boolean {
+  if (!scheduledDate || !/^\d{4}-\d{2}-\d{2}/.test(scheduledDate)) return false;
+  const [year, month, day] = scheduledDate.slice(0, 10).split("-").map(Number);
+  const at = new Date(year, month - 1, day, 12, 0, 0, 0);
+  if (Number.isNaN(at.getTime())) return false;
+  return (!start || at >= start) && (!end || at <= end);
+}
+
+function isScheduledHot(deal: BoardDealTiming): boolean {
+  return !!(deal.scheduled_due || deal.follow_up_due);
 }
 
 /**
  * A pulsing reply stays on the board in every date filter, including Hoje
  * on the following days, until someone opens the inbox conversation.
+ * A deal scheduled for a day inside the filter also stays visible that day.
  */
 export function dealMatchesDateBounds(
   deal: BoardDealTiming,
   start: Date | null,
   end: Date | null,
 ): boolean {
-  if (deal.needs_attention || deal.follow_up_due) return true
-  return inBounds(deal.created_at, start, end)
+  if (deal.needs_attention || isScheduledHot(deal)) return true;
+  if (scheduledDateInBounds(deal.scheduled_date, start, end)) return true;
+  return inBounds(deal.created_at, start, end);
 }
 
 function boardHotRank(deal: BoardDealTiming): number {
-  if (deal.needs_attention) return 2
-  if (deal.follow_up_due) return 1
-  return 0
+  if (deal.needs_attention) return 2;
+  if (isScheduledHot(deal)) return 1;
+  return 0;
 }
 
-/** Attention and follow-up-due cards float to the top; others stay newest-first. */
+/** Minutes from midnight for HH:MM(:SS); unknown times sort last among due cards. */
+function scheduledTimeMinutes(value: string | null | undefined): number {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const match = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  if (!match) return Number.POSITIVE_INFINITY;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return Number.POSITIVE_INFINITY;
+  return hours * 60 + minutes;
+}
+
+/**
+ * Attention first, then scheduled-due by appointment time (earliest first),
+ * then quieter cards newest-first.
+ */
 export function compareBoardDeals(a: BoardDealTiming, b: BoardDealTiming): number {
-  const hotDiff = boardHotRank(b) - boardHotRank(a)
-  if (hotDiff !== 0) return hotDiff
-  const aHot = boardHotRank(a) > 0
-  const bHot = boardHotRank(b) > 0
+  const hotDiff = boardHotRank(b) - boardHotRank(a);
+  if (hotDiff !== 0) return hotDiff;
+
+  if (isScheduledHot(a) && isScheduledHot(b) && !a.needs_attention && !b.needs_attention) {
+    const timeDiff = scheduledTimeMinutes(a.scheduled_time) - scheduledTimeMinutes(b.scheduled_time);
+    if (timeDiff !== 0) return timeDiff;
+  }
+
+  const aHot = boardHotRank(a) > 0;
+  const bHot = boardHotRank(b) > 0;
   const aTime = new Date(
     (aHot ? a.updated_at || a.scheduled_date || a.created_at : a.created_at) || a.created_at,
-  ).getTime()
+  ).getTime();
   const bTime = new Date(
     (bHot ? b.updated_at || b.scheduled_date || b.created_at : b.created_at) || b.created_at,
-  ).getTime()
-  return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
+  ).getTime();
+  return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
 }
 
 export function isCreatedToday(createdAt: string, now: Date = new Date()): boolean {

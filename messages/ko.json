@@ -769,7 +769,10 @@
       "createdAt": "생성일",
       "empty": "필터에 맞는 딜이 없습니다.",
       "firstRespondedBy": "{name}님이 상담을 시작했습니다",
-      "awaitingReply": "답변 대기"
+      "awaitingReply": "답변 대기",
+      "followUpToday": "오늘 팔로업",
+      "scheduledToday": "오늘 일정",
+      "scheduledTodayAt": "{time} 일정"
     },
     "page": {
       "selectPipeline": "파이프라인 선택",
@@ -2333,7 +2336,8 @@
       "step4_3": "위의 <strong class=\"text-foreground\">웹훅 콜백 URL</strong>을 붙여넣기",
       "step4_4": "여기서 설정한 것과 동일한 <strong class=\"text-foreground\">인증 토큰</strong>을 입력",
       "step4_5": "\"messages\" 웹훅 필드를 구독",
-      "metaDocs": "Meta WhatsApp API 문서"
+      "metaDocs": "Meta WhatsApp API 문서",
+      "paymentMethod": "결제 수단 (Meta)"
     },
     "sections": {
       "overview": "개요",

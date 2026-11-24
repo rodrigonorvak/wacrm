@@ -28,4 +28,16 @@ describe("follow-up due day", () => {
     expect(dealMatchesDateBounds(due, bounds.start, bounds.end)).toBe(true);
     expect(compareBoardDeals(quiet, due)).toBeGreaterThan(0);
   });
+
+  it("keeps any stage with scheduled_date today visible without follow_up_due flag", () => {
+    const now = new Date(2026, 10, 24, 12);
+    const bounds = presetBounds("today", now)!;
+    const booked = {
+      created_at: new Date(2026, 10, 20).toISOString(),
+      scheduled_date: "2026-11-24",
+      scheduled_time: "11:00",
+      needs_attention: false,
+    };
+    expect(dealMatchesDateBounds(booked, bounds.start, bounds.end)).toBe(true);
+  });
 });
