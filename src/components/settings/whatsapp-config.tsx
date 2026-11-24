@@ -10,6 +10,7 @@ import {
   XCircle,
   Loader2,
   ExternalLink,
+  CreditCard,
   Zap,
   AlertTriangle,
   RotateCcw,
@@ -31,6 +32,10 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import type { WhatsAppConfig as WhatsAppConfigType } from '@/types';
+
+/** Meta Business Suite — formas de pagamento dos disparos WhatsApp. */
+const META_PAYMENT_METHODS_URL =
+  'https://business.facebook.com/billing_hub/payment_methods';
 
 const MASKED_TOKEN = '••••••••••••••••';
 
@@ -493,22 +498,35 @@ export function WhatsAppConfig() {
               : statusMessage ||
                 t('notConnectedDesc')}
           </AlertDescription>
-          {config && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              disabled={resetting}
-              className="mt-3 border-red-900 text-red-400 hover:text-red-300 hover:bg-red-950/40"
-            >
-              {resetting ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <RotateCcw className="size-4" />
-              )}
-              {resetting ? t('resetting') : t('resetConfig')}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" asChild className="border-border">
+              <a
+                href={META_PAYMENT_METHODS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <CreditCard className="size-4" />
+                {t('paymentMethod')}
+                <ExternalLink className="size-3.5 opacity-70" />
+              </a>
             </Button>
-          )}
+            {config && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReset}
+                disabled={resetting}
+                className="border-red-900 text-red-400 hover:text-red-300 hover:bg-red-950/40"
+              >
+                {resetting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-4" />
+                )}
+                {resetting ? t('resetting') : t('resetConfig')}
+              </Button>
+            )}
+          </div>
         </Alert>
 
         {/* Registration Status — the "is it actually live?" check.
@@ -917,7 +935,16 @@ export function WhatsAppConfig() {
               </AccordionItem>
             </Accordion>
 
-            <div className="mt-4 pt-4 border-t border-border">
+            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-4">
+              <a
+                href={META_PAYMENT_METHODS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors"
+              >
+                <CreditCard className="size-3.5" />
+                {t('paymentMethod')}
+              </a>
               <a
                 href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
                 target="_blank"

@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, CreditCard, ExternalLink, Loader2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,10 @@ declare global {
     fbAsyncInit?: () => void;
   }
 }
+
+/** Meta Business Suite — formas de pagamento (mesma etapa do popup de conexão). */
+const META_PAYMENT_METHODS_URL =
+  'https://business.facebook.com/billing_hub/payment_methods';
 
 function WhatsAppGlyph({ className }: { className?: string }) {
   return (
@@ -257,8 +261,29 @@ function WhatsAppPlugin({ onBack }: { onBack: () => void }) {
               </div>
             )}
 
+            <Button variant="outline" asChild className="w-fit">
+              <a
+                href={META_PAYMENT_METHODS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Forma de pagamento
+                <ExternalLink className="ml-1.5 h-3.5 w-3.5 opacity-70" />
+              </a>
+            </Button>
+
             <p className="text-xs text-muted-foreground">
-              Prefere configurar à mão com token próprio? Use{' '}
+              Para cobrança dos disparos (templates/conversas), abra{' '}
+              <a
+                className="underline"
+                href={META_PAYMENT_METHODS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Formas de pagamento na Meta
+              </a>
+              . Prefere configurar à mão com token próprio? Use{' '}
               <a className="underline" href="?tab=whatsapp">
                 Configurações → WhatsApp
               </a>
