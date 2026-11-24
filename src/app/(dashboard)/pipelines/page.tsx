@@ -1305,7 +1305,7 @@ export default function PipelinesPage() {
                 scheduleMove.stageId,
                 undefined,
                 scheduledDate,
-                scheduledTime
+                scheduledTime ?? undefined
               );
             }
           : undefined}
