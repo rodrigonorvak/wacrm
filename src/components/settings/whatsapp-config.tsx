@@ -18,7 +18,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -499,17 +500,19 @@ export function WhatsAppConfig() {
                 t('notConnectedDesc')}
           </AlertDescription>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild className="border-border">
-              <a
-                href={META_PAYMENT_METHODS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <CreditCard className="size-4" />
-                {t('paymentMethod')}
-                <ExternalLink className="size-3.5 opacity-70" />
-              </a>
-            </Button>
+            <a
+              href={META_PAYMENT_METHODS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'sm' }),
+                'border-border',
+              )}
+            >
+              <CreditCard className="size-4" />
+              {t('paymentMethod')}
+              <ExternalLink className="size-3.5 opacity-70" />
+            </a>
             {config && (
               <Button
                 variant="outline"

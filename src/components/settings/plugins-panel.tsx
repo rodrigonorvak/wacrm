@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { ArrowLeft, CheckCircle2, CreditCard, ExternalLink, Loader2 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { SettingsPanelHead } from './settings-panel-head';
 
@@ -261,17 +262,16 @@ function WhatsAppPlugin({ onBack }: { onBack: () => void }) {
               </div>
             )}
 
-            <Button variant="outline" asChild className="w-fit">
-              <a
-                href={META_PAYMENT_METHODS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Forma de pagamento
-                <ExternalLink className="ml-1.5 h-3.5 w-3.5 opacity-70" />
-              </a>
-            </Button>
+            <a
+              href={META_PAYMENT_METHODS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonVariants({ variant: 'outline' }), 'w-fit')}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Forma de pagamento
+              <ExternalLink className="ml-1.5 h-3.5 w-3.5 opacity-70" />
+            </a>
 
             <p className="text-xs text-muted-foreground">
               Para cobrança dos disparos (templates/conversas), abra{' '}
