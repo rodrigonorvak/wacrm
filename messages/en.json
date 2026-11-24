@@ -745,6 +745,7 @@
       "label": "Column type",
       "other": "Custom — no Meta event",
       "lead": "New lead — Lead",
+      "follow_up": "Follow Up",
       "schedule": "Appointment/meeting — Schedule",
       "purchase": "Sale — Purchase"
     },
@@ -805,6 +806,7 @@
       "toastFailedMoveDeal": "Failed to move deal",
       "toastFailedStageColor": "Could not change the column color.",
       "toastFailedStageType": "Could not change the column type.",
+      "toastPaidLeadsOnly": "This column only accepts paid (ad) leads.",
       "toastFailedCreatePipeline": "Failed to create pipeline",
       "pipelineOwnerOnly": "Only the account owner can create or delete pipelines.",
       "toastPipelineCreated": "Pipeline created",
@@ -819,6 +821,7 @@
       "columnSettings": "Settings for {stage}",
       "columnColor": "Column color",
       "columnType": "Column type",
+      "paidLeadsOnly": "Paid leads only",
       "noColumnColor": "No color",
       "selectColumnColor": "Select column color {color}",
       "viewKanban": "Kanban view",

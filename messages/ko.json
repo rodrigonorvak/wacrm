@@ -745,6 +745,7 @@
       "label": "열 유형",
       "other": "사용자 지정 — Meta 이벤트 없음",
       "lead": "신규 리드 — Lead",
+      "follow_up": "Follow Up",
       "schedule": "예약/미팅 — Schedule",
       "purchase": "판매 — Purchase"
     },
@@ -819,6 +820,7 @@
       "columnSettings": "{stage} 설정",
       "columnColor": "열 색상",
       "columnType": "열 유형",
+      "paidLeadsOnly": "유료 리드만",
       "noColumnColor": "색상 없음",
       "selectColumnColor": "열 색상 선택 {color}",
       "viewKanban": "칸반 보기",

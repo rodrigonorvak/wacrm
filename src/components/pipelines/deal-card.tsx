@@ -25,6 +25,7 @@ interface DealCardProps {
   onDismissAttention?: (deal: Deal) => void;
   isOverlay?: boolean;
   hasScheduledMessage?: boolean;
+  followUpDue?: boolean;
 }
 
 export function DealCard({
@@ -36,6 +37,7 @@ export function DealCard({
   onDismissAttention,
   isOverlay,
   hasScheduledMessage = false,
+  followUpDue = false,
 }: DealCardProps) {
   const locale = useLocale();
   const t = useTranslations("Pipelines.list");
@@ -109,14 +111,19 @@ export function DealCard({
         onEdit(deal);
       }}
       className={`w-full cursor-pointer rounded-2xl border border-[#e8eef5] bg-white px-3.5 py-3 text-left shadow-[0_6px_16px_rgb(15_23_42_/_5%)] transition-colors ${
-        deal.needs_attention ? "deal-awaiting-glow" : ""
+        deal.needs_attention || followUpDue ? "deal-awaiting-glow" : ""
       } ${isOverlay ? "shadow-lg" : "hover:border-primary/30"}`}
     >
-      {(labels.length > 0 || deal.contact?.has_ad_referral || deal.needs_attention) && (
+      {(labels.length > 0 || deal.contact?.has_ad_referral || deal.needs_attention || followUpDue) && (
         <div className="mb-1.5 flex flex-wrap gap-1 pr-7">
           {deal.needs_attention && (
             <span className="inline-flex h-4 max-w-full items-center rounded-full border border-orange-300/80 bg-orange-500/10 px-2 text-[10px] font-semibold leading-none text-orange-700">
               <span className="truncate">{attentionCaption(deal.attention_label, t("awaitingReply"))}</span>
+            </span>
+          )}
+          {followUpDue && !deal.needs_attention && (
+            <span className="inline-flex h-4 max-w-full items-center rounded-full border border-primary/40 bg-primary/10 px-2 text-[10px] font-semibold leading-none text-primary">
+              <span className="truncate">Follow up hoje</span>
             </span>
           )}
           {deal.contact?.has_ad_referral && <AdSourceBadge />}

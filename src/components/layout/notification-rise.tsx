@@ -8,7 +8,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification, NotificationType } from "@/types";
 
-const POP_TYPES = new Set<NotificationType>(["lead_awaiting", "platform_message"]);
+const POP_TYPES = new Set<NotificationType>([
+  "lead_awaiting",
+  "platform_message",
+  "follow_up_due",
+]);
 const MAX_VISIBLE = 4;
 
 /**
@@ -86,7 +90,10 @@ export function NotificationRise() {
 
   function open(notice: Notification) {
     void markRead(notice.id);
-    if (notice.type === "lead_awaiting" && notice.deal_id) {
+    if (
+      (notice.type === "lead_awaiting" || notice.type === "follow_up_due") &&
+      notice.deal_id
+    ) {
       const pipeline = notice.pipeline_id
         ? `?pipeline=${encodeURIComponent(notice.pipeline_id)}`
         : "";

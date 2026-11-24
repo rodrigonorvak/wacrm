@@ -194,7 +194,8 @@ export type NotificationType =
   | 'conversation_assigned'
   | 'deal_reminder'
   | 'lead_awaiting'
-  | 'platform_message';
+  | 'platform_message'
+  | 'follow_up_due';
 
 export interface Notification {
   id: string;
@@ -459,6 +460,8 @@ export interface PipelineStage {
   pipeline_id: string;
   name: string;
   stage_type?: PipelineStageType;
+  /** When true on a lead column, only ad/paid leads are shown there. */
+  paid_leads_only?: boolean;
   position: number;
   color: string;
   created_at: string;

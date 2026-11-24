@@ -51,6 +51,16 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
+  // When someone enters the CRM, raise today's Follow Up notices.
+  useEffect(() => {
+    if (!user || supportSession) return;
+    void fetch("/api/automations/follow-up", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sweep: true }),
+    }).catch(() => undefined);
+  }, [user, supportSession]);
+
   if (loading || (user && supportSessionLoading)) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

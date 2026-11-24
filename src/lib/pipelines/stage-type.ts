@@ -1,4 +1,10 @@
-export const PIPELINE_STAGE_TYPES = ["other", "lead", "schedule", "purchase"] as const;
+export const PIPELINE_STAGE_TYPES = [
+  "other",
+  "lead",
+  "follow_up",
+  "schedule",
+  "purchase",
+] as const;
 
 export type PipelineStageType = (typeof PIPELINE_STAGE_TYPES)[number];
 export type MetaStageEventName = "Lead" | "Schedule" | "Purchase";
@@ -6,6 +12,7 @@ export type MetaStageEventName = "Lead" | "Schedule" | "Purchase";
 const META_EVENT_BY_STAGE_TYPE: Record<PipelineStageType, MetaStageEventName | null> = {
   other: null,
   lead: "Lead",
+  follow_up: null,
   schedule: "Schedule",
   purchase: "Purchase",
 };

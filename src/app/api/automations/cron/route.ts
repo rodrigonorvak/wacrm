@@ -91,9 +91,26 @@ export async function GET(request: Request) {
     console.error('[lead-silence] cron failed:', error)
   }
 
+  let followUpNotified = 0
+  try {
+    const { data: followUpCount, error: followUpError } = await admin.rpc(
+      'dispatch_follow_up_due_notifications',
+    )
+    if (followUpError) console.error('[follow-up] cron failed:', followUpError.message)
+    else followUpNotified = Number(followUpCount ?? 0)
+  } catch (error) {
+    console.error('[follow-up] cron failed:', error)
+  }
+
   try {
     const scheduledMessagesProcessed = await dispatchScheduledMessages(admin)
-    return NextResponse.json({ processed, reminders_processed: reminderCount, scheduled_messages_processed: scheduledMessagesProcessed, silence_moved: silenceMoved })
+    return NextResponse.json({
+      processed,
+      reminders_processed: reminderCount,
+      scheduled_messages_processed: scheduledMessagesProcessed,
+      silence_moved: silenceMoved,
+      follow_up_notified: followUpNotified,
+    })
   } catch (error) {
     console.error('[scheduled-whatsapp] cron failed:', error)
     return NextResponse.json({ error: 'scheduled message processing failed', processed, reminders_processed: reminderCount }, { status: 500 })

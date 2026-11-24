@@ -31,12 +31,17 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "next-intl";
 import { useScheduledContacts } from "@/hooks/use-scheduled-contacts";
+import { isFollowUpDueToday } from "@/lib/pipelines/follow-up";
+import { compareBoardDeals } from "@/lib/pipelines/date-filter";
 
 interface PipelineBoardProps {
   stages: PipelineStage[];
@@ -45,6 +50,7 @@ interface PipelineBoardProps {
   canEditStageColors: boolean;
   onStageColorChange: (stageId: string, color: string) => void;
   onStageTypeChange: (stageId: string, stageType: PipelineStageType) => void;
+  onPaidLeadsOnlyChange?: (stageId: string, paidLeadsOnly: boolean) => void;
   onDealMoved: (dealId: string, newStageId: string) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
@@ -63,6 +69,7 @@ export function PipelineBoard({
   canEditStageColors,
   onStageColorChange,
   onStageTypeChange,
+  onPaidLeadsOnlyChange,
   onDealMoved,
   onAddDeal,
   onEditDeal,
@@ -82,8 +89,33 @@ export function PipelineBoard({
     const map = new Map<string, Deal[]>();
     for (const stage of sortedStages) map.set(stage.id, []);
     for (const deal of deals) {
+      const stage = sortedStages.find((item) => item.id === deal.stage_id);
+      if (!stage) continue;
+      if (stage.paid_leads_only && !deal.contact?.has_ad_referral) continue;
       const bucket = map.get(deal.stage_id);
       if (bucket) bucket.push(deal);
+    }
+    for (const stage of sortedStages) {
+      const bucket = map.get(stage.id);
+      if (!bucket) continue;
+      bucket.sort((a, b) =>
+        compareBoardDeals(
+          {
+            created_at: a.created_at,
+            updated_at: a.updated_at,
+            needs_attention: a.needs_attention,
+            scheduled_date: a.scheduled_date,
+            follow_up_due: isFollowUpDueToday(stage.stage_type, a.scheduled_date),
+          },
+          {
+            created_at: b.created_at,
+            updated_at: b.updated_at,
+            needs_attention: b.needs_attention,
+            scheduled_date: b.scheduled_date,
+            follow_up_due: isFollowUpDueToday(stage.stage_type, b.scheduled_date),
+          },
+        ),
+      );
     }
     return map;
   }, [sortedStages, deals]);
@@ -135,6 +167,7 @@ export function PipelineBoard({
             canEditStageColors={canEditStageColors}
             onStageColorChange={onStageColorChange}
             onStageTypeChange={onStageTypeChange}
+            onPaidLeadsOnlyChange={onPaidLeadsOnlyChange}
             onAddDeal={onAddDeal}
             onEditDeal={onEditDeal}
             onEditLabels={onEditLabels}
@@ -154,6 +187,10 @@ export function PipelineBoard({
               onEdit={() => {}}
               isOverlay
               hasScheduledMessage={!!activeDeal.contact_id && scheduledContacts.has(activeDeal.contact_id)}
+              followUpDue={isFollowUpDueToday(
+                sortedStages.find((stage) => stage.id === activeDeal.stage_id)?.stage_type,
+                activeDeal.scheduled_date,
+              )}
             />
           </div>
         ) : null}
@@ -203,6 +240,7 @@ function StageColumn({
   canEditStageColors,
   onStageColorChange,
   onStageTypeChange,
+  onPaidLeadsOnlyChange,
   onAddDeal,
   onEditDeal,
   onEditLabels,
@@ -216,6 +254,7 @@ function StageColumn({
   canEditStageColors: boolean;
   onStageColorChange: (stageId: string, color: string) => void;
   onStageTypeChange: (stageId: string, stageType: PipelineStageType) => void;
+  onPaidLeadsOnlyChange?: (stageId: string, paidLeadsOnly: boolean) => void;
   onAddDeal: (stageId: string) => void;
   onEditDeal: (deal: Deal) => void;
   onEditLabels?: (deal: Deal) => void;
@@ -229,6 +268,7 @@ function StageColumn({
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_DEALS);
   const visibleDeals = deals.slice(0, visibleCount);
   const hiddenCount = deals.length - visibleDeals.length;
+  const isLeadColumn = (stage.stage_type ?? "other") === "lead";
 
   return (
     <section className="flex w-[84vw] min-w-[250px] max-w-[320px] shrink-0 snap-start flex-col rounded-2xl bg-white/70 p-3 sm:p-4 lg:w-[205px] lg:min-w-[190px] lg:max-w-[250px] lg:flex-1 lg:basis-[205px] lg:snap-none">
@@ -258,50 +298,90 @@ function StageColumn({
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>{t("columnType")}</DropdownMenuLabel>
-                  {PIPELINE_STAGE_TYPES.map((type) => (
-                    <DropdownMenuItem
-                      key={type}
-                      onClick={() => onStageTypeChange(stage.id, type)}
-                      className="cursor-pointer"
-                    >
-                      {tStageType(type)}
-                      {type === (stage.stage_type ?? "other") && (
-                        <Check className="ml-auto size-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>{t("columnColor")}</DropdownMenuLabel>
-                  <div className="grid grid-cols-5 gap-1 p-1">
-                    {PIPELINE_STAGE_COLOR_OPTIONS.map(({ name, value }) => (
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="cursor-pointer">
+                    {t("columnType")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-56">
+                    {PIPELINE_STAGE_TYPES.map((type) => (
                       <DropdownMenuItem
-                        key={value}
-                        aria-label={t("selectColumnColor", { color: t(`colors.${name}`) })}
-                        title={t(`colors.${name}`)}
-                        onClick={() => onStageColorChange(stage.id, value)}
-                        className="flex size-7 cursor-pointer items-center justify-center p-0 focus:bg-muted"
+                        key={type}
+                        onClick={() => onStageTypeChange(stage.id, type)}
+                        className="cursor-pointer"
                       >
-                        <span
-                          className="size-4 rounded-full border border-black/10"
-                          style={{ backgroundColor: value }}
-                        />
+                        {tStageType(type)}
+                        {type === (stage.stage_type ?? "other") && (
+                          <Check className="ml-auto size-4 text-primary" />
+                        )}
                       </DropdownMenuItem>
                     ))}
-                  </div>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onStageColorChange(stage.id, PIPELINE_STAGE_NO_COLOR)}
-                  className="cursor-pointer"
-                >
-                  <CircleSlash2 className="size-4" />
-                  {t("noColumnColor")}
-                </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="cursor-pointer">
+                    {t("columnColor")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-44">
+                    <div className="grid grid-cols-5 gap-1 p-1">
+                      {PIPELINE_STAGE_COLOR_OPTIONS.map(({ name, value }) => (
+                        <DropdownMenuItem
+                          key={value}
+                          aria-label={t("selectColumnColor", { color: t(`colors.${name}`) })}
+                          title={t(`colors.${name}`)}
+                          onClick={() => onStageColorChange(stage.id, value)}
+                          className="flex size-7 cursor-pointer items-center justify-center p-0 focus:bg-muted"
+                        >
+                          <span
+                            className="size-4 rounded-full border border-black/10"
+                            style={{ backgroundColor: value }}
+                          />
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onStageColorChange(stage.id, PIPELINE_STAGE_NO_COLOR)}
+                      className="cursor-pointer"
+                    >
+                      <CircleSlash2 className="size-4" />
+                      {t("noColumnColor")}
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                {isLeadColumn && onPaidLeadsOnlyChange && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <div
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-1.5 py-1.5 text-sm outline-hidden select-none"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          onPaidLeadsOnlyChange(stage.id, !stage.paid_leads_only);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onPaidLeadsOnlyChange(stage.id, !stage.paid_leads_only);
+                          }
+                        }}
+                        role="menuitemcheckbox"
+                        aria-checked={Boolean(stage.paid_leads_only)}
+                        tabIndex={0}
+                      >
+                        <span className="min-w-0 flex-1">{t("paidLeadsOnly")}</span>
+                        <Switch
+                          checked={Boolean(stage.paid_leads_only)}
+                          onCheckedChange={(checked) =>
+                            onPaidLeadsOnlyChange(stage.id, checked)
+                          }
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={t("paidLeadsOnly")}
+                        />
+                      </div>
+                    </DropdownMenuGroup>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -329,6 +409,7 @@ function StageColumn({
               onEditSchedule={onEditSchedule}
               onDismissAttention={onDismissAttention}
               hasScheduledMessage={!!deal.contact_id && scheduledContacts.has(deal.contact_id)}
+              followUpDue={isFollowUpDueToday(stage.stage_type, deal.scheduled_date)}
             />
           ))
         )}
@@ -378,6 +459,7 @@ function DraggableDealCard({
   onEditSchedule,
   onDismissAttention,
   hasScheduledMessage,
+  followUpDue,
 }: {
   deal: Deal;
   visibleCardFields: PipelineCardField[];
@@ -386,6 +468,7 @@ function DraggableDealCard({
   onEditSchedule?: (deal: Deal) => void;
   onDismissAttention?: (deal: Deal) => void;
   hasScheduledMessage: boolean;
+  followUpDue: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: deal.id,
@@ -406,6 +489,7 @@ function DraggableDealCard({
         onEditSchedule={onEditSchedule}
         onDismissAttention={onDismissAttention}
         hasScheduledMessage={hasScheduledMessage}
+        followUpDue={followUpDue}
       />
     </div>
   );

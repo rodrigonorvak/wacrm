@@ -76,6 +76,7 @@ import {
 } from '@/lib/pipelines/card-fields';
 import { GatedButton } from '@/components/ui/gated-button';
 import { useTranslations } from 'next-intl';
+import { isFollowUpDueToday } from '@/lib/pipelines/follow-up';
 import { isPaidStageName } from '@/lib/pipelines/paid-stage';
 import type { PipelineStageType } from '@/lib/pipelines/stage-type';
 
@@ -543,9 +544,46 @@ export default function PipelinesPage() {
       }
       setStages((current) =>
         current.map((stage) =>
-          stage.id === stageId ? { ...stage, stage_type: stageType } : stage
+          stage.id === stageId
+            ? {
+                ...stage,
+                stage_type: stageType,
+                ...(stageType !== 'lead' ? { paid_leads_only: false } : {}),
+              }
+            : stage
         )
       );
+      if (stageType !== 'lead') {
+        await supabase
+          .from('pipeline_stages')
+          .update({ paid_leads_only: false })
+          .eq('id', stageId)
+          .eq('pipeline_id', selectedPipelineId);
+      }
+    },
+    [selectedPipelineId, supabase, t]
+  );
+
+  const handlePaidLeadsOnlyChange = useCallback(
+    async (stageId: string, paidLeadsOnly: boolean) => {
+      setStages((current) =>
+        current.map((stage) =>
+          stage.id === stageId ? { ...stage, paid_leads_only: paidLeadsOnly } : stage
+        )
+      );
+      const { error } = await supabase
+        .from('pipeline_stages')
+        .update({ paid_leads_only: paidLeadsOnly })
+        .eq('id', stageId)
+        .eq('pipeline_id', selectedPipelineId);
+      if (error) {
+        toast.error(t('toastFailedStageType'));
+        setStages((current) =>
+          current.map((stage) =>
+            stage.id === stageId ? { ...stage, paid_leads_only: !paidLeadsOnly } : stage
+          )
+        );
+      }
     },
     [selectedPipelineId, supabase, t]
   );
@@ -559,13 +597,20 @@ export default function PipelinesPage() {
     if (!selectedPipelineId) return;
     let cancelled = false;
     const tick = async (refreshAnyway: boolean) => {
-      const response = await fetch('/api/automations/lead-silence', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sweep: true }),
-      }).catch(() => null);
-      if (cancelled || !response?.ok) return;
-      const body = (await response.json().catch(() => null)) as { moved?: number } | null;
+      const [silenceResponse] = await Promise.all([
+        fetch('/api/automations/lead-silence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sweep: true }),
+        }).catch(() => null),
+        fetch('/api/automations/follow-up', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sweep: true }),
+        }).catch(() => null),
+      ]);
+      if (cancelled || !silenceResponse?.ok) return;
+      const body = (await silenceResponse.json().catch(() => null)) as { moved?: number } | null;
       if (refreshAnyway || (body?.moved ?? 0) > 0) await refreshDeals();
     };
     void tick(false);
@@ -630,12 +675,19 @@ export default function PipelinesPage() {
       const deal = deals.find((item) => item.id === dealId);
       const nextStage = stages.find((stage) => stage.id === newStageId);
       if (!deal || !nextStage) return;
+      if (nextStage.paid_leads_only && !deal.contact?.has_ad_referral) {
+        toast.error(t('toastPaidLeadsOnly'));
+        return;
+      }
       if (isPaidStageName(nextStage.name) || nextStage.stage_type === 'purchase') {
         setPaidMove({ dealId, stageId: newStageId, dealTitle: deal.title });
         setPaidAmountInput('');
         return;
       }
-      if (nextStage.stage_type === 'schedule') {
+      if (
+        nextStage.stage_type === 'schedule' ||
+        (nextStage.stage_type === 'follow_up' && !deal.scheduled_date)
+      ) {
         setScheduleMove({ dealId, stageId: newStageId });
         setScheduleDealId(dealId);
         return;
@@ -892,7 +944,16 @@ export default function PipelinesPage() {
 
   const selectedPipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
-  const filteredDeals = deals
+  const stageById = new Map(stages.map((stage) => [stage.id, stage]));
+  const boardDeals = deals.map((deal) => ({
+    ...deal,
+    follow_up_due: isFollowUpDueToday(
+      stageById.get(deal.stage_id)?.stage_type,
+      deal.scheduled_date,
+    ),
+  }));
+
+  const filteredDeals = boardDeals
     .filter((deal) => {
       if (stageFilter !== 'all' && deal.stage_id !== stageFilter) return false;
       if (dateFilter === 'max') return true;
@@ -1146,6 +1207,9 @@ export default function PipelinesPage() {
               canEditStageColors={canEditSettings}
               onStageColorChange={handleStageColorChange}
               onStageTypeChange={handleStageTypeChange}
+              onPaidLeadsOnlyChange={
+                canEditSettings ? handlePaidLeadsOnlyChange : undefined
+              }
               onDealMoved={handleDealMoved}
               onAddDeal={handleAddDeal}
               onEditDeal={handleEditDeal}
@@ -1220,16 +1284,22 @@ export default function PipelinesPage() {
         }
         canEdit={canCreateDeals}
         requireTime={
-          scheduleMove !== null ||
-          stages.find(
-            (stage) =>
-              stage.id === deals.find((deal) => deal.id === scheduleDealId)?.stage_id
-          )?.stage_type === 'schedule'
+          (scheduleMove
+            ? stages.find((stage) => stage.id === scheduleMove.stageId)?.stage_type
+            : stages.find(
+                (stage) =>
+                  stage.id ===
+                  deals.find((deal) => deal.id === scheduleDealId)?.stage_id
+              )?.stage_type) === 'schedule'
         }
         title={scheduleMove ? tScheduleDialog('moveTitle') : undefined}
         onSave={scheduleMove
           ? async (dealId, scheduledDate, scheduledTime) => {
-              if (!scheduledDate || !scheduledTime) return false;
+              const targetType = stages.find(
+                (stage) => stage.id === scheduleMove.stageId
+              )?.stage_type;
+              if (!scheduledDate) return false;
+              if (targetType === 'schedule' && !scheduledTime) return false;
               return saveDealStage(
                 dealId,
                 scheduleMove.stageId,

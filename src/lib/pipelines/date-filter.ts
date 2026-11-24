@@ -104,6 +104,9 @@ export interface BoardDealTiming {
   created_at: string
   updated_at?: string | null
   needs_attention?: boolean | null
+  /** Follow-up card due today — stays visible and floats to the top. */
+  follow_up_due?: boolean | null
+  scheduled_date?: string | null
 }
 
 function inBounds(value: string | null | undefined, start: Date | null, end: Date | null): boolean {
@@ -122,17 +125,28 @@ export function dealMatchesDateBounds(
   start: Date | null,
   end: Date | null,
 ): boolean {
-  if (deal.needs_attention) return true
+  if (deal.needs_attention || deal.follow_up_due) return true
   return inBounds(deal.created_at, start, end)
 }
 
-/** Replies float to the top. Everyone else stays in creation order, newest first. */
+function boardHotRank(deal: BoardDealTiming): number {
+  if (deal.needs_attention) return 2
+  if (deal.follow_up_due) return 1
+  return 0
+}
+
+/** Attention and follow-up-due cards float to the top; others stay newest-first. */
 export function compareBoardDeals(a: BoardDealTiming, b: BoardDealTiming): number {
-  const aHot = Boolean(a.needs_attention)
-  const bHot = Boolean(b.needs_attention)
-  if (aHot !== bHot) return aHot ? -1 : 1
-  const aTime = new Date((aHot ? a.updated_at : a.created_at) || a.created_at).getTime()
-  const bTime = new Date((bHot ? b.updated_at : b.created_at) || b.created_at).getTime()
+  const hotDiff = boardHotRank(b) - boardHotRank(a)
+  if (hotDiff !== 0) return hotDiff
+  const aHot = boardHotRank(a) > 0
+  const bHot = boardHotRank(b) > 0
+  const aTime = new Date(
+    (aHot ? a.updated_at || a.scheduled_date || a.created_at : a.created_at) || a.created_at,
+  ).getTime()
+  const bTime = new Date(
+    (bHot ? b.updated_at || b.scheduled_date || b.created_at : b.created_at) || b.created_at,
+  ).getTime()
   return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime)
 }
 
